@@ -4,17 +4,6 @@
  *  Created on: 8/4/2017
  *      Author: utnso
  */
-#include <stdio.h>
-#include <stdlib.h>
-#include <sys/socket.h>
-#include <sys/select.h>
-#include <sys/time.h>
-#include <string.h>
-#include <unistd.h>
-#include <sys/types.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
-#include <commons/string.h>
 #include "panisocket.h"
 
 
@@ -112,7 +101,7 @@ int aceptarClienteMultiConexion(int socket,fd_set* fds, int* fdmax) {
 	return nuevaConn;
 }
 
-t_package crearPaquete(char*datos,int32_t longitud){
+t_package crearPaquete(char*datos,uint32_t longitud){
 	t_package paquete;
 	paquete.datos=string_split(datos, ";")[1];
 	paquete.key=string_split(datos, ";")[0];
@@ -120,10 +109,17 @@ t_package crearPaquete(char*datos,int32_t longitud){
 	return paquete;
 }
 
+t_package crearPaqueteDeError(){
+	t_package paquete;
+	paquete.datos="Error";
+	paquete.key="ERROR_FUNC";
+	paquete.longitud=5;
+	return paquete;
+}
 
 t_package* recibirPaquete(int socket){
 	t_package *paquete = malloc(sizeof(t_package));
-	*paquete = crearPaquete("ERROR_FUNC,Error",5);
+	*paquete = crearPaqueteDeError();
 	ssize_t recibidos;
 	uint32_t longitud;
 
@@ -137,7 +133,7 @@ t_package* recibirPaquete(int socket){
 			return paquete;
 	}
 
-	char* data = (char *)malloc(longitud);
+	char* data = (char *)malloc(longitud+1);
 
 	if(data == NULL)
 		return paquete;
@@ -157,15 +153,18 @@ t_package* recibirPaquete(int socket){
 	}
 	data[recibidos] = '\0';
 	*paquete = crearPaquete(data,longitud);
-
+	free(data);
 	return paquete;
 }
 
 
 void correrFuncion(void* funcion(),char* datos){
 
-	char** parametros = string_split(datos,",");
-	funcion(parametros);
+	if(string_contains(datos,",")){
+		char** parametros = string_split(datos,",");
+		funcion(parametros);
+	}else
+		funcion(datos);
 }
 
 void borrarPaquete(t_package* package){

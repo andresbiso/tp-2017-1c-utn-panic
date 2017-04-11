@@ -11,9 +11,20 @@
 
 #include <commons/collections/dictionary.h>
 #include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <sys/socket.h>
+#include <sys/select.h>
+#include <sys/time.h>
+#include <string.h>
+#include <unistd.h>
+#include <sys/types.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <commons/string.h>
 
 typedef struct{
-	int32_t longitud;
+	uint32_t longitud;
 	char* key;
 	char* datos;
 }t_package;
@@ -27,7 +38,8 @@ int enviarMensaje(int socket, char * mensaje,uint32_t tamanioPaquete);
 int empaquetarEnviarMensaje(int socketServidor, char* key, int cantParams, ...);
 int aceptarCliente(int socket);
 int aceptarClienteMultiConexion(int socket,fd_set* fds, int* fdmax);
-t_package crearPaquete(char*datos,int32_t longitud);
+t_package crearPaquete(char*datos,uint32_t longitud);
+t_package crearPaqueteDeError();
 t_package* recibirPaquete(int socket);
 void correrFuncion(void* funcion(),char* datos);
 void borrarPaquete(t_package* package);
