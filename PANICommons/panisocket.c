@@ -7,6 +7,33 @@
 #include "panisocket.h"
 
 
+int handshake(int socket, char * keyEnviada, char * keyEsperada){
+	//TODO loguear handshake
+	empaquetarEnviarMensaje(socket,"HANDSHAKE",1,keyEnviada);
+
+	t_package* package;
+	package = recibirPaquete(socket);
+
+	if(strcmp(package->key,keyEsperada) == 0){
+		borrarPaquete(package);
+		return 1;
+	}
+	borrarPaquete(package);
+
+	return 0;
+}
+
+void realizarHandshake(int socket, char* keyRecibida){
+	//TODO loguear envio de handshake
+	void* returnValue = dictionary_get(diccionarioHandshakes,keyRecibida);
+
+	if(returnValue != NULL)
+		empaquetarEnviarMensaje(socket,(char*)returnValue,1,(char*)returnValue);
+	else
+		empaquetarEnviarMensaje(socket,"HD_NOT",1,"HD_NOT");
+
+}
+
 uint32_t tamanioPaquete(t_package paquete){
 	return paquete.longitud+sizeof(uint32_t);
 }
@@ -41,7 +68,7 @@ int enviarMensaje(int socket, char * mensaje,uint32_t tamanioPaquete){
 	}
 
 	free(mensaje);
-	return true;
+	return 1;
 }
 
 
@@ -103,9 +130,11 @@ int aceptarClienteMultiConexion(int socket,fd_set* fds, int* fdmax) {
 
 t_package crearPaquete(char*datos,uint32_t longitud){
 	t_package paquete;
-	paquete.datos=string_split(datos, ";")[1];
-	paquete.key=string_split(datos, ";")[0];
+	char ** keyDatos = string_split(datos, ";");
+	paquete.datos=keyDatos[1];
+	paquete.key=keyDatos[0];
 	paquete.longitud=longitud;
+	free(keyDatos);
 	return paquete;
 }
 
@@ -195,22 +224,26 @@ int correrServidorMultiConexion(int socket){
 		for(i = 0; i <= fdmax; i++) {
 			if (FD_ISSET(i, &read_fds)) {
 				if (i == socket) {//nueva conexion
-					aceptarClienteMultiConexion(socket,&read_fds,&fdmax);
+					aceptarClienteMultiConexion(socket,&master,&fdmax);
 				} else {
 					// gestionar datos de un cliente
 					char c;
 					if(recv(i,&c,sizeof(c),MSG_PEEK)>0){//Mira el primer byte y lo vuelve a dejar
 						t_package* paquete = recibirPaquete(i);
-						void* funcion;
-						funcion = dictionary_get(diccionarioFunciones,paquete->key);
-						if(funcion != NULL){
-							correrFuncion(funcion,paquete->datos);
+						if(strcmp(paquete->key,"HANDSHAKE") != 0){
+							void* funcion;
+							funcion = dictionary_get(diccionarioFunciones,paquete->key);
+							if(funcion != NULL){
+								correrFuncion(funcion,paquete->datos);
+							}else{
+								perror("Key de funcion no encontrada");
+							}
 						}else{
-							perror("Key de funcion no encontrada");
+							realizarHandshake(i,paquete->datos);
 						}
 						borrarPaquete(paquete);
 					}else{
-						FD_CLR(i, &read_fds);
+						FD_CLR(i, &master);
 						close(i);
 					}
 				 }

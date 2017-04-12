@@ -32,6 +32,10 @@ typedef struct{
 t_dictionary* diccionarioFunciones;/*Cada proceso debe definir el diccionario y
 									como minimo la funcion con la key ERROR_FUNC*/
 
+t_dictionary* diccionarioHandshakes;
+
+int handshake(int socket, char * keyEnviada, char * keyEsperada);
+void realizarHandshake(int socket, char* keyRecibida);
 uint32_t tamanioPaquete(t_package paquete);
 char*empaquetar(t_package* paquete);
 int enviarMensaje(int socket, char * mensaje,uint32_t tamanioPaquete);
