@@ -4,7 +4,7 @@
  *  Created on: 8/4/2017
  *      Author: utnso
  */
-#include "panisocket.h"
+#include "../panicommons/panisocket.h"
 
 
 int handshake(int socket, char * keyEnviada, char * keyEsperada){
