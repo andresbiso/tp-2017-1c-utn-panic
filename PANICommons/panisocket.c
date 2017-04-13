@@ -12,7 +12,7 @@ int handshake(int socket, char * keyEnviada, char * keyEsperada){
 	empaquetarEnviarMensaje(socket,"HANDSHAKE",1,keyEnviada);
 
 	t_package* package;
-	package = recibirPaquete(socket);
+	package = recibirPaquete(socket,NULL);
 
 	if(strcmp(package->key,keyEsperada) == 0){
 		borrarPaquete(package);
@@ -146,7 +146,7 @@ t_package crearPaqueteDeError(){
 	return paquete;
 }
 
-t_package* recibirPaquete(int socket){
+t_package* recibirPaquete(int socket, void (*desconexion) (int)){
 	t_package *paquete = malloc(sizeof(t_package));
 	*paquete = crearPaqueteDeError();
 	ssize_t recibidos;
@@ -157,8 +157,11 @@ t_package* recibirPaquete(int socket){
 	if(recibidos <= 0){
 			if(recibidos == -1)
 				perror("Error al recibir la longitud del paquete");
-			else
+			else{
 				close(socket);
+				if (desconexion != NULL)
+					desconexion(socket);
+			}
 			return paquete;
 	}
 
@@ -204,7 +207,7 @@ void borrarPaquete(t_package* package){
 	free(package);
 }
 
-int correrServidorMultiConexion(int socket){
+int correrServidorMultiConexion(int socket, void (*nuevaConexion)(int),void (*desconexion)(int)){
 	fd_set master;   // conjunto maestro de descriptores de fichero
 	fd_set read_fds; // conjunto temporal de descriptores de fichero para select()
 	int fdmax;        // número máximo de descriptores de fichero
@@ -224,12 +227,15 @@ int correrServidorMultiConexion(int socket){
 		for(i = 0; i <= fdmax; i++) {
 			if (FD_ISSET(i, &read_fds)) {
 				if (i == socket) {//nueva conexion
-					aceptarClienteMultiConexion(socket,&master,&fdmax);
+					int nueva = NULL;
+					nueva = aceptarClienteMultiConexion(socket,&master,&fdmax);
+					if(nueva != -1 && nuevaConexion != NULL)
+						nuevaConexion(nueva);
 				} else {
 					// gestionar datos de un cliente
 					char c;
 					if(recv(i,&c,sizeof(c),MSG_PEEK)>0){//Mira el primer byte y lo vuelve a dejar
-						t_package* paquete = recibirPaquete(i);
+						t_package* paquete = recibirPaquete(i,desconexion);
 						if(strcmp(paquete->key,"HANDSHAKE") != 0){
 							void* funcion;
 							funcion = dictionary_get(diccionarioFunciones,paquete->key);
@@ -245,6 +251,8 @@ int correrServidorMultiConexion(int socket){
 					}else{
 						FD_CLR(i, &master);
 						close(i);
+						if (desconexion != NULL)
+							desconexion(i);
 					}
 				 }
 			}
