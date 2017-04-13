@@ -1,1 +1,4 @@
-/Debug/
+/Debug/src/*.o
+/Debug/src/*.d
+/Debug/*.o
+/Debug/FileSystem
