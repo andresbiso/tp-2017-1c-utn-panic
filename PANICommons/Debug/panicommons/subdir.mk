@@ -4,17 +4,20 @@
 
 # Add inputs and outputs from these tool invocations to the build variables 
 C_SRCS += \
-../panisocket.c 
+../panicommons/panilogger.c \
+../panicommons/panisocket.c 
 
 OBJS += \
-./panisocket.o 
+./panicommons/panilogger.o \
+./panicommons/panisocket.o 
 
 C_DEPS += \
-./panisocket.d 
+./panicommons/panilogger.d \
+./panicommons/panisocket.d 
 
 
 # Each subdirectory must supply rules for building sources it contributes
-%.o: ../%.c
+panicommons/%.o: ../panicommons/%.c
 	@echo 'Building file: $<'
 	@echo 'Invoking: GCC C Compiler'
 	gcc -O0 -g3 -Wall -c -fmessage-length=0 -MMD -MP -MF"$(@:%.o=%.d)" -MT"$(@:%.o=%.d)" -o "$@" "$<"
