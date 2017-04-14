@@ -49,6 +49,10 @@ int main(int argc, char** argv) {
 	while(1) {
 		char* input = (char *)malloc(255 * sizeof(char));
 		scanf("%s", input);
+		if(!empaquetarEnviarMensaje(socketConsola, "KEY_PRINT", 1, input)){
+			perror("Hubo un error en la conexión");
+			exit(EXIT_FAILURE);
+		}
 		puts(input);
 		free(input);
 	}
