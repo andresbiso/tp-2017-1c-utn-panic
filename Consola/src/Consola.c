@@ -37,7 +37,8 @@ int main(int argc, char** argv) {
 		perror("La key PUERTO_KERNEL no existe");
 		exit(EXIT_FAILURE);
 	}
-	if ((socket = conectar(IpKernel, PuertoKernel)) == -1) {
+	int socketConsola;
+	if ((socketConsola = conectar(IpKernel, PuertoKernel)) == -1) {
 		puts("No se encontro kernel");
 		exit(EXIT_FAILURE);
 	}
