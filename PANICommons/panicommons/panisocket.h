@@ -29,13 +29,8 @@ typedef struct{
 	char* datos;
 }t_package;
 
-t_dictionary* diccionarioFunciones;/*Cada proceso debe definir el diccionario y
-									como minimo la funcion con la key ERROR_FUNC*/
-
-t_dictionary* diccionarioHandshakes;
-
 int handshake(int socket, char * keyEnviada, char * keyEsperada);
-void realizarHandshake(int socket, char* keyRecibida);
+void realizarHandshake(int socket, char* keyRecibida,t_dictionary* diccionarioHandshakes);
 uint32_t tamanioPaquete(t_package paquete);
 char*empaquetar(t_package* paquete);
 int enviarMensaje(int socket, char * mensaje,uint32_t tamanioPaquete);
@@ -47,6 +42,6 @@ t_package crearPaqueteDeError();
 t_package* recibirPaquete(int socket, void (*desconexion) (int));
 void correrFuncion(void* funcion(),char* datos);
 void borrarPaquete(t_package* package);
-int correrServidorMultiConexion(int socket, void  (*nuevaConexion)(int),void (*desconexion)(int));
+int correrServidorMultiConexion(int socket, void (*nuevaConexion)(int),void (*desconexion)(int),t_dictionary* diccionarioFunciones, t_dictionary* diccionarioHandshakes);
 int crearHostMultiConexion(int puerto);
 int conectar(char*direccion,int puerto);

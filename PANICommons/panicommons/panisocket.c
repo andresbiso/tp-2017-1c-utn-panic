@@ -23,7 +23,7 @@ int handshake(int socket, char * keyEnviada, char * keyEsperada){
 	return 0;
 }
 
-void realizarHandshake(int socket, char* keyRecibida){
+void realizarHandshake(int socket, char* keyRecibida,t_dictionary* diccionarioHandshakes){
 	//TODO loguear envio de handshake
 	void* returnValue = dictionary_get(diccionarioHandshakes,keyRecibida);
 
@@ -207,7 +207,7 @@ void borrarPaquete(t_package* package){
 	free(package);
 }
 
-int correrServidorMultiConexion(int socket, void (*nuevaConexion)(int),void (*desconexion)(int)){
+int correrServidorMultiConexion(int socket, void (*nuevaConexion)(int),void (*desconexion)(int),t_dictionary* diccionarioFunciones, t_dictionary* diccionarioHandshakes){
 	fd_set master;   // conjunto maestro de descriptores de fichero
 	fd_set read_fds; // conjunto temporal de descriptores de fichero para select()
 	int fdmax;        // número máximo de descriptores de fichero
@@ -245,7 +245,7 @@ int correrServidorMultiConexion(int socket, void (*nuevaConexion)(int),void (*de
 								perror("Key de funcion no encontrada");
 							}
 						}else{
-							realizarHandshake(i,paquete->datos);
+							realizarHandshake(i,paquete->datos,diccionarioHandshakes);
 						}
 						borrarPaquete(paquete);
 					}else{
