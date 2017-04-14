@@ -8,6 +8,9 @@
 #ifndef CPU_H_
 #define CPU_H_
 
-
+int puertoKernel;
+char* ipKernel;
+int puertoMemoria;
+char* ipMemoria;
 
 #endif /* CPU_H_ */

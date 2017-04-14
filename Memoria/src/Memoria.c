@@ -15,14 +15,11 @@
 #include <commons/config.h>
 #include "Memoria.h"
 
-void mostrarMensaje(char** mensajes){
-	printf("Mensaje recibido: %s \n",mensajes[0]);
-
-	free(mensajes[0]);
-	free(mensajes);
+void mostrarMensaje(char* mensaje){
+	printf("Mensaje recibido: %s \n",mensaje);
 }
 
-void cargarConfiguracion(char * nombreArchivo){
+t_config* cargarConfiguracion(char * nombreArchivo){
 	int configFileSize = strlen("/home/utnso/workspace/tp-2017-1c-utn-panic/Memoria/Debug/") + strlen(nombreArchivo);
 	char* configFilePath = (char *)malloc(configFileSize * sizeof(char));
 	strcat(configFilePath, "/home/utnso/workspace/tp-2017-1c-utn-panic/Memoria/Debug/");
@@ -72,12 +69,12 @@ void cargarConfiguracion(char * nombreArchivo){
 		perror("La key RETARDO_MEMORIA no existe");
 		exit(EXIT_FAILURE);
 	}
-	config_destroy(configFile);
+	return configFile;
 }
 
 int main(int argc, char** argv) {
 
-	cargarConfiguracion(argv[1]);
+	t_config* configFile = cargarConfiguracion(argv[1]);
 
 	printf("PUERTO: %d\n",puerto);
 	printf("MARCOS: %d\n",marcos);
@@ -100,6 +97,8 @@ int main(int argc, char** argv) {
 
 	dictionary_destroy(diccionarioFunciones);
 	dictionary_destroy(diccionarioHandshakes);
+
+	config_destroy(configFile);
 
 	return EXIT_SUCCESS;
 }
