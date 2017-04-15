@@ -21,7 +21,7 @@ void mostrarMensaje(char* mensaje){
 
 t_config* cargarConfiguracion(char * nombreArchivo){
 	char* configFilePath =string_new();
-	string_append(&configFilePath,"/home/utnso/workspace/tp-2017-1c-utn-panic/Memoria/Debug/");
+	string_append(&configFilePath,"Debug/");
 	string_append(&configFilePath,nombreArchivo);
 	t_config* configFile = config_create(configFilePath);
 	free(configFilePath);
