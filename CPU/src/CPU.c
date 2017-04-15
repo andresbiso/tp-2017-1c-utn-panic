@@ -22,10 +22,9 @@ void mostrarMensaje(char* mensaje){
 }
 
 t_config* cargarConfiguracion(char * nombreArchivo){
-	int configFileSize = strlen("/home/utnso/workspace/tp-2017-1c-utn-panic/CPU/Debug/") + strlen(nombreArchivo);
-	char* configFilePath = (char *)malloc(configFileSize * sizeof(char));
-	strcat(configFilePath, "/home/utnso/workspace/tp-2017-1c-utn-panic/CPU/Debug/");
-	strcat(configFilePath, nombreArchivo);
+	char* configFilePath =string_new();
+	string_append(&configFilePath,"Debug/");
+	string_append(&configFilePath,nombreArchivo);
 	t_config* configFile = config_create(configFilePath);
 	free(configFilePath);
 
