@@ -73,7 +73,7 @@ int main(int argc, char** argv) {
     	puts("No se pudo realizar handshake");
     	exit(EXIT_FAILURE);
     	}
-/*
+
     if ((socketFS = conectar(IpFS,PuertoFS)) == -1)
         exit(EXIT_FAILURE);
     if(handshake(socketFS,"HKEFS","HFSKE")){
@@ -81,7 +81,7 @@ int main(int argc, char** argv) {
      		puts("Se pudo realizar handshake");
      	}else
      		puts("No se pudo realizar handshake");
-*/
+
     if (pthread_create(&thread_consola, NULL, (void*)correrServidor, &parametrosCpu)){
     		        perror("Error el crear el thread consola.");
     		        exit(EXIT_FAILURE);
