@@ -1,13 +1,3 @@
-/*
- ============================================================================
- Name        : Kernel.c
- Author      : mpicollo
- Version     :
- Copyright   : Your copyright notice
- Description : Hello World in C, Ansi-style
- ============================================================================
- */
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <pthread.h>
@@ -63,7 +53,7 @@ int main(int argc, char** argv) {
     parametrosCpu.handshakes = diccionarioHandshakes;
     parametrosCpu.funciones = diccionarioFunciones;
 
-    if ((socketMemoria = conectar(IpMemoria,PuertoMemoria)) == -1)
+    /*if ((socketMemoria = conectar(IpMemoria,PuertoMemoria)) == -1)
     	exit(EXIT_FAILURE);
     if(handshake(socketMemoria,"HKEME","HMEKE")){
     		empaquetarEnviarMensaje(socketMemoria,"KEY_PRINT",1,"hola");
@@ -80,7 +70,7 @@ int main(int argc, char** argv) {
      		empaquetarEnviarMensaje(socketFS,"KEY_PRINT",2,"p1","p2");
      		puts("Se pudo realizar handshake");
      	}else
-     		puts("No se pudo realizar handshake");
+     		puts("No se pudo realizar handshake");*/
 
     if (pthread_create(&thread_consola, NULL, (void*)correrServidor, &parametrosCpu)){
     		        perror("Error el crear el thread consola.");

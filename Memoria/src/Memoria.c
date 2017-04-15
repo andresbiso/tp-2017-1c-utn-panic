@@ -1,13 +1,3 @@
-/*
- ============================================================================
- Name        : Memoria.c
- Author      : mpicollo
- Version     :
- Copyright   : Your copyright notice
- Description : Hello World in C, Ansi-style
- ============================================================================
- */
-
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -65,7 +55,10 @@ t_config* cargarConfiguracion(char * nombreArchivo){
 }
 
 int main(int argc, char** argv) {
-
+	if (argc == 1) {
+		printf("Falta parametro: archivo de configuracion");
+		exit(EXIT_FAILURE);
+	}
 	t_config* configFile = cargarConfiguracion(argv[1]);
 
 	printf("PUERTO: %d\n",puerto);

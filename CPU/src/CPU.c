@@ -1,13 +1,3 @@
-/*
- ============================================================================
- Name        : CPU.c
- Author      : mpicollo
- Version     :
- Copyright   : Your copyright notice
- Description : Hello World in C, Ansi-style
- ============================================================================
- */
-
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -78,7 +68,10 @@ void waitKernel(int socketKernel,t_dictionary* diccionarioFunciones){
 }
 
 int main(int argc, char** argv) {
-
+	if (argc == 1) {
+		printf("Falta parametro: archivo de configuracion");
+		exit(EXIT_FAILURE);
+	}
 	t_config* configFile = cargarConfiguracion(argv[1]);
 
 	printf("PUERTO KERNEL: %d\n",puertoKernel);
