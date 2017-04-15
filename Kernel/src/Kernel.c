@@ -12,8 +12,8 @@
 #include <stdlib.h>
 #include "Kernel.h"
 
-void mostrarMensaje(char** mensajes){
-	printf("Mensaje %s \n", mensajes[0]);
+void mostrarMensaje(char* mensaje){
+	printf("Mensaje recibido: %s \n",mensaje);
 }
 
 
@@ -25,6 +25,7 @@ int main(int argc, char** argv) {
 
     t_dictionary* diccionarioFunciones = dictionary_create();
     dictionary_put(diccionarioFunciones,"KEY_PRINT",&mostrarMensaje);
+    dictionary_put(diccionarioFunciones,"ERROR_FUNC",&mostrarMensaje);
 
     t_dictionary* diccionarioHandshakes = dictionary_create();
     dictionary_put(diccionarioHandshakes,"HCPKE","HKECP");
@@ -35,10 +36,13 @@ int main(int argc, char** argv) {
     if ((socketMemoria = conectar(IpMemoria,PuertoMemoria)) == -1)
     	exit(EXIT_FAILURE);
     if(handshake(socketMemoria,"HKEME","HMEKE")){
-    		empaquetarEnviarMensaje(socketMemoria,"KEY_PRINT",2,"p1","p2");
+    		empaquetarEnviarMensaje(socketMemoria,"KEY_PRINT",1,"hola");
     		puts("Se pudo realizar handshake");
-    	}else
-    		puts("No se pudo realizar handshake");
+    }
+    else{
+    	puts("No se pudo realizar handshake");
+    	exit(EXIT_FAILURE);
+    	}
 
     if ((socketFS = conectar(IpFS,PuertoFS)) == -1)
         exit(EXIT_FAILURE);
@@ -49,6 +53,9 @@ int main(int argc, char** argv) {
      		puts("No se pudo realizar handshake");
 
     correrServidorMultiConexion(socket,NULL,NULL,diccionarioFunciones,diccionarioHandshakes);
+
+    dictionary_destroy(diccionarioFunciones);
+    dictionary_destroy(diccionarioHandshakes);
 
 	return EXIT_SUCCESS;
 }
@@ -130,10 +137,33 @@ void cargarConfiguracion(char* archivo){
 			exit(EXIT_FAILURE);
 			}
 
+		if(config_has_property(archivo_cnf, "SEM_IDS") == true)
+			SemIds = config_get_array_value(archivo_cnf, "SEM_IDS");
+		else{
+			printf("ERROR archivo config sin ID de Semaforos\n");
+			exit(EXIT_FAILURE);
+			}
+
+		if(config_has_property(archivo_cnf, "SEM_INIT") == true)
+			SemInit = config_get_array_value(archivo_cnf, "SEM_INIT");
+		else{
+			printf("ERROR archivo config sin Inicializacion de Semaforos\n");
+			exit(EXIT_FAILURE);
+			}
+
+		if(config_has_property(archivo_cnf, "SHARED_VARS") == true)
+			SharedVars = config_get_array_value(archivo_cnf, "SHARED_VARS");
+		else{
+			printf("ERROR archivo config sin Variables Compartidas\n");
+			exit(EXIT_FAILURE);
+			}
+
 		if(config_has_property(archivo_cnf, "STACK_SIZE") == true)
 			StackSize = config_get_int_value(archivo_cnf, "STACK_SIZE");
 		else{
 			printf("ERROR archivo config sin Stack Size\n");
 			exit(EXIT_FAILURE);
 			}
+
+		config_destroy(archivo_cnf);
 }
