@@ -23,7 +23,6 @@ void mostrarMensaje(char* mensaje){
 
 t_config* cargarConfiguracion(char * nombreArchivo){
 	char* configFilePath =string_new();
-	string_append(&configFilePath,"Debug/");
 	string_append(&configFilePath,nombreArchivo);
 	t_config* configFile = config_create(configFilePath);
 	free(configFilePath);
@@ -70,6 +69,10 @@ void waitKernel(int socketKernel,t_dictionary* diccionarioFunciones){
 		}else{
 			perror("Key de funcion no encontrada");
 		}
+		if(strcmp(paquete->key,"ERROR_FUNC")==0){
+			borrarPaquete(paquete);
+			break;
+		}
 		borrarPaquete(paquete);
 	}
 }
@@ -105,6 +108,7 @@ int main(int argc, char** argv) {
 
 	dictionary_destroy(diccionarioFunciones);
 	config_destroy(configFile);
+	log_destroy(log);
 
 	return EXIT_SUCCESS;
 }

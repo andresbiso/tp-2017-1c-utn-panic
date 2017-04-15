@@ -21,7 +21,6 @@ void mostrarMensaje(char* mensaje){
 
 t_config* cargarConfiguracion(char * nombreArchivo){
 	char* configFilePath =string_new();
-	string_append(&configFilePath,"Debug/");
 	string_append(&configFilePath,nombreArchivo);
 	t_config* configFile = config_create(configFilePath);
 	free(configFilePath);

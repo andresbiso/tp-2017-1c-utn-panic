@@ -202,8 +202,10 @@ void correrFuncion(void* funcion(),char* datos){
 void borrarPaquete(t_package* package){
 	if(!package)
 			return;
-	free(package->datos);
-	free(package->key);
+	if (strcmp(package->key,"ERROR_FUNC")!=0){
+		free(package->datos);
+		free(package->key);
+	}
 	free(package);
 }
 
