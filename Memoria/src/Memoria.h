@@ -13,7 +13,6 @@ int marcos;
 int marcoSize;
 int entradasCache;
 int cacheXproc;
-char* reemplazoCache;
 int retardoMemoria;
 
 #endif /* MEMORIA_H_ */

@@ -55,12 +55,6 @@ t_config* cargarConfiguracion(char * nombreArchivo){
 		perror("La key CACHE_X_PROC no existe");
 		exit(EXIT_FAILURE);
 	}
-	if (config_has_property(configFile, "REEMPLAZO_CACHE")) {
-		reemplazoCache = config_get_string_value(configFile, "REEMPLAZO_CACHE");
-	} else {
-		perror("La key REEMPLAZO_CACHE no existe");
-		exit(EXIT_FAILURE);
-	}
 	if (config_has_property(configFile, "RETARDO_MEMORIA")) {
 		retardoMemoria = config_get_int_value(configFile, "RETARDO_MEMORIA");
 	} else {
@@ -79,7 +73,6 @@ int main(int argc, char** argv) {
 	printf("MARCO_SIZE: %d\n",marcoSize);
 	printf("ENTRADAS_CACHE: %d\n",entradasCache);
 	printf("CACHE_X_PROC: %d\n",cacheXproc);
-	printf("REEMPLAZO_CACHE: %s\n",reemplazoCache);
 	printf("RETARDO_MEMORIA: %d\n",retardoMemoria);
 
 	t_dictionary* diccionarioFunciones = dictionary_create();
