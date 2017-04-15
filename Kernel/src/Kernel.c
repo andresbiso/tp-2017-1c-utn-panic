@@ -10,7 +10,16 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <pthread.h>
 #include "Kernel.h"
+
+struct threadParams {
+    int socketEscucha;
+    void (*nuevaConexion) (int);
+    void (*desconexion) (int);
+    t_dictionary* funciones;
+    t_dictionary* handshakes;
+};
 
 void mostrarMensaje(char* mensaje){
 	printf("Mensaje recibido: %s \n",mensaje);
@@ -18,6 +27,7 @@ void mostrarMensaje(char* mensaje){
 
 
 int main(int argc, char** argv) {
+	pthread_t thread_consola, thread_cpu;
 	int socketMemoria;
 	int socketFS;
 
@@ -31,7 +41,22 @@ int main(int argc, char** argv) {
     dictionary_put(diccionarioHandshakes,"HCPKE","HKECP");
     dictionary_put(diccionarioHandshakes,"HCSKE","HKECS");
 
-    int socket = crearHostMultiConexion(PuertoKernel);
+    int socketConsola = crearHostMultiConexion(PuertoConsola);
+    int socketCPU = crearHostMultiConexion(PuertoCpu);
+
+    struct threadParams parametrosConsola;
+    parametrosConsola.socketEscucha = socketConsola;
+    parametrosConsola.nuevaConexion = NULL;
+    parametrosConsola.desconexion = NULL;
+    parametrosConsola.handshakes = diccionarioHandshakes;
+    parametrosConsola.funciones = diccionarioFunciones;
+
+    struct threadParams parametrosCpu;
+    parametrosConsola.socketEscucha = socketCPU;
+    parametrosConsola.nuevaConexion = NULL;
+    parametrosConsola.desconexion = NULL;
+    parametrosConsola.handshakes = diccionarioHandshakes;
+    parametrosConsola.funciones = diccionarioFunciones;
 
     if ((socketMemoria = conectar(IpMemoria,PuertoMemoria)) == -1)
     	exit(EXIT_FAILURE);
@@ -52,7 +77,24 @@ int main(int argc, char** argv) {
      	}else
      		puts("No se pudo realizar handshake");
 
-    correrServidorMultiConexion(socket,NULL,NULL,diccionarioFunciones,diccionarioHandshakes);
+    if (pthread_create(&thread_consola, NULL, (void*)correrServidorMultiConexion, &parametrosConsola)){
+    		        perror("Error el crear el thread consola.");
+    		        exit(EXIT_FAILURE);
+    		}
+
+    if (pthread_create(&thread_cpu, NULL, (void*)correrServidorMultiConexion, &parametrosCpu)){
+      		        perror("Error el crear el thread consola.");
+      		        exit(EXIT_FAILURE);
+      		}
+
+    pthread_join(thread_consola, NULL);
+
+    pthread_join(thread_cpu, NULL);
+
+
+//    correrServidorMultiConexion(socketConsola,NULL,NULL,diccionarioFunciones,diccionarioHandshakes);
+//
+//    correrServidorMultiConexion(socketCPU,NULL,NULL,diccionarioFunciones,diccionarioHandshakes);
 
     dictionary_destroy(diccionarioFunciones);
     dictionary_destroy(diccionarioHandshakes);
@@ -66,10 +108,10 @@ void cargarConfiguracion(char* archivo){
 
 		archivo_cnf = config_create(archivo);
 
-		if(config_has_property(archivo_cnf, "PUERTO_KERNEL") == true)
-			PuertoKernel = config_get_int_value(archivo_cnf, "PUERTO_KERNEL");
+		if(config_has_property(archivo_cnf, "PUERTO_CONSOLA") == true)
+			PuertoConsola = config_get_int_value(archivo_cnf, "PUERTO_CONSOLA");
 		else{
-			printf("ERROR archivo config sin puerto KERNEL\n");
+			printf("ERROR archivo config sin puerto Consola\n");
 			exit(EXIT_FAILURE);
 		}
 

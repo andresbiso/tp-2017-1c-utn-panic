@@ -11,12 +11,12 @@
 #include <commons/config.h>
 #include <panicommons/panisocket.h>
 
+int PuertoConsola;
 int PuertoCpu;
 char* IpMemoria;
 int PuertoMemoria;
 char* IpFS;
 int PuertoFS;
-int PuertoKernel;
 int Quantum;
 int QuantumSleep;
 char* Algoritmo;
