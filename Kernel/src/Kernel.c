@@ -11,8 +11,20 @@ typedef struct {
     t_dictionary* handshakes;
 }threadParams;
 
+int socketMemoria;
+int socketFS;
+int socketCPU;
+int socketcpuConectadas;
+
+void nuevaConexionCPU(int sock){
+	socketcpuConectadas = sock;
+}
+
 void mostrarMensaje(char* mensaje){
 	printf("Mensaje recibido: %s \n",mensaje);
+	printf("%d \n", socketcpuConectadas);
+	empaquetarEnviarMensaje(socketMemoria,"KEY_PRINT",1,mensaje);
+	empaquetarEnviarMensaje(socketcpuConectadas,"KEY_PRINT",1,mensaje);
 }
 
 
@@ -23,8 +35,6 @@ void correrServidor(void* arg){
 
 int main(int argc, char** argv) {
 	pthread_t thread_consola, thread_cpu;
-	int socketMemoria;
-	int socketFS;
 
 	cargarConfiguracion(argv[1]);
 
@@ -37,7 +47,7 @@ int main(int argc, char** argv) {
     dictionary_put(diccionarioHandshakes,"HCSKE","HKECS");
 
     int socketConsola = crearHostMultiConexion(PuertoConsola);
-    int socketCPU = crearHostMultiConexion(PuertoCpu);
+    socketCPU = crearHostMultiConexion(PuertoCpu);
 
     threadParams parametrosConsola;
     parametrosConsola.socketEscucha = socketConsola;
@@ -48,7 +58,7 @@ int main(int argc, char** argv) {
 
     threadParams parametrosCpu;
     parametrosCpu.socketEscucha = socketCPU;
-    parametrosCpu.nuevaConexion = NULL;
+    parametrosCpu.nuevaConexion = &nuevaConexionCPU;
     parametrosCpu.desconexion = NULL;
     parametrosCpu.handshakes = diccionarioHandshakes;
     parametrosCpu.funciones = diccionarioFunciones;
@@ -64,13 +74,13 @@ int main(int argc, char** argv) {
     	exit(EXIT_FAILURE);
     	}
 
-    if ((socketFS = conectar(IpFS,PuertoFS)) == -1)
-        exit(EXIT_FAILURE);
-    if(handshake(socketFS,"HKEFS","HFSKE")){
-     		empaquetarEnviarMensaje(socketFS,"KEY_PRINT",2,"p1","p2");
-     		puts("Se pudo realizar handshake");
-	}else
-		puts("No se pudo realizar handshake");
+//    if ((socketFS = conectar(IpFS,PuertoFS)) == -1)
+//        exit(EXIT_FAILURE);
+//    if(handshake(socketFS,"HKEFS","HFSKE")){
+//     		empaquetarEnviarMensaje(socketFS,"KEY_PRINT",2,"p1","p2");
+//     		puts("Se pudo realizar handshake");
+//	}else
+//		puts("No se pudo realizar handshake");
 
     if (pthread_create(&thread_consola, NULL, (void*)correrServidor, &parametrosCpu)){
     		        perror("Error el crear el thread consola.");
