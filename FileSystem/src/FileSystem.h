@@ -8,6 +8,7 @@
 #ifndef FILESYSTEM_H_
 #define FILESYSTEM_H_
 
-
+int puerto;
+char * punto_montaje;
 
 #endif /* FILESYSTEM_H_ */
