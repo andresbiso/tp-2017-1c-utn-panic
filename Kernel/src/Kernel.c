@@ -22,9 +22,9 @@ void nuevaConexionCPU(int sock){
 
 void mostrarMensaje(char* mensaje){
 	printf("Mensaje recibido: %s \n",mensaje);
-	printf("%d \n", socketcpuConectadas);
 	empaquetarEnviarMensaje(socketMemoria,"KEY_PRINT",1,mensaje);
 	empaquetarEnviarMensaje(socketcpuConectadas,"KEY_PRINT",1,mensaje);
+	empaquetarEnviarMensaje(socketFS,"KEY_PRINT",1,mensaje);
 }
 
 
@@ -36,7 +36,7 @@ void correrServidor(void* arg){
 int main(int argc, char** argv) {
 	pthread_t thread_consola, thread_cpu;
 
-	cargarConfiguracion(argv[1]);
+	t_config* configFile= cargarConfiguracion(argv[1]);
 
     t_dictionary* diccionarioFunciones = dictionary_create();
     dictionary_put(diccionarioFunciones,"KEY_PRINT",&mostrarMensaje);
@@ -74,13 +74,13 @@ int main(int argc, char** argv) {
     	exit(EXIT_FAILURE);
     	}
 
-//    if ((socketFS = conectar(IpFS,PuertoFS)) == -1)
-//        exit(EXIT_FAILURE);
-//    if(handshake(socketFS,"HKEFS","HFSKE")){
-//     		empaquetarEnviarMensaje(socketFS,"KEY_PRINT",2,"p1","p2");
-//     		puts("Se pudo realizar handshake");
-//	}else
-//		puts("No se pudo realizar handshake");
+    if ((socketFS = conectar(IpFS,PuertoFS)) == -1)
+        exit(EXIT_FAILURE);
+    if(handshake(socketFS,"HKEFS","HFSKE")){
+     		empaquetarEnviarMensaje(socketFS,"KEY_PRINT",1,"hola");
+     		puts("Se pudo realizar handshake");
+	}else
+		puts("No se pudo realizar handshake");
 
     if (pthread_create(&thread_consola, NULL, (void*)correrServidor, &parametrosCpu)){
     		        perror("Error el crear el thread consola.");
@@ -96,20 +96,16 @@ int main(int argc, char** argv) {
 
     pthread_join(thread_cpu, NULL);
 
-
-//    correrServidorMultiConexion(socketConsola,NULL,NULL,diccionarioFunciones,diccionarioHandshakes);
-//
-//    correrServidorMultiConexion(socketCPU,NULL,NULL,diccionarioFunciones,diccionarioHandshakes);
-
     dictionary_destroy(diccionarioFunciones);
     dictionary_destroy(diccionarioHandshakes);
+
+    config_destroy(configFile);
 
 	return EXIT_SUCCESS;
 }
 
-void cargarConfiguracion(char* archivo){
+t_config* cargarConfiguracion(char* archivo){
 	t_config* archivo_cnf;
-		char *aux;
 
 		archivo_cnf = config_create(archivo);
 
@@ -142,10 +138,7 @@ void cargarConfiguracion(char* archivo){
 			}
 
 		if(config_has_property(archivo_cnf, "IP_MEMORIA") == true){
-			aux = config_get_string_value(archivo_cnf,"IP_MEMORIA");
-			IpMemoria = malloc(strlen(aux) + 1);
-			memcpy(IpMemoria, aux, strlen(aux) + 1);
-			free(aux);
+			IpMemoria = config_get_string_value(archivo_cnf,"IP_MEMORIA");
 		}
 		else{
 			printf("ERROR archivo config sin IP Memoria\n");
@@ -153,10 +146,7 @@ void cargarConfiguracion(char* archivo){
 			}
 
 		if(config_has_property(archivo_cnf, "IP_FS") == true){
-			aux = config_get_string_value(archivo_cnf,"IP_FS");
-			IpFS = malloc(strlen(aux) + 1);
-			memcpy(IpFS, aux, strlen(aux) + 1);
-			free(aux);
+			IpFS = config_get_string_value(archivo_cnf,"IP_FS");
 		}
 		else{
 			printf("ERROR archivo config sin IP FILESYSTEM\n");
@@ -212,5 +202,5 @@ void cargarConfiguracion(char* archivo){
 			exit(EXIT_FAILURE);
 			}
 
-		config_destroy(archivo_cnf);
+		return archivo_cnf;
 }

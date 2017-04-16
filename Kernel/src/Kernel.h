@@ -26,7 +26,7 @@ char** SemInit;
 char** SharedVars;
 int StackSize;
 
-void cargarConfiguracion(char*);
+t_config* cargarConfiguracion(char* archivo);
 
 
 #endif /* KERNEL_H_ */
