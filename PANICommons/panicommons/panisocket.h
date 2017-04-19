@@ -22,12 +22,20 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <commons/string.h>
+#include <pthread.h>
 
 typedef struct{
 	uint32_t longitud;
 	char* key;
 	char* datos;
 }t_package;
+
+typedef struct{
+	int socket;
+	void (*desconexion) (int);
+	t_dictionary* funciones;
+	t_dictionary* handshakes;
+}t_threadSocket;
 
 int handshake(int socket, char * keyEnviada, char * keyEsperada);
 void realizarHandshake(int socket, char* keyRecibida,t_dictionary* diccionarioHandshakes);
@@ -42,6 +50,9 @@ t_package crearPaqueteDeError();
 t_package* recibirPaquete(int socket, void (*desconexion) (int));
 void correrFuncion(void* funcion(),char* datos);
 void borrarPaquete(t_package* package);
+void procesarPaquete(t_package* paquete,int socket,t_dictionary* diccionarioFunciones, t_dictionary* diccionarioHandshakes);
+void recibirMensajesThread(void* paramsServidor);
+void correrServidorThreads(int socket, void (*nuevaConexion)(int), void (*desconexion)(int),t_dictionary* diccionarioFunciones, t_dictionary* diccionarioHandshakes);
 int correrServidorMultiConexion(int socket, void (*nuevaConexion)(int),void (*desconexion)(int),t_dictionary* diccionarioFunciones, t_dictionary* diccionarioHandshakes);
 int crearHostMultiConexion(int puerto);
 int conectar(char*direccion,int puerto);

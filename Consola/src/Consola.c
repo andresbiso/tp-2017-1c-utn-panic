@@ -31,7 +31,6 @@ int main(int argc, char** argv) {
 			perror("Hubo un error en la conexión");
 			exit(EXIT_FAILURE);
 		}
-		puts(input);
 		free(input);
 	}
 	config_destroy(configFile);

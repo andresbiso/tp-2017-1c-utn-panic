@@ -77,7 +77,7 @@ int main(int argc, char** argv) {
 	dictionary_put(diccionarioHandshakes,"HKEME","HMEKE");
 
 	int socket = crearHostMultiConexion(puerto);
-	correrServidorMultiConexion(socket,NULL,NULL,diccionarioFunciones,diccionarioHandshakes);
+	correrServidorThreads(socket,NULL,NULL,diccionarioFunciones,diccionarioHandshakes);
 
 	dictionary_destroy(diccionarioFunciones);
 	dictionary_destroy(diccionarioHandshakes);

@@ -209,6 +209,55 @@ void borrarPaquete(t_package* package){
 	free(package);
 }
 
+void recibirMensajesThread(void* paramsServidor){
+	t_threadSocket* threadSocket = paramsServidor;
+	while(1){
+		t_package* paquete = recibirPaquete(threadSocket->socket,threadSocket->desconexion);
+		int error = strcmp(paquete->key,"ERROR_FUNC")==0;
+		procesarPaquete(paquete,threadSocket->socket,threadSocket->funciones,threadSocket->handshakes);
+		if(error){
+			if(threadSocket->desconexion != NULL)
+				threadSocket->desconexion(threadSocket->socket);
+			close(threadSocket->socket);
+			break;
+		}
+	}
+	free(threadSocket);
+}
+
+void correrServidorThreads(int socket, void (*nuevaConexion)(int), void (*desconexion)(int),t_dictionary* diccionarioFunciones, t_dictionary* diccionarioHandshakes){
+	while(1){
+			int cliente = aceptarCliente(socket);
+			if(cliente != -1 && nuevaConexion != NULL)
+				nuevaConexion(cliente);
+
+			t_threadSocket* threadSocket = malloc(sizeof(t_threadSocket));
+			threadSocket->socket=cliente;
+			threadSocket->desconexion=desconexion;
+			threadSocket->handshakes=diccionarioHandshakes;
+			threadSocket->funciones=diccionarioFunciones;
+
+			pthread_t hiloMensajes;
+			pthread_create(&hiloMensajes,NULL,(void *) recibirMensajesThread, threadSocket);
+	}
+
+}
+
+void procesarPaquete(t_package* paquete,int socket,t_dictionary* diccionarioFunciones, t_dictionary* diccionarioHandshakes){
+	if(strcmp(paquete->key,"HANDSHAKE") != 0){
+		void* funcion;
+		funcion = dictionary_get(diccionarioFunciones,paquete->key);
+		if(funcion != NULL){
+			correrFuncion(funcion,paquete->datos);
+		}else{
+			perror("Key de funcion no encontrada");
+		}
+	}else{
+		realizarHandshake(socket,paquete->datos,diccionarioHandshakes);
+	}
+	borrarPaquete(paquete);
+}
+
 int correrServidorMultiConexion(int socket, void (*nuevaConexion)(int),void (*desconexion)(int),t_dictionary* diccionarioFunciones, t_dictionary* diccionarioHandshakes){
 	fd_set master;   // conjunto maestro de descriptores de fichero
 	fd_set read_fds; // conjunto temporal de descriptores de fichero para select()
@@ -238,18 +287,7 @@ int correrServidorMultiConexion(int socket, void (*nuevaConexion)(int),void (*de
 					char c;
 					if(recv(i,&c,sizeof(c),MSG_PEEK)>0){//Mira el primer byte y lo vuelve a dejar
 						t_package* paquete = recibirPaquete(i,desconexion);
-						if(strcmp(paquete->key,"HANDSHAKE") != 0){
-							void* funcion;
-							funcion = dictionary_get(diccionarioFunciones,paquete->key);
-							if(funcion != NULL){
-								correrFuncion(funcion,paquete->datos);
-							}else{
-								perror("Key de funcion no encontrada");
-							}
-						}else{
-							realizarHandshake(i,paquete->datos,diccionarioHandshakes);
-						}
-						borrarPaquete(paquete);
+						procesarPaquete(paquete,i,diccionarioFunciones,diccionarioHandshakes);
 					}else{
 						FD_CLR(i, &master);
 						close(i);
