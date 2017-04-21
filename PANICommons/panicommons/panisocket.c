@@ -194,7 +194,8 @@ void correrFuncion(void* funcion(),char* datos){
 
 	if(string_contains(datos,",")){
 		char** parametros = string_split(datos,",");
-		funcion(parametros);
+		funcion(parametros,sizeArray(parametros));
+		free(parametros);
 	}else
 		funcion(datos);
 }

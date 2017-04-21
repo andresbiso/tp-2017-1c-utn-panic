@@ -1,9 +1,21 @@
-#include <panicommons/panisocket.h>
-#include <commons/config.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
 #include "Consola.h"
+
+
+void init(int sizeArgs, char** path){
+	if(sizeArgs != 2){
+		printf("Numero de argumentos incorrectos, el init solo debe recibir el path del archivo\n\r");
+		freeElementsArray(path,sizeArgs);
+		return;
+	}
+	printf("%s\n",path[1]);
+
+	freeElementsArray(path,sizeArgs);
+}
+
+void clear(int sizeArgs, char** args){
+	system("clear");
+	freeElementsArray(args,sizeArgs);
+}
 
 int main(int argc, char** argv) {
 	if (argc == 1) {
@@ -12,27 +24,26 @@ int main(int argc, char** argv) {
 	}
 	t_config* configFile = cargarConfiguracion(argv[1]);
 
+	t_dictionary* commands = dictionary_create();
+	dictionary_put(commands,"init",&init);
+	dictionary_put(commands,"clear",&clear);
+
 	printf("IP_Kernel: %s\n", IpKernel);
 	printf("Puerto_Kernel: %d\n", PuertoKernel);
 
 	int socketConsola;
-	if ((socketConsola = conectar(IpKernel, PuertoKernel)) == -1) {
-		puts("No se encontro kernel");
-		exit(EXIT_FAILURE);
-	}
-	while (!handshake(socketConsola, "HCSKE", "HKECS")) {
-		puts("Fallo la conexion con el Kernel");
-	}
+//	if ((socketConsola = conectar(IpKernel, PuertoKernel)) == -1) {
+//		puts("No se encontro kernel");
+//		exit(EXIT_FAILURE);
+//	}
+//	while (!handshake(socketConsola, "HCSKE", "HKECS")) {
+//		puts("Fallo la conexion con el Kernel");
+//	}
 	puts("Conectado con kernel");
-	while(1) {
-		char* input = (char *)malloc(255 * sizeof(char));
-		scanf("%s", input);
-		if(!empaquetarEnviarMensaje(socketConsola, "KEY_PRINT", 1, input)){
-			perror("Hubo un error en la conexión");
-			exit(EXIT_FAILURE);
-		}
-		free(input);
-	}
+
+	waitCommand(commands);
+
+	dictionary_destroy(commands);
 	config_destroy(configFile);
 	return EXIT_SUCCESS;
 }

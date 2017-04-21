@@ -23,6 +23,7 @@
 #include <arpa/inet.h>
 #include <commons/string.h>
 #include <pthread.h>
+#include "panicommons.h"
 
 typedef struct{
 	uint32_t longitud;
