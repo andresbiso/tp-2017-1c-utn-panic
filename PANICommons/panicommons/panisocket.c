@@ -190,14 +190,14 @@ t_package* recibirPaquete(int socket, void (*desconexion) (int)){
 }
 
 
-void correrFuncion(void* funcion(),char* datos){
+void correrFuncion(void* funcion(),char* datos, int socket){
 
 	if(string_contains(datos,",")){
 		char** parametros = string_split(datos,",");
-		funcion(parametros,sizeArray(parametros));
+		funcion(parametros,sizeArray(parametros),socket);
 		free(parametros);
 	}else
-		funcion(datos);
+		funcion(datos,socket);
 }
 
 void borrarPaquete(t_package* package){
@@ -249,7 +249,7 @@ void procesarPaquete(t_package* paquete,int socket,t_dictionary* diccionarioFunc
 		void* funcion;
 		funcion = dictionary_get(diccionarioFunciones,paquete->key);
 		if(funcion != NULL){
-			correrFuncion(funcion,paquete->datos);
+			correrFuncion(funcion,paquete->datos,socket);
 		}else{
 			perror("Key de funcion no encontrada");
 		}

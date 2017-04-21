@@ -49,7 +49,7 @@ int aceptarClienteMultiConexion(int socket,fd_set* fds, int* fdmax);
 t_package crearPaquete(char*datos,uint32_t longitud);
 t_package crearPaqueteDeError();
 t_package* recibirPaquete(int socket, void (*desconexion) (int));
-void correrFuncion(void* funcion(),char* datos);
+void correrFuncion(void* funcion(),char* datos, int socket);
 void borrarPaquete(t_package* package);
 void procesarPaquete(t_package* paquete,int socket,t_dictionary* diccionarioFunciones, t_dictionary* diccionarioHandshakes);
 void recibirMensajesThread(void* paramsServidor);
