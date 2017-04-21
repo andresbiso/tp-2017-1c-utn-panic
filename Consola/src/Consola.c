@@ -32,13 +32,13 @@ int main(int argc, char** argv) {
 	printf("Puerto_Kernel: %d\n", PuertoKernel);
 
 	int socketConsola;
-//	if ((socketConsola = conectar(IpKernel, PuertoKernel)) == -1) {
-//		puts("No se encontro kernel");
-//		exit(EXIT_FAILURE);
-//	}
-//	while (!handshake(socketConsola, "HCSKE", "HKECS")) {
-//		puts("Fallo la conexion con el Kernel");
-//	}
+	if ((socketConsola = conectar(IpKernel, PuertoKernel)) == -1) {
+		puts("No se encontro kernel");
+		exit(EXIT_FAILURE);
+	}
+	while (!handshake(socketConsola, "HCSKE", "HKECS")) {
+		puts("Fallo la conexion con el Kernel");
+	}
 	puts("Conectado con kernel");
 
 	waitCommand(commands);
