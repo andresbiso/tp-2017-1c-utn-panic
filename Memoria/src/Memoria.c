@@ -5,7 +5,7 @@
 #include <commons/config.h>
 #include "Memoria.h"
 
-void mostrarMensaje(char* mensaje){
+void mostrarMensaje(char* mensaje,int socket){
 	printf("Mensaje recibido: %s \n",mensaje);
 }
 

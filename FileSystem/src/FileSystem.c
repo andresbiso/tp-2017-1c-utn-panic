@@ -7,7 +7,7 @@
 void error(char** args){
 	printf("%s",args[0]);
 }
-void mostrarMensaje(char* mensajes){
+void mostrarMensaje(char* mensajes,int socket){
  	printf("Mensaje recibido: %s \n",mensajes);
 }
 t_config* cargarConfiguracion(char* nombreDelArchivo){

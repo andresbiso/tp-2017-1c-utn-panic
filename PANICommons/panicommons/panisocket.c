@@ -214,7 +214,7 @@ void recibirMensajesThread(void* paramsServidor){
 	t_threadSocket* threadSocket = paramsServidor;
 	while(1){
 		t_package* paquete = recibirPaquete(threadSocket->socket,threadSocket->desconexion);
-		int error = strcmp(paquete->key,"ERROR_FUNC");
+		int error = strcmp(paquete->key,"ERROR_FUNC")==0;
 		procesarPaquete(paquete,threadSocket->socket,threadSocket->funciones,threadSocket->handshakes);
 		if(error){
 			if(threadSocket->desconexion != NULL)
