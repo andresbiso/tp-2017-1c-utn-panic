@@ -1,6 +1,5 @@
 #include "Consola.h"
 
-
 void init(int sizeArgs, char** path){
 	if(sizeArgs != 2){
 		printf("Numero de argumentos incorrectos, el init solo debe recibir el path del archivo\n\r");
@@ -8,9 +7,29 @@ void init(int sizeArgs, char** path){
 		return;
 	}
 	printf("%s\n",path[1]);
-
+	FILE *arch;
+	arch = fopen(path[1], "r");
+	if (arch==NULL)
+		{
+		   perror("No se puede abrir el archivo");
+		   return;
+		}
+	fseek(arch,0L, SEEK_END);            // me ubico en el final del archivo.
+	int tamanio= ftell(arch);
+	char* buffer=(char*)malloc(tamanio);
+	fseek(arch,0L,SEEK_SET); // me ubico al principio para empezar a leer
+	fread (buffer, sizeof(char), tamanio, arch);
+	buffer[tamanio-1]='\0';
+	int i=0;
+	while(i<=tamanio){
+		printf("%c",buffer[i]);
+		i++;
+	}
+	fclose(arch);
+	free(buffer);
 	freeElementsArray(path,sizeArgs);
 }
+
 
 void clear(int sizeArgs, char** args){
 	system("clear");
