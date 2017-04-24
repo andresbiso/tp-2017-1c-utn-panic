@@ -8,6 +8,8 @@
 #ifndef CPU_H_
 #define CPU_H_
 
+#include "PrimitivasAnsisop.h"
+
 int puertoKernel;
 char* ipKernel;
 int puertoMemoria;
