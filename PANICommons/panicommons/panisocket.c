@@ -90,7 +90,7 @@ int empaquetarEnviarMensaje(int socketServidor, char* key, int cantParams, ...){
 		argumento = va_arg(arguments, char*);
 		string_append(&cuerpo, argumento);
 		if(i<(cantParams-1))
-			string_append(&cuerpo, ",");
+			string_append(&cuerpo, "|");
 	}
 
 	va_end(arguments);
@@ -194,8 +194,8 @@ t_package* recibirPaquete(int socket, void (*desconexion) (int)){
 
 void correrFuncion(void* (*funcion)(),char* datos, char* key, int socket){
 
-	if(string_contains(key,"MULTIPARAM") && string_contains(datos,",")){
-		char** parametros = string_split(datos,",");
+	if(string_contains(key,"MULTIPARAM") && string_contains(datos,"|")){
+		char** parametros = string_split(datos,"|");
 		funcion(parametros,sizeArray(parametros),socket);
 		free(parametros);
 	}else
