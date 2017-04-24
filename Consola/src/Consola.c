@@ -6,25 +6,24 @@ void init(int sizeArgs, char** path){
 		freeElementsArray(path,sizeArgs);
 		return;
 	}
-	printf("%s\n",path[1]);
-	FILE *arch;
-	arch = fopen(path[1], "r");
-	if (arch==NULL)
-		{
+	FILE *arch = fopen(path[1], "r");
+
+	if (arch==NULL){
 		   perror("No se puede abrir el archivo");
 		   return;
-		}
+	}
+
 	fseek(arch,0L, SEEK_END);            // me ubico en el final del archivo.
 	int tamanio= ftell(arch);
 	char* buffer=(char*)malloc(tamanio);
+
 	fseek(arch,0L,SEEK_SET); // me ubico al principio para empezar a leer
 	fread (buffer, sizeof(char), tamanio, arch);
+
 	buffer[tamanio-1]='\0';
-	int i=0;
-	while(i<=tamanio){
-		printf("%c",buffer[i]);
-		i++;
-	}
+
+	empaquetarEnviarMensaje(socketKernel,"KEY_PRINT",1,buffer);
+
 	fclose(arch);
 	free(buffer);
 	freeElementsArray(path,sizeArgs);
@@ -50,12 +49,11 @@ int main(int argc, char** argv) {
 	printf("IP_Kernel: %s\n", IpKernel);
 	printf("Puerto_Kernel: %d\n", PuertoKernel);
 
-	int socketConsola;
-	if ((socketConsola = conectar(IpKernel, PuertoKernel)) == -1) {
+	if ((socketKernel = conectar(IpKernel, PuertoKernel)) == -1) {
 		puts("No se encontro kernel");
 		exit(EXIT_FAILURE);
 	}
-	while (!handshake(socketConsola, "HCSKE", "HKECS")) {
+	while (!handshake(socketKernel, "HCSKE", "HKECS")) {
 		puts("Fallo la conexion con el Kernel");
 	}
 	puts("Conectado con kernel");

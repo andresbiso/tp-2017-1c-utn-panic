@@ -13,6 +13,7 @@
 /* Global Variables*/
 char* IpKernel;
 int PuertoKernel;
+int socketKernel;
 
 /*Function prototypes*/
 t_config* cargarConfiguracion(char * nombreArchivo);

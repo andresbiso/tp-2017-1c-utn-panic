@@ -82,6 +82,8 @@ int empaquetarEnviarMensaje(int socketServidor, char* key, int cantParams, ...){
 	char * cuerpo = string_new();
 
 	string_append(&cuerpo, key);
+	if (cantParams>1)
+		string_append(&cuerpo, "MULTIPARAM");
 	string_append(&cuerpo, ";");
 
 	for (i = 0; i < cantParams; i++){
@@ -190,9 +192,9 @@ t_package* recibirPaquete(int socket, void (*desconexion) (int)){
 }
 
 
-void correrFuncion(void* funcion(),char* datos, int socket){
+void correrFuncion(void* funcion(),char* datos, char* key, int socket){
 
-	if(string_contains(datos,",")){
+	if(string_contains(key,"MULTIPARAM") && string_contains(datos,",")){
 		char** parametros = string_split(datos,",");
 		funcion(parametros,sizeArray(parametros),socket);
 		free(parametros);
@@ -249,7 +251,7 @@ void procesarPaquete(t_package* paquete,int socket,t_dictionary* diccionarioFunc
 		void* funcion;
 		funcion = dictionary_get(diccionarioFunciones,paquete->key);
 		if(funcion != NULL){
-			correrFuncion(funcion,paquete->datos,socket);
+			correrFuncion(funcion,paquete->datos,paquete->key,socket);
 		}else{
 			perror("Key de funcion no encontrada");
 		}

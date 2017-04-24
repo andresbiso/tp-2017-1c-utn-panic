@@ -20,7 +20,7 @@ void nuevaConexionCPU(int sock){
 	socketcpuConectadas = sock;
 }
 
-void mostrarMensaje(char* mensaje){
+void mostrarMensaje(char* mensaje,int socket){
 	printf("Mensaje recibido: %s \n",mensaje);
 	empaquetarEnviarMensaje(socketMemoria,"KEY_PRINT",1,mensaje);
 	empaquetarEnviarMensaje(socketcpuConectadas,"KEY_PRINT",1,mensaje);
