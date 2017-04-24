@@ -7,12 +7,12 @@
 #include <parser/metadata_program.h>
 #include <ctype.h>
 
-#define PAGESIZE 4;
+#define PAGESIZE 4
 
-typedef struct entrada_salida{
+/*typedef struct entrada_salida{
 	t_nombre_dispositivo dispositivo;
 	int tiempo;
-}t_entrada_salida;
+}t_entrada_salida;*/
 
 typedef struct grabar_valor{
 	t_nombre_compartida variable;
@@ -30,7 +30,7 @@ typedef struct funciones_ansisop{
 	AnSISOP_kernel funciones_kernel;
 } FuncionesAnsisop;
 
-FuncionesAnsisop inicializar_primitivas();
+FuncionesAnsisop* inicializar_primitivas();
 
 // AnSISOP_funciones
 t_puntero definirVariable(t_nombre_variable identificador_variable);
@@ -44,15 +44,17 @@ void llamarSinRetorno(t_nombre_etiqueta etiqueta);
 void llamarConRetorno(t_nombre_etiqueta etiqueta, t_puntero donde_retornar);
 void finalizar(void);
 void retornar(t_valor_variable retorno);
-void imprimirValor(t_valor_variable valor_mostrar);
-void imprimirLiteral(char* texto);
-void entradaSalida(t_nombre_dispositivo, int tiempo);
 
 // AnSISOP_kernel
 void waitAnsisop(t_nombre_semaforo identificador_semaforo);
 void signalAnsisop(t_nombre_semaforo identificador_semaforo);
-t_puntero alocar(t_valor_variable espacio);
+t_puntero reservar(t_valor_variable espacio);
 void liberar(t_puntero puntero);
-
+t_descriptor_archivo abrir(t_direccion_archivo direccion, t_banderas flags);
+void borrar(t_descriptor_archivo direccion);
+void cerrar(t_descriptor_archivo descriptor_archivo);
+void moverCursor(t_descriptor_archivo descriptor_archivo, t_valor_variable posicion);
+void escribir(t_descriptor_archivo descriptor_archivo, void* informacion, t_valor_variable tamanio);
+void leer(t_descriptor_archivo descriptor_archivo, t_puntero informacion, t_valor_variable tamanio);
 
 #endif /* PRIMITIVAS_H_ */

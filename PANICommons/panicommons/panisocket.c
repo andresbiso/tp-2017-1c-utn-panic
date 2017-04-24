@@ -192,7 +192,7 @@ t_package* recibirPaquete(int socket, void (*desconexion) (int)){
 }
 
 
-void correrFuncion(void* funcion(),char* datos, char* key, int socket){
+void correrFuncion(void* (*funcion)(),char* datos, char* key, int socket){
 
 	if(string_contains(key,"MULTIPARAM") && string_contains(datos,",")){
 		char** parametros = string_split(datos,",");

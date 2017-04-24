@@ -55,7 +55,7 @@ void waitKernel(int socketKernel,t_dictionary* diccionarioFunciones){
 		void* funcion;
 		funcion = dictionary_get(diccionarioFunciones,paquete->key);
 		if(funcion != NULL){
-			correrFuncion(funcion,paquete->datos);
+			correrFuncion(funcion, paquete->datos, paquete->key, socketKernel);
 		}else{
 			perror("Key de funcion no encontrada");
 		}
