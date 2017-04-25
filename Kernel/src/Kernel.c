@@ -16,8 +16,43 @@ int socketFS;
 int socketCPU;
 int socketcpuConectadas;
 
+void cargar_varCompartidas(){
+	char** varCompartArray = SharedVars;
+	variablesCompartidas = dictionary_create();
+	int i;
+
+	for(i=0;varCompartArray[i]!=NULL; i++){
+		int32_t *valor = malloc(sizeof(int32_t));
+		*valor = 0;
+
+		dictionary_put(variablesCompartidas,varCompartArray[i],valor);
+	}
+}
+
+void crear_semaforos(){
+	semaforos = dictionary_create();
+	int i;
+	char* sem_id = SemIds[0];
+
+	for(i=0;sem_id;i++){
+		int valor_inicial = atoi(SemInit[i]);
+
+		t_semaforo *semaforo =malloc(sizeof(t_semaforo));
+		semaforo->valor = valor_inicial;
+		semaforo->cola = queue_create();
+
+		dictionary_put(semaforos,sem_id,semaforo);
+		sem_id = SemIds[i+1];
+	}
+}
+
 void nuevaConexionCPU(int sock){
 	socketcpuConectadas = sock;
+	t_cpu* cpu_nuevo;
+	cpu_nuevo=malloc(sizeof(t_cpu));
+	cpu_nuevo->socket=sock;
+	cpu_nuevo->corriendo=false;
+	list_add(lista_cpus_conectadas,cpu_nuevo);
 }
 
 void mostrarMensaje(char* mensaje,int socket){
@@ -27,7 +62,6 @@ void mostrarMensaje(char* mensaje,int socket){
 	empaquetarEnviarMensaje(socketFS,"KEY_PRINT",1,mensaje);
 }
 
-
 void correrServidor(void* arg){
 	threadParams* params = arg;
 	correrServidorMultiConexion(params->socketEscucha,params->nuevaConexion,params->desconexion,params->funciones,params->handshakes);
@@ -35,6 +69,8 @@ void correrServidor(void* arg){
 
 int main(int argc, char** argv) {
 	pthread_t thread_consola, thread_cpu;
+
+	lista_cpus_conectadas = list_create();
 
 	t_config* configFile= cargarConfiguracion(argv[1]);
 
@@ -62,6 +98,9 @@ int main(int argc, char** argv) {
     parametrosCpu.desconexion = NULL;
     parametrosCpu.handshakes = diccionarioHandshakes;
     parametrosCpu.funciones = diccionarioFunciones;
+
+    crear_semaforos();
+    cargar_varCompartidas();
 
     if ((socketMemoria = conectar(IpMemoria,PuertoMemoria)) == -1)
     	exit(EXIT_FAILURE);
@@ -99,6 +138,8 @@ int main(int argc, char** argv) {
     dictionary_destroy(diccionarioFunciones);
     dictionary_destroy(diccionarioHandshakes);
 
+    list_destroy_and_destroy_elements(lista_cpus_conectadas, free);
+
     config_destroy(configFile);
 
 	return EXIT_SUCCESS;
@@ -106,6 +147,7 @@ int main(int argc, char** argv) {
 
 t_config* cargarConfiguracion(char* archivo){
 	t_config* archivo_cnf;
+	modo_planificacion Modo;
 
 		archivo_cnf = config_create(archivo);
 
@@ -152,6 +194,18 @@ t_config* cargarConfiguracion(char* archivo){
 			printf("ERROR archivo config sin IP FILESYSTEM\n");
 			exit(EXIT_FAILURE);
 			}
+
+		if(config_has_property(archivo_cnf, "ALGORITMO") == true){
+			char *aux = config_get_string_value(archivo_cnf,"ALGORITMO");
+			if (strcmp(aux, "FIFO") == 0)
+				Modo = FIFO;
+			else
+				Modo = RR;
+		}
+		else{
+			printf("ERROR archivo config sin Algoritmo\n");
+			exit(EXIT_FAILURE);
+		}
 
 		if(config_has_property(archivo_cnf, "QUANTUM") == true)
 			Quantum = config_get_int_value(archivo_cnf, "QUANTUM");
