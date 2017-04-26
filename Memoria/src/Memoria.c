@@ -23,10 +23,25 @@ void dump(int size, char** functionAndParams){
 	freeElementsArray(functionAndParams,size);
 }
 
+void retardo(int size, char** functionAndParams){
+	if(size!=2){
+		printf("La funcion de retardo debe recibir solo 1 parametro (tiempo de retardo en ms).\n\r");
+		freeElementsArray(functionAndParams,size);
+		return;
+	}
+	//TODO chequear concurrencia !!!
+	retardoMemoria = atoi(functionAndParams[1]);
+	printf("Retardo modificado a %d\n\r",retardoMemoria);
+
+	freeElementsArray(functionAndParams,size);
+}
+
 void correrConsola(){
 	t_dictionary* commands = dictionary_create();
 	dictionary_put(commands,"dump",&dump);
+	dictionary_put(commands,"retardo",&retardo);
 	waitCommand(commands);
+	dictionary_destroy(commands);
 }
 
 t_config* cargarConfiguracion(char * nombreArchivo){
@@ -120,7 +135,6 @@ int main(int argc, char** argv) {
 	dictionary_put(diccionarioFunciones,"ALMC_BYTES",&almacenarBytes);
 	dictionary_put(diccionarioFunciones,"ASIG_PAGES",&asignarPaginas);
 	dictionary_put(diccionarioFunciones,"FINZ_PROGM",&finalizarPrograma);
-
 
 	t_dictionary* diccionarioHandshakes = dictionary_create();
 	dictionary_put(diccionarioHandshakes,"HCPME","HMECP");
