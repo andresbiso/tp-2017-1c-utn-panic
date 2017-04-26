@@ -4,9 +4,29 @@
 #include <panicommons/panisocket.h>
 #include <commons/config.h>
 #include "Memoria.h"
+#include <pthread.h>
+#include <panicommons/paniconsole.h>
 
 void mostrarMensaje(char* mensaje,int socket){
-	printf("Mensaje recibido: %s \n",mensaje);
+	printf("Error: %s \n",mensaje);
+}
+
+void dump(int size, char** functionAndParams){
+	if(size!=1){
+		printf("La funcion de dump no debe recibir parametros.\n\r");
+		freeElementsArray(functionAndParams,size);
+		return;
+	}
+	//TODO
+	printf("Do dump\n\r");
+
+	freeElementsArray(functionAndParams,size);
+}
+
+void correrConsola(){
+	t_dictionary* commands = dictionary_create();
+	dictionary_put(commands,"dump",&dump);
+	waitCommand(commands);
 }
 
 t_config* cargarConfiguracion(char * nombreArchivo){
@@ -54,6 +74,26 @@ t_config* cargarConfiguracion(char * nombreArchivo){
 	return configFile;
 }
 
+void iniciarPrograma(char* data,int socket){
+	//TODO
+}
+
+void solicitarBytes(char* data,int socket){
+	//TODO
+}
+
+void almacenarBytes(char* data,int socket){
+	//TODO
+}
+
+void asignarPaginas(char* data,int socket){
+	//TODO
+}
+
+void finalizarPrograma(char* data,int socket){
+	//TODO
+}
+
 int main(int argc, char** argv) {
 	if (argc == 1) {
 		printf("Falta parametro: archivo de configuracion");
@@ -68,21 +108,34 @@ int main(int argc, char** argv) {
 	printf("CACHE_X_PROC: %d\n",cacheXproc);
 	printf("RETARDO_MEMORIA: %d\n",retardoMemoria);
 
+	//La memoria a utilizar es MARCO * MARCO_SIZE
+	//La cantidad de marcos que ocupan las estructuras administrativas son (12*MARCOS)/MARCO_SIZE <- redondeado para arriba
+
+	bloqueMemoria = (char*) calloc(marcos*marcoSize,sizeof(char));
+
 	t_dictionary* diccionarioFunciones = dictionary_create();
-	dictionary_put(diccionarioFunciones,"KEY_PRINT",&mostrarMensaje);
 	dictionary_put(diccionarioFunciones,"ERROR_FUNC",&mostrarMensaje);
+	dictionary_put(diccionarioFunciones,"INIT_PROGM",&iniciarPrograma);
+	dictionary_put(diccionarioFunciones,"SOLC_BYTES",&solicitarBytes);
+	dictionary_put(diccionarioFunciones,"ALMC_BYTES",&almacenarBytes);
+	dictionary_put(diccionarioFunciones,"ASIG_PAGES",&asignarPaginas);
+	dictionary_put(diccionarioFunciones,"FINZ_PROGM",&finalizarPrograma);
+
 
 	t_dictionary* diccionarioHandshakes = dictionary_create();
 	dictionary_put(diccionarioHandshakes,"HCPME","HMECP");
 	dictionary_put(diccionarioHandshakes,"HKEME","HMEKE");
+
+	pthread_t threadConsola;
+	pthread_create(&threadConsola,NULL,(void *)correrConsola,NULL);
 
 	int socket = crearHostMultiConexion(puerto);
 	correrServidorThreads(socket,NULL,NULL,diccionarioFunciones,diccionarioHandshakes);
 
 	dictionary_destroy(diccionarioFunciones);
 	dictionary_destroy(diccionarioHandshakes);
-
 	config_destroy(configFile);
+	free(bloqueMemoria);
 
 	return EXIT_SUCCESS;
 }

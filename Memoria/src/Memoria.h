@@ -14,5 +14,6 @@ int marcoSize;
 int entradasCache;
 int cacheXproc;
 int retardoMemoria;
+char* bloqueMemoria;
 
 #endif /* MEMORIA_H_ */
