@@ -16,4 +16,7 @@ int cacheXproc;
 int retardoMemoria;
 char* bloqueMemoria;
 
+#define TAM_ELM_TABLA_INV 12
+#define CANT_ELM_TABLA_INV 3
+
 #endif /* MEMORIA_H_ */

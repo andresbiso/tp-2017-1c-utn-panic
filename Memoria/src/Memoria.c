@@ -109,6 +109,24 @@ void finalizarPrograma(char* data,int socket){
 	//TODO
 }
 
+void crearEstructurasAdministrativas(){
+
+	int pagAdminis = (int) (TAM_ELM_TABLA_INV*marcos)/marcoSize;
+	int offset = 0;
+	int i;
+
+	for(i=0;i<pagAdminis;i++){
+		memcpy(bloqueMemoria+offset,(void *)&i,TAM_ELM_TABLA_INV/CANT_ELM_TABLA_INV);
+		offset+=TAM_ELM_TABLA_INV/CANT_ELM_TABLA_INV;
+		memcpy(bloqueMemoria+offset,(void *)string_itoa(-1),TAM_ELM_TABLA_INV/CANT_ELM_TABLA_INV);
+		offset+=TAM_ELM_TABLA_INV/CANT_ELM_TABLA_INV;
+		memcpy(bloqueMemoria+offset,(void *)string_itoa(1),TAM_ELM_TABLA_INV/CANT_ELM_TABLA_INV);
+		offset+=TAM_ELM_TABLA_INV/CANT_ELM_TABLA_INV;
+	}
+
+	return;
+}
+
 int main(int argc, char** argv) {
 	if (argc == 1) {
 		printf("Falta parametro: archivo de configuracion");
@@ -127,6 +145,13 @@ int main(int argc, char** argv) {
 	//La cantidad de marcos que ocupan las estructuras administrativas son (12*MARCOS)/MARCO_SIZE <- redondeado para arriba
 
 	bloqueMemoria = (char*) calloc(marcos*marcoSize,sizeof(char));
+
+	if (bloqueMemoria == NULL){
+		perror("No se pudo reservar memoria para el bloque");
+		exit(-1);
+	}
+
+	crearEstructurasAdministrativas();
 
 	t_dictionary* diccionarioFunciones = dictionary_create();
 	dictionary_put(diccionarioFunciones,"ERROR_FUNC",&mostrarMensaje);
