@@ -118,9 +118,9 @@ void crearEstructurasAdministrativas(){
 	for(i=0;i<pagAdminis;i++){
 		memcpy(bloqueMemoria+offset,(void *)&i,TAM_ELM_TABLA_INV/CANT_ELM_TABLA_INV);
 		offset+=TAM_ELM_TABLA_INV/CANT_ELM_TABLA_INV;
-		memcpy(bloqueMemoria+offset,(void *)string_itoa(-1),TAM_ELM_TABLA_INV/CANT_ELM_TABLA_INV);
+		memcpy(bloqueMemoria+offset,(void *)"-1",TAM_ELM_TABLA_INV/CANT_ELM_TABLA_INV);
 		offset+=TAM_ELM_TABLA_INV/CANT_ELM_TABLA_INV;
-		memcpy(bloqueMemoria+offset,(void *)string_itoa(1),TAM_ELM_TABLA_INV/CANT_ELM_TABLA_INV);
+		memcpy(bloqueMemoria+offset,(void *)"1",TAM_ELM_TABLA_INV/CANT_ELM_TABLA_INV);
 		offset+=TAM_ELM_TABLA_INV/CANT_ELM_TABLA_INV;
 	}
 
@@ -142,7 +142,7 @@ int main(int argc, char** argv) {
 	printf("RETARDO_MEMORIA: %d\n",retardoMemoria);
 
 	//La memoria a utilizar es MARCO * MARCO_SIZE
-	//La cantidad de marcos que ocupan las estructuras administrativas son (12*MARCOS)/MARCO_SIZE <- redondeado para arriba
+	//La cantidad de marcos que ocupan las estructuras administrativas son (TAM_ELM_TABLA_INV*MARCOS)/MARCO_SIZE <- redondeado para arriba
 
 	bloqueMemoria = (char*) calloc(marcos*marcoSize,sizeof(char));
 
