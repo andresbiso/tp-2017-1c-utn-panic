@@ -4,6 +4,44 @@ void mostrarMensaje(char* mensaje,int socket){
 	printf("Error: %s \n",mensaje);
 }
 
+//INICIO FUNCIONES SOBRE PAGINAS ADMS
+
+int cantPaginasAdms(){
+	return divAndRoundUp(TAM_ELM_TABLA_INV*marcos,marcoSize);
+}
+
+t_pagina crearPagina(int32_t indice,int32_t pid,int32_t numeroPag){
+	t_pagina pagina;
+	pagina.indice = indice;
+	pagina.pid = pid;
+	pagina.numeroPag = numeroPag;
+	return pagina;
+}
+
+t_pagina* getPagina(int indice){
+	int offset = indice*sizeof(t_pagina);
+	t_pagina* pagina = malloc(sizeof(t_pagina));
+	memcpy(&pagina->indice,bloqueMemoria+offset,sizeof(int32_t));
+	offset+=TAM_ELM_TABLA_INV/CANT_ELM_TABLA_INV;
+	memcpy(&pagina->pid,bloqueMemoria+offset,sizeof(int32_t));
+	offset+=TAM_ELM_TABLA_INV/CANT_ELM_TABLA_INV;
+	memcpy(&pagina->numeroPag,bloqueMemoria+offset,sizeof(int32_t));
+	return pagina;
+}
+
+void escribirEnEstrucAdmin(t_pagina* pagina){
+	int offset = pagina->indice*sizeof(t_pagina);
+	pthread_mutex_lock(&mutexMemoriaPrincipal);
+	memcpy(bloqueMemoria+offset,(void *)&pagina->indice,TAM_ELM_TABLA_INV/CANT_ELM_TABLA_INV);
+	offset+=TAM_ELM_TABLA_INV/CANT_ELM_TABLA_INV;
+	memcpy(bloqueMemoria+offset,(void *)&pagina->pid,TAM_ELM_TABLA_INV/CANT_ELM_TABLA_INV);
+	offset+=TAM_ELM_TABLA_INV/CANT_ELM_TABLA_INV;
+	memcpy(bloqueMemoria+offset,(void *)&pagina->numeroPag,TAM_ELM_TABLA_INV/CANT_ELM_TABLA_INV);
+	pthread_mutex_unlock(&mutexMemoriaPrincipal);
+}
+
+//FIN FUNCIONES SOBRE PAGINAS ADMS
+
 //INICIO COMANDOS
 
 void dumpCache(int size, char** functionAndParams){
@@ -36,8 +74,22 @@ void dumpTabla(int size, char** functionAndParams){
 		freeElementsArray(functionAndParams,size);
 		return;
 	}
-	//TODO
-	printf("Do dump tabla\n\r");
+	//TODO chequear si bloquear memoria o no
+
+	printf("----------------------\n\r");
+	printf("|  I  |  PID  |  NRO |\n\r");
+	printf("----------------------\n\r");
+
+	pthread_mutex_lock(&mutexMemoriaPrincipal);
+	int i;
+	for(i=0;i<cantPaginasAdms();i++){
+		t_pagina* pag = getPagina(i);
+		printf("|  %d  |  %d  |  %d  |\n\r",pag->indice,pag->pid,pag->numeroPag);
+		printf("----------------------\n\r");
+		free(pag);
+	}
+
+	pthread_mutex_unlock(&mutexMemoriaPrincipal);
 
 	freeElementsArray(functionAndParams,size);
 }
@@ -109,18 +161,6 @@ void correrConsola(){
 	dictionary_destroy(commands);
 }
 
-void escribirEnEstrucAdmin(t_pagina* pagina){
-	int offset = pagina->indice*sizeof(t_pagina);
-	pthread_mutex_lock(&mutexMemoriaPrincipal);
-	memcpy(bloqueMemoria+offset,(void *)&pagina->indice,TAM_ELM_TABLA_INV/CANT_ELM_TABLA_INV);
-	offset+=TAM_ELM_TABLA_INV/CANT_ELM_TABLA_INV;
-	memcpy(bloqueMemoria+offset,(void *)&pagina->pid,TAM_ELM_TABLA_INV/CANT_ELM_TABLA_INV);
-	offset+=TAM_ELM_TABLA_INV/CANT_ELM_TABLA_INV;
-	memcpy(bloqueMemoria+offset,(void *)&pagina->numeroPag,TAM_ELM_TABLA_INV/CANT_ELM_TABLA_INV);
-	pthread_mutex_unlock(&mutexMemoriaPrincipal);
-}
-
-
 t_config* cargarConfiguracion(char * nombreArchivo){
 	char* configFilePath =string_new();
 	string_append(&configFilePath,nombreArchivo);
@@ -186,16 +226,8 @@ void finalizarPrograma(char* data,int socket){
 	//TODO
 }
 
-t_pagina crearPagina(int32_t indice,int32_t pid,int32_t numeroPag){
-	t_pagina pagina;
-	pagina.indice = indice;
-	pagina.pid = pid;
-	pagina.numeroPag = numeroPag;
-	return pagina;
-}
-
 void crearEstructurasAdministrativas(){
-	int pagAdminis = divAndRoundUp(TAM_ELM_TABLA_INV*marcos,marcoSize);
+	int pagAdminis = cantPaginasAdms();
 	int i;
 
 	for(i=0;i<pagAdminis;i++){
