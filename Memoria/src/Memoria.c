@@ -1,24 +1,43 @@
-#include <stdio.h>
-#include <stdlib.h>
-
-#include <panicommons/panisocket.h>
-#include <commons/config.h>
 #include "Memoria.h"
-#include <pthread.h>
-#include <panicommons/paniconsole.h>
 
 void mostrarMensaje(char* mensaje,int socket){
 	printf("Error: %s \n",mensaje);
 }
 
-void dump(int size, char** functionAndParams){
+//INICIO COMANDOS
+
+void dumpCache(int size, char** functionAndParams){
 	if(size!=1){
-		printf("La funcion de dump no debe recibir parametros.\n\r");
+		printf("La funcion de dumpCache no debe recibir parametros.\n\r");
 		freeElementsArray(functionAndParams,size);
 		return;
 	}
 	//TODO
-	printf("Do dump\n\r");
+	printf("Do dump cache\n\r");
+
+	freeElementsArray(functionAndParams,size);
+}
+
+void dumpProcesos(int size, char** functionAndParams){
+	if(size!=1){
+		printf("La funcion de dumpCache no debe recibir parametros.\n\r");
+		freeElementsArray(functionAndParams,size);
+		return;
+	}
+	//TODO
+	printf("Do dump procesos\n\r");
+
+	freeElementsArray(functionAndParams,size);
+}
+
+void dumpTabla(int size, char** functionAndParams){
+	if(size!=1){
+		printf("La funcion de dumpCache no debe recibir parametros.\n\r");
+		freeElementsArray(functionAndParams,size);
+		return;
+	}
+	//TODO
+	printf("Do dump tabla\n\r");
 
 	freeElementsArray(functionAndParams,size);
 }
@@ -36,13 +55,68 @@ void retardo(int size, char** functionAndParams){
 	freeElementsArray(functionAndParams,size);
 }
 
+void flush(int size, char** functionAndParams){
+	if(size!=1){
+		printf("La funcion de flush no debe recibir parametros.\n\r");
+		freeElementsArray(functionAndParams,size);
+		return;
+	}
+	printf("TODO flush\n\r");
+
+	freeElementsArray(functionAndParams,size);
+}
+
+void sizeMemory(int size, char** functionAndParams){
+	if(size!=2){
+		printf("La funcion de sizeMemory no debe recibir parametros.\n\r");
+		freeElementsArray(functionAndParams,size);
+		return;
+	}
+	//TODO chequear concurrencia !!!
+	retardoMemoria = atoi(functionAndParams[1]);
+	printf("Retardo modificado a %d\n\r",retardoMemoria);
+
+	freeElementsArray(functionAndParams,size);
+}
+
+void sizePID(int size, char** functionAndParams){
+	if(size!=2){
+		printf("La funcion de sizePID debe recibir solo 1 parametro (el PID del proceso).\n\r");
+		freeElementsArray(functionAndParams,size);
+		return;
+	}
+	//TODO
+	printf("TODO size pid\n\r");
+
+	freeElementsArray(functionAndParams,size);
+}
+
+//FIN COMANDOS
+
 void correrConsola(){
 	t_dictionary* commands = dictionary_create();
-	dictionary_put(commands,"dump",&dump);
+	dictionary_put(commands,"dumpCache",&dumpCache);
+	dictionary_put(commands,"dumpTabla",&dumpTabla);
+	dictionary_put(commands,"dumpProcesos",&dumpProcesos);
 	dictionary_put(commands,"retardo",&retardo);
+	dictionary_put(commands,"flush",&flush);
+	dictionary_put(commands,"sizem",&sizeMemory);
+	dictionary_put(commands,"sizep",&sizePID);
 	waitCommand(commands);
 	dictionary_destroy(commands);
 }
+
+void escribirEnEstrucAdmin(t_pagina* pagina){
+	int offset = pagina->indice*sizeof(t_pagina);
+	pthread_mutex_lock(&mutexMemoriaPrincipal);
+	memcpy(bloqueMemoria+offset,(void *)&pagina->indice,TAM_ELM_TABLA_INV/CANT_ELM_TABLA_INV);
+	offset+=TAM_ELM_TABLA_INV/CANT_ELM_TABLA_INV;
+	memcpy(bloqueMemoria+offset,(void *)&pagina->pid,TAM_ELM_TABLA_INV/CANT_ELM_TABLA_INV);
+	offset+=TAM_ELM_TABLA_INV/CANT_ELM_TABLA_INV;
+	memcpy(bloqueMemoria+offset,(void *)&pagina->numeroPag,TAM_ELM_TABLA_INV/CANT_ELM_TABLA_INV);
+	pthread_mutex_unlock(&mutexMemoriaPrincipal);
+}
+
 
 t_config* cargarConfiguracion(char * nombreArchivo){
 	char* configFilePath =string_new();
@@ -109,19 +183,23 @@ void finalizarPrograma(char* data,int socket){
 	//TODO
 }
 
-void crearEstructurasAdministrativas(){
+t_pagina crearPagina(int32_t indice,int32_t pid,int32_t numeroPag){
+	t_pagina pagina;
+	pagina.indice = indice;
+	pagina.pid = pid;
+	pagina.numeroPag = numeroPag;
+	return pagina;
+}
 
-	int pagAdminis = (int) (TAM_ELM_TABLA_INV*marcos)/marcoSize;
-	int offset = 0;
+void crearEstructurasAdministrativas(){
+	int pagAdminis = divAndRoundUp(TAM_ELM_TABLA_INV*marcos,marcoSize);
 	int i;
 
 	for(i=0;i<pagAdminis;i++){
-		memcpy(bloqueMemoria+offset,(void *)&i,TAM_ELM_TABLA_INV/CANT_ELM_TABLA_INV);
-		offset+=TAM_ELM_TABLA_INV/CANT_ELM_TABLA_INV;
-		memcpy(bloqueMemoria+offset,(void *)"-1",TAM_ELM_TABLA_INV/CANT_ELM_TABLA_INV);
-		offset+=TAM_ELM_TABLA_INV/CANT_ELM_TABLA_INV;
-		memcpy(bloqueMemoria+offset,(void *)"1",TAM_ELM_TABLA_INV/CANT_ELM_TABLA_INV);
-		offset+=TAM_ELM_TABLA_INV/CANT_ELM_TABLA_INV;
+		t_pagina* pagina = malloc(sizeof(t_pagina));
+		*pagina = crearPagina(i,-1,0);
+		escribirEnEstrucAdmin(pagina);
+		free(pagina);
 	}
 
 	return;
@@ -147,7 +225,14 @@ int main(int argc, char** argv) {
 	bloqueMemoria = (char*) calloc(marcos*marcoSize,sizeof(char));
 
 	if (bloqueMemoria == NULL){
-		perror("No se pudo reservar memoria para el bloque");
+		perror("No se pudo reservar memoria para el bloque principal");
+		exit(-1);
+	}
+
+	bloqueCache = (char*) calloc(entradasCache*marcoSize,sizeof(char));
+
+	if (bloqueCache == NULL){
+		perror("No se pudo reservar memoria para el bloque de la cache");
 		exit(-1);
 	}
 
@@ -165,6 +250,9 @@ int main(int argc, char** argv) {
 	dictionary_put(diccionarioHandshakes,"HCPME","HMECP");
 	dictionary_put(diccionarioHandshakes,"HKEME","HMEKE");
 
+	pthread_mutex_init(&mutexCache,NULL);
+	pthread_mutex_init(&mutexMemoriaPrincipal,NULL);
+
 	pthread_t threadConsola;
 	pthread_create(&threadConsola,NULL,(void *)correrConsola,NULL);
 
@@ -173,8 +261,11 @@ int main(int argc, char** argv) {
 
 	dictionary_destroy(diccionarioFunciones);
 	dictionary_destroy(diccionarioHandshakes);
+	pthread_mutex_destroy(&mutexCache);
+	pthread_mutex_destroy(&mutexMemoriaPrincipal);
 	config_destroy(configFile);
 	free(bloqueMemoria);
+	free(bloqueCache);
 
 	return EXIT_SUCCESS;
 }

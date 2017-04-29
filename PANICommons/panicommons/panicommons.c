@@ -21,3 +21,8 @@ void freeElementsArray(char** array, int size){
 	for(i=0;i<size;i++)
 		free(array[i]);
 }
+
+int divAndRoundUp(int x, int y){
+   int a = (x -1)/y +1;
+   return a;
+}
