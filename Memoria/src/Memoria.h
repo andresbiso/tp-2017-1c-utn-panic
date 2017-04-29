@@ -28,6 +28,7 @@ int retardoMemoria;
 char* bloqueMemoria;
 char* bloqueCache;
 t_log* logFile;
+pthread_mutex_t mutexLog;
 pthread_mutex_t mutexCache;
 pthread_mutex_t mutexMemoriaPrincipal;
 

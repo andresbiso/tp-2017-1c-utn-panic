@@ -220,7 +220,9 @@ void iniciarPrograma(char* data,int socket){
 	memcpy(&pid,(void*)data,sizeof(int32_t));
 	memcpy(&paginasRequeridas,(void*)data+sizeof(int32_t),sizeof(int32_t));
 
+	pthread_mutex_lock(&mutexLog);
 	log_info(logFile,string_from_format("Pedido de inicio de programa PID:%d PAGS:%d",pid,paginasRequeridas));
+	pthread_mutex_unlock(&mutexLog);
 
 	sleep(retardoMemoria/1000);//pasamos a milisegundos
 	pthread_mutex_lock(&mutexMemoriaPrincipal);
@@ -229,7 +231,7 @@ void iniciarPrograma(char* data,int socket){
 		t_pagina* pag = getPagina(i);
 		if(pag->pid==-1){
 			cantPaginasLibres++;
-			list_add(posiblesPags,(void*)&pag->indice);
+			list_add(posiblesPags,(void*)pag->indice);
 		}
 		free(pag);
 		if(cantPaginasLibres>=paginasRequeridas)
@@ -335,6 +337,7 @@ int main(int argc, char** argv) {
 
 	pthread_mutex_init(&mutexCache,NULL);
 	pthread_mutex_init(&mutexMemoriaPrincipal,NULL);
+	pthread_mutex_init(&mutexLog,NULL);
 
 	pthread_t threadConsola;
 	pthread_create(&threadConsola,NULL,(void *)correrConsola,NULL);
@@ -346,6 +349,7 @@ int main(int argc, char** argv) {
 	dictionary_destroy(diccionarioHandshakes);
 	pthread_mutex_destroy(&mutexCache);
 	pthread_mutex_destroy(&mutexMemoriaPrincipal);
+	pthread_mutex_destroy(&mutexLog);
 	config_destroy(configFile);
 	log_destroy(logFile);
 	free(bloqueMemoria);
