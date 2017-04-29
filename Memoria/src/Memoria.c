@@ -61,7 +61,10 @@ void flush(int size, char** functionAndParams){
 		freeElementsArray(functionAndParams,size);
 		return;
 	}
-	printf("TODO flush\n\r");
+
+	pthread_mutex_lock(&mutexCache);
+	memset(bloqueCache,0,entradasCache*marcoSize);
+	pthread_mutex_unlock(&mutexCache);
 
 	freeElementsArray(functionAndParams,size);
 }
