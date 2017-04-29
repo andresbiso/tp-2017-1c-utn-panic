@@ -22,21 +22,28 @@ t_pagina* getPagina(int indice){
 	int offset = indice*sizeof(t_pagina);
 	t_pagina* pagina = malloc(sizeof(t_pagina));
 	memcpy(&pagina->indice,bloqueMemoria+offset,sizeof(int32_t));
-	offset+=TAM_ELM_TABLA_INV/CANT_ELM_TABLA_INV;
+	offset+=sizeof(int32_t);
 	memcpy(&pagina->pid,bloqueMemoria+offset,sizeof(int32_t));
-	offset+=TAM_ELM_TABLA_INV/CANT_ELM_TABLA_INV;
+	offset+=sizeof(int32_t);
 	memcpy(&pagina->numeroPag,bloqueMemoria+offset,sizeof(int32_t));
 	return pagina;
+}
+
+void escribirPaginaEnTabla(t_pagina* pagina){
+	int offset = (pagina->indice*sizeof(t_pagina))+sizeof(int32_t);//se agrega el tamaño del indice porque no se vuelve a escribir
+	memcpy(bloqueMemoria+offset,&pagina->pid,sizeof(int32_t));
+	offset+=sizeof(int32_t);
+	memcpy(bloqueMemoria+offset,&pagina->numeroPag,sizeof(int32_t));
 }
 
 void escribirEnEstrucAdmin(t_pagina* pagina){
 	int offset = pagina->indice*sizeof(t_pagina);
 	pthread_mutex_lock(&mutexMemoriaPrincipal);
-	memcpy(bloqueMemoria+offset,(void *)&pagina->indice,TAM_ELM_TABLA_INV/CANT_ELM_TABLA_INV);
-	offset+=TAM_ELM_TABLA_INV/CANT_ELM_TABLA_INV;
-	memcpy(bloqueMemoria+offset,(void *)&pagina->pid,TAM_ELM_TABLA_INV/CANT_ELM_TABLA_INV);
-	offset+=TAM_ELM_TABLA_INV/CANT_ELM_TABLA_INV;
-	memcpy(bloqueMemoria+offset,(void *)&pagina->numeroPag,TAM_ELM_TABLA_INV/CANT_ELM_TABLA_INV);
+	memcpy(bloqueMemoria+offset,(void *)&pagina->indice,sizeof(int32_t));
+	offset+=sizeof(int32_t);
+	memcpy(bloqueMemoria+offset,(void *)&pagina->pid,sizeof(int32_t));
+	offset+=sizeof(int32_t);
+	memcpy(bloqueMemoria+offset,(void *)&pagina->numeroPag,sizeof(int32_t));
 	pthread_mutex_unlock(&mutexMemoriaPrincipal);
 }
 
@@ -74,21 +81,18 @@ void dumpTabla(int size, char** functionAndParams){
 		freeElementsArray(functionAndParams,size);
 		return;
 	}
-	//TODO chequear si bloquear memoria o no
-
 	printf("----------------------\n\r");
-	printf("|  I  |  PID  |  NRO |\n\r");
+	printf("|  I  |  PID | NRO |\n\r");
 	printf("----------------------\n\r");
 
-	pthread_mutex_lock(&mutexMemoriaPrincipal);
 	int i;
+	pthread_mutex_lock(&mutexMemoriaPrincipal);
 	for(i=0;i<cantPaginasAdms();i++){
 		t_pagina* pag = getPagina(i);
 		printf("|  %d  |  %d  |  %d  |\n\r",pag->indice,pag->pid,pag->numeroPag);
 		printf("----------------------\n\r");
 		free(pag);
 	}
-
 	pthread_mutex_unlock(&mutexMemoriaPrincipal);
 
 	freeElementsArray(functionAndParams,size);
@@ -100,7 +104,6 @@ void retardo(int size, char** functionAndParams){
 		freeElementsArray(functionAndParams,size);
 		return;
 	}
-	//TODO chequear concurrencia !!!
 	retardoMemoria = atoi(functionAndParams[1]);
 	printf("Retardo modificado a %d\n\r",retardoMemoria);
 
@@ -207,7 +210,51 @@ t_config* cargarConfiguracion(char * nombreArchivo){
 }
 
 void iniciarPrograma(char* data,int socket){
-	//TODO
+	int32_t pid;
+	int32_t paginasRequeridas;
+	int32_t cantPaginasLibres = 0;
+	t_list* posiblesPags = list_create();
+	int hayEspacio=0;
+	int i;
+
+	memcpy(&pid,(void*)data,sizeof(int32_t));
+	memcpy(&paginasRequeridas,(void*)data+sizeof(int32_t),sizeof(int32_t));
+
+	log_info(logFile,string_from_format("Pedido de inicio de programa PID:%d PAGS:%d",pid,paginasRequeridas));
+
+	sleep(retardoMemoria/1000);//pasamos a milisegundos
+	pthread_mutex_lock(&mutexMemoriaPrincipal);
+
+	for(i=0;i<cantPaginasAdms();i++){
+		t_pagina* pag = getPagina(i);
+		if(pag->pid==-1){
+			cantPaginasLibres++;
+			list_add(posiblesPags,(void*)&pag->indice);
+		}
+		free(pag);
+		if(cantPaginasLibres>=paginasRequeridas)
+			break;
+	}
+
+	if(cantPaginasLibres>=paginasRequeridas){
+		//Hay paginas suficientes
+		hayEspacio=1;
+		i=0;
+		for(i=0;i<paginasRequeridas;i++){
+			int indice = (int)list_get(posiblesPags,i);
+
+			t_pagina* pagina = malloc(sizeof(t_pagina));
+			*pagina = crearPagina(indice,pid,i);
+			escribirPaginaEnTabla(pagina);
+
+			free(pagina);
+		}
+	}
+
+	pthread_mutex_unlock(&mutexMemoriaPrincipal);
+	list_destroy(posiblesPags);
+
+	//TODO Avisar al kernel si pudo o no asignar segun la variable hayEspacio
 }
 
 void solicitarBytes(char* data,int socket){
@@ -246,6 +293,7 @@ int main(int argc, char** argv) {
 		exit(EXIT_FAILURE);
 	}
 	t_config* configFile = cargarConfiguracion(argv[1]);
+	logFile = log_create("Memoria.log","Memoria",0,LOG_LEVEL_TRACE);
 
 	printf("PUERTO: %d\n",puerto);
 	printf("MARCOS: %d\n",marcos);
@@ -260,14 +308,14 @@ int main(int argc, char** argv) {
 	bloqueMemoria = (char*) calloc(marcos*marcoSize,sizeof(char));
 
 	if (bloqueMemoria == NULL){
-		perror("No se pudo reservar memoria para el bloque principal");
+		log_error(logFile,"No se pudo reservar memoria para el bloque principal");
 		exit(-1);
 	}
 
 	bloqueCache = (char*) calloc(entradasCache*marcoSize,sizeof(char));
 
 	if (bloqueCache == NULL){
-		perror("No se pudo reservar memoria para el bloque de la cache");
+		log_error(logFile,"No se pudo reservar memoria para el bloque de la cache");
 		exit(-1);
 	}
 
@@ -299,6 +347,7 @@ int main(int argc, char** argv) {
 	pthread_mutex_destroy(&mutexCache);
 	pthread_mutex_destroy(&mutexMemoriaPrincipal);
 	config_destroy(configFile);
+	log_destroy(logFile);
 	free(bloqueMemoria);
 	free(bloqueCache);
 

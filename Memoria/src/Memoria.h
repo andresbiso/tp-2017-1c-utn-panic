@@ -12,6 +12,8 @@
 #include <stdlib.h>
 #include <panicommons/panisocket.h>
 #include <commons/config.h>
+#include <commons/collections/list.h>
+#include <commons/log.h>
 #include <pthread.h>
 #include <panicommons/paniconsole.h>
 #include <panicommons/panicommons.h>
@@ -25,6 +27,7 @@ int cacheXproc;
 int retardoMemoria;
 char* bloqueMemoria;
 char* bloqueCache;
+t_log* logFile;
 pthread_mutex_t mutexCache;
 pthread_mutex_t mutexMemoriaPrincipal;
 
@@ -35,6 +38,5 @@ typedef struct{
 }t_pagina;
 
 #define TAM_ELM_TABLA_INV 12
-#define CANT_ELM_TABLA_INV 3
 
 #endif /* MEMORIA_H_ */
