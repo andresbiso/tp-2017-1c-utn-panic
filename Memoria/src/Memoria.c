@@ -49,6 +49,28 @@ void escribirEnEstrucAdmin(t_pagina* pagina){
 
 //FIN FUNCIONES SOBRE PAGINAS ADMS
 
+//HASH
+
+int32_t hash(int32_t pid,int32_t nroPag){
+	if(nroPag != 0)
+		return ((pid*nroPag)+(pid/nroPag));
+	else
+		return pid;
+}
+
+
+int32_t getHash(int32_t pid,int32_t nroPag){
+	int hashResult = hash(pid,nroPag);
+	int cantPags = (cantPaginasAdms()-1);//Es base 0 por eso le restamos uno a la cantidad de paginas
+	if (hashResult > cantPags) {
+	  return hashResult % cantPags;
+	}else{
+		return hashResult;
+	}
+}
+
+//HASH
+
 //INICIO COMANDOS
 
 void dumpCache(int size, char** functionAndParams){
@@ -213,7 +235,8 @@ void iniciarPrograma(char* data,int socket){
 	int32_t pid;
 	int32_t paginasRequeridas;
 	int32_t cantPaginasLibres = 0;
-	t_list* posiblesPags = list_create();
+	int32_t* paginasLibres = malloc(sizeof(int32_t)*cantPaginasAdms());
+	memset(paginasLibres,0,sizeof(int32_t));
 	int hayEspacio=0;
 	int i;
 
@@ -231,11 +254,9 @@ void iniciarPrograma(char* data,int socket){
 		t_pagina* pag = getPagina(i);
 		if(pag->pid==-1){
 			cantPaginasLibres++;
-			list_add(posiblesPags,(void*)pag->indice);
+			paginasLibres[pag->indice]=1;
 		}
 		free(pag);
-		if(cantPaginasLibres>=paginasRequeridas)
-			break;
 	}
 
 	if(cantPaginasLibres>=paginasRequeridas){
@@ -243,18 +264,34 @@ void iniciarPrograma(char* data,int socket){
 		hayEspacio=1;
 		i=0;
 		for(i=0;i<paginasRequeridas;i++){
-			int indice = (int)list_get(posiblesPags,i);
+			int hashIndice = getHash(pid,i);//Buscamos el indice correspondiente a ese pid y nroPagina
+			int indice=hashIndice;
+			int reverse=0;//Para buscar para atras
+
+			while(!paginasLibres[indice]){//Recorremos si no esta libre la pagina del hash hasta encontrar una que si
+				if(indice<(cantPaginasAdms()-1) && !reverse)
+					indice++;
+				else{
+					if(indice>=hashIndice){
+						indice=hashIndice;
+						reverse=1;
+					}
+					indice--;
+				}
+
+			}
 
 			t_pagina* pagina = malloc(sizeof(t_pagina));
 			*pagina = crearPagina(indice,pid,i);
 			escribirPaginaEnTabla(pagina);
+			paginasLibres[indice]=0;
 
 			free(pagina);
 		}
 	}
 
 	pthread_mutex_unlock(&mutexMemoriaPrincipal);
-	list_destroy(posiblesPags);
+	free(paginasLibres);
 
 	//TODO Avisar al kernel si pudo o no asignar segun la variable hayEspacio
 }
