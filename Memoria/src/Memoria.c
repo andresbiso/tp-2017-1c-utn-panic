@@ -4,6 +4,15 @@ void mostrarMensaje(char* mensaje,int socket){
 	printf("Error: %s \n",mensaje);
 }
 
+//COMMONS
+
+void showInScreenAndLog(char*message){
+	printf("%s\n\r",message);
+	log_info(logFile,message);
+}
+
+//COMMONS
+
 //INICIO FUNCIONES SOBRE PAGINAS ADMS
 
 int cantPaginasAdms(){
@@ -103,19 +112,23 @@ void dumpTabla(int size, char** functionAndParams){
 		freeElementsArray(functionAndParams,size);
 		return;
 	}
-	printf("----------------------\n\r");
-	printf("|  I  |  PID | NRO |\n\r");
-	printf("----------------------\n\r");
+	pthread_mutex_lock(&mutexLog);
+	showInScreenAndLog("----------------------");
+	showInScreenAndLog("|  I  |  PID | NRO |");
+	showInScreenAndLog("----------------------");
 
 	int i;
 	pthread_mutex_lock(&mutexMemoriaPrincipal);
 	for(i=0;i<cantPaginasAdms();i++){
 		t_pagina* pag = getPagina(i);
-		printf("|  %d  |  %d  |  %d  |\n\r",pag->indice,pag->pid,pag->numeroPag);
-		printf("----------------------\n\r");
+		char* message = string_from_format("|  %d  |  %d  |  %d  |",pag->indice,pag->pid,pag->numeroPag);
+		showInScreenAndLog(message);
+		showInScreenAndLog("----------------------");
 		free(pag);
+		free(message);
 	}
 	pthread_mutex_unlock(&mutexMemoriaPrincipal);
+	pthread_mutex_unlock(&mutexLog);
 
 	freeElementsArray(functionAndParams,size);
 }
