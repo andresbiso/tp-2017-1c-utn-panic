@@ -11,6 +11,7 @@
 #include <commons/config.h>
 #include <panicommons/panisocket.h>
 #include <commons/collections/queue.h>
+#include <panicommons/serializacion.h>
 
 int PuertoConsola;
 int PuertoCpu;
@@ -30,8 +31,6 @@ int StackSize;
 t_dictionary *semaforos;
 t_dictionary *variablesCompartidas;
 
-t_list *lista_cpus_conectadas;
-
 typedef enum {
 	FIFO = 0, RR = 1
 } modo_planificacion;
@@ -46,9 +45,15 @@ typedef struct {
 	t_queue* cola;
 } t_semaforo;
 
+modo_planificacion Modo;
+
+int ultimoPID;
+pthread_mutex_t	mutexPID;
+
 t_config* cargarConfiguracion(char* archivo);
 void cargar_varCompartidas();
 void crear_semaforos();
-
+t_pcb* armar_nuevo_pcb(char* codigo);
+void inicializar_programa(t_pcb* nuevo_pcb,char* codigo);
 
 #endif /* KERNEL_H_ */
