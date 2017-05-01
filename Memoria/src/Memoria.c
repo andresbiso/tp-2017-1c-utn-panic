@@ -8,7 +8,7 @@ void mostrarMensaje(char* mensaje,int socket){
 
 void showInScreenAndLog(char*message){
 	printf("%s\n\r",message);
-	log_info(logFile,message);
+	log_info(logDumpFile,message);
 }
 
 //COMMONS
@@ -112,7 +112,7 @@ void dumpTabla(int size, char** functionAndParams){
 		freeElementsArray(functionAndParams,size);
 		return;
 	}
-	pthread_mutex_lock(&mutexLog);
+	pthread_mutex_lock(&mutexLogDump);
 	showInScreenAndLog("----------------------");
 	showInScreenAndLog("|  I  |  PID | NRO |");
 	showInScreenAndLog("----------------------");
@@ -128,7 +128,7 @@ void dumpTabla(int size, char** functionAndParams){
 		free(message);
 	}
 	pthread_mutex_unlock(&mutexMemoriaPrincipal);
-	pthread_mutex_unlock(&mutexLog);
+	pthread_mutex_unlock(&mutexLogDump);
 
 	freeElementsArray(functionAndParams,size);
 }
@@ -346,6 +346,7 @@ int main(int argc, char** argv) {
 	}
 	t_config* configFile = cargarConfiguracion(argv[1]);
 	logFile = log_create("Memoria.log","Memoria",0,LOG_LEVEL_TRACE);
+	logDumpFile = log_create("MemoriaDump.log","Memoria",0,LOG_LEVEL_TRACE);
 
 	printf("PUERTO: %d\n",puerto);
 	printf("MARCOS: %d\n",marcos);
