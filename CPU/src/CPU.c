@@ -4,8 +4,11 @@
 #include <panicommons/panisocket.h>
 #include <commons/config.h>
 #include <commons/log.h>
-
 #include "CPU.h"
+
+void nuevoPCB(char* pcb){
+	pcb_ejecutandose = deserializar(pcb);
+}
 
 void mostrarMensaje(char* mensaje){
 	printf("Mensaje recibido: %s \n",mensaje);
@@ -55,7 +58,7 @@ void waitKernel(int socketKernel,t_dictionary* diccionarioFunciones){
 		void* funcion;
 		funcion = dictionary_get(diccionarioFunciones,paquete->key);
 		if(funcion != NULL){
-			correrFuncion(funcion,paquete->datos);
+			correrFuncion(funcion, paquete->datos, paquete->key, socketKernel);
 		}else{
 			perror("Key de funcion no encontrada");
 		}
@@ -82,6 +85,7 @@ int main(int argc, char** argv) {
 	t_dictionary* diccionarioFunciones = dictionary_create();
 	dictionary_put(diccionarioFunciones,"KEY_PRINT",&mostrarMensaje);
 	dictionary_put(diccionarioFunciones,"ERROR_FUNC",&mostrarMensaje);
+	dictionary_put(diccionarioFunciones,"NUEVO_PCB",&nuevoPCB);
 
 	t_log* log = log_create("cpu.log","CPU",0,LOG_LEVEL_TRACE);
 
