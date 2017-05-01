@@ -342,9 +342,11 @@ void iniciarPrograma(char* data,int socket){
 	memcpy(&pid,(void*)data,sizeof(int32_t));
 	memcpy(&paginasRequeridas,(void*)data+sizeof(int32_t),sizeof(int32_t));
 
+	char*message=string_from_format("Pedido de inicio de programa PID:%d PAGS:%d",pid,paginasRequeridas);
 	pthread_mutex_lock(&mutexLog);
-	log_info(logFile,string_from_format("Pedido de inicio de programa PID:%d PAGS:%d",pid,paginasRequeridas));
+	log_info(logFile,message);
 	pthread_mutex_unlock(&mutexLog);
+	free(message);
 
 	hayEspacio=asignarPaginasPID(pid,paginasRequeridas,false);
 
@@ -367,9 +369,11 @@ void asignarPaginas(char* data,int socket){
 	memcpy(&pid,(void*)data,sizeof(int32_t));
 	memcpy(&paginasRequeridas,(void*)data+sizeof(int32_t),sizeof(int32_t));
 
+	char* message = string_from_format("Pedido de paginas de programa PID:%d PAGS:%d",pid,paginasRequeridas);
 	pthread_mutex_lock(&mutexLog);
-	log_info(logFile,string_from_format("Pedido de paginas de programa PID:%d PAGS:%d",pid,paginasRequeridas));
+	log_info(logFile,message);
 	pthread_mutex_unlock(&mutexLog);
+	free(message);
 
 	hayEspacio=asignarPaginasPID(pid,paginasRequeridas,false);
 
