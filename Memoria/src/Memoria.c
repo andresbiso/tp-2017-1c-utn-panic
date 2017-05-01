@@ -234,8 +234,11 @@ void sizePID(int size, char** functionAndParams){
 		freeElementsArray(functionAndParams,size);
 		return;
 	}
-	//TODO
-	printf("TODO size pid\n\r");
+	int32_t pid = atoi(functionAndParams[1]);
+
+	pthread_mutex_lock(&mutexMemoriaPrincipal);
+	printf("Cantidad de Paginas :%d\n\r",cantPaginasPID(pid));
+	pthread_mutex_unlock(&mutexMemoriaPrincipal);
 
 	freeElementsArray(functionAndParams,size);
 }
@@ -361,12 +364,14 @@ void asignarPaginas(char* data,int socket){
 
 	cantPaginasLibres=paginasLibres(pagLibres);
 
-	if(cantPaginasLibres>=paginasRequeridas)
+	if(cantPaginasLibres>=paginasRequeridas){
+		hayEspacio=1;
 		asignarPaginasPID(pid,paginasRequeridas,pagLibres,false);
+	}
 
 	pthread_mutex_unlock(&mutexMemoriaPrincipal);
 	free(pagLibres);
-
+	//TODO Avisarle al kernel que pasó segun la variable hayEspacio
 
 }
 
