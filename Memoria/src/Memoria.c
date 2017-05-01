@@ -26,7 +26,6 @@ int32_t hash(int32_t pid,int32_t nroPag){
 		return pid;
 }
 
-
 int32_t getHash(int32_t pid,int32_t nroPag){
 	int hashResult = hash(pid,nroPag);
 	int cantPags = (cantPaginasAdms()-1);//Es base 0 por eso le restamos uno a la cantidad de paginas
@@ -334,6 +333,8 @@ t_config* cargarConfiguracion(char * nombreArchivo){
 	return configFile;
 }
 
+//INICIO INTERFAZ MEMORIA
+
 void iniciarPrograma(char* data,int socket){
 	int32_t pid;
 	int32_t paginasRequeridas;
@@ -384,6 +385,14 @@ void asignarPaginas(char* data,int socket){
 void finalizarPrograma(char* data,int socket){
 	//TODO
 }
+
+void getMarcos(char* data,int socket){
+	char* buffer = string_itoa(marcoSize);
+	empaquetarEnviarMensaje(socket,"RECB_MARCOS",1,buffer);
+	free(buffer);
+}
+
+//FIN INTERFAZ MEMORIA
 
 void crearEstructurasAdministrativas(){
 	int pagAdminis = cantPaginasAdms();
@@ -441,6 +450,7 @@ int main(int argc, char** argv) {
 	dictionary_put(diccionarioFunciones,"ALMC_BYTES",&almacenarBytes);
 	dictionary_put(diccionarioFunciones,"ASIG_PAGES",&asignarPaginas);
 	dictionary_put(diccionarioFunciones,"FINZ_PROGM",&finalizarPrograma);
+	dictionary_put(diccionarioFunciones,"GET_MARCOS",&getMarcos);
 
 	t_dictionary* diccionarioHandshakes = dictionary_create();
 	dictionary_put(diccionarioHandshakes,"HCPME","HMECP");
@@ -456,13 +466,20 @@ int main(int argc, char** argv) {
 	int socket = crearHostMultiConexion(puerto);
 	correrServidorThreads(socket,NULL,NULL,diccionarioFunciones,diccionarioHandshakes);
 
+	//free
 	dictionary_destroy(diccionarioFunciones);
 	dictionary_destroy(diccionarioHandshakes);
+
 	pthread_mutex_destroy(&mutexCache);
 	pthread_mutex_destroy(&mutexMemoriaPrincipal);
 	pthread_mutex_destroy(&mutexLog);
+	pthread_mutex_destroy(&mutexLogDump);
+
 	config_destroy(configFile);
+
 	log_destroy(logFile);
+	log_destroy(logDumpFile);
+
 	free(bloqueMemoria);
 	free(bloqueCache);
 
