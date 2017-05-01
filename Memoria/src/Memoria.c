@@ -11,52 +11,11 @@ void showInScreenAndLog(char*message){
 	log_info(logDumpFile,message);
 }
 
-//COMMONS
-
-//INICIO FUNCIONES SOBRE PAGINAS ADMS
-
 int cantPaginasAdms(){
 	return divAndRoundUp(TAM_ELM_TABLA_INV*marcos,marcoSize);
 }
 
-t_pagina crearPagina(int32_t indice,int32_t pid,int32_t numeroPag){
-	t_pagina pagina;
-	pagina.indice = indice;
-	pagina.pid = pid;
-	pagina.numeroPag = numeroPag;
-	return pagina;
-}
-
-t_pagina* getPagina(int indice){
-	int offset = indice*sizeof(t_pagina);
-	t_pagina* pagina = malloc(sizeof(t_pagina));
-	memcpy(&pagina->indice,bloqueMemoria+offset,sizeof(int32_t));
-	offset+=sizeof(int32_t);
-	memcpy(&pagina->pid,bloqueMemoria+offset,sizeof(int32_t));
-	offset+=sizeof(int32_t);
-	memcpy(&pagina->numeroPag,bloqueMemoria+offset,sizeof(int32_t));
-	return pagina;
-}
-
-void escribirPaginaEnTabla(t_pagina* pagina){
-	int offset = (pagina->indice*sizeof(t_pagina))+sizeof(int32_t);//se agrega el tamaño del indice porque no se vuelve a escribir
-	memcpy(bloqueMemoria+offset,&pagina->pid,sizeof(int32_t));
-	offset+=sizeof(int32_t);
-	memcpy(bloqueMemoria+offset,&pagina->numeroPag,sizeof(int32_t));
-}
-
-void escribirEnEstrucAdmin(t_pagina* pagina){
-	int offset = pagina->indice*sizeof(t_pagina);
-	pthread_mutex_lock(&mutexMemoriaPrincipal);
-	memcpy(bloqueMemoria+offset,(void *)&pagina->indice,sizeof(int32_t));
-	offset+=sizeof(int32_t);
-	memcpy(bloqueMemoria+offset,(void *)&pagina->pid,sizeof(int32_t));
-	offset+=sizeof(int32_t);
-	memcpy(bloqueMemoria+offset,(void *)&pagina->numeroPag,sizeof(int32_t));
-	pthread_mutex_unlock(&mutexMemoriaPrincipal);
-}
-
-//FIN FUNCIONES SOBRE PAGINAS ADMS
+//COMMONS
 
 //HASH
 
@@ -79,6 +38,103 @@ int32_t getHash(int32_t pid,int32_t nroPag){
 }
 
 //HASH
+
+//INICIO FUNCIONES SOBRE PAGINAS ADMS
+
+t_pagina crearPagina(int32_t indice,int32_t pid,int32_t numeroPag){
+	t_pagina pagina;
+	pagina.indice = indice;
+	pagina.pid = pid;
+	pagina.numeroPag = numeroPag;
+	return pagina;
+}
+
+t_pagina* getPagina(int indice){
+	int offset = indice*sizeof(t_pagina);
+	t_pagina* pagina = malloc(sizeof(t_pagina));
+	memcpy(&pagina->indice,bloqueMemoria+offset,sizeof(int32_t));
+	offset+=sizeof(int32_t);
+	memcpy(&pagina->pid,bloqueMemoria+offset,sizeof(int32_t));
+	offset+=sizeof(int32_t);
+	memcpy(&pagina->numeroPag,bloqueMemoria+offset,sizeof(int32_t));
+	return pagina;
+}
+
+int paginasLibres(int *paginasLibres){
+	int cantPaginasLibres=0;
+	int i;
+	for(i=0;i<cantPaginasAdms();i++){
+		t_pagina* pag = getPagina(i);
+		if(pag->pid==-1){
+			cantPaginasLibres++;
+			paginasLibres[pag->indice]=1;
+		}
+		free(pag);
+	}
+	return cantPaginasLibres;
+}
+
+int cantPaginasPID(int32_t pid){
+	int cantidad=0;
+	int i;
+	for(i=0;i<cantPaginasAdms();i++){
+		t_pagina* pag = getPagina(i);
+		if(pag->pid==pid)
+			cantidad++;
+		free(pag);
+	}
+	return cantidad;
+}
+
+void escribirPaginaEnTabla(t_pagina* pagina){
+	int offset = (pagina->indice*sizeof(t_pagina))+sizeof(int32_t);//se agrega el tamaño del indice porque no se vuelve a escribir
+	memcpy(bloqueMemoria+offset,&pagina->pid,sizeof(int32_t));
+	offset+=sizeof(int32_t);
+	memcpy(bloqueMemoria+offset,&pagina->numeroPag,sizeof(int32_t));
+}
+
+void escribirEnEstrucAdmin(t_pagina* pagina){
+	int offset = pagina->indice*sizeof(t_pagina);
+	pthread_mutex_lock(&mutexMemoriaPrincipal);
+	memcpy(bloqueMemoria+offset,(void *)&pagina->indice,sizeof(int32_t));
+	offset+=sizeof(int32_t);
+	memcpy(bloqueMemoria+offset,(void *)&pagina->pid,sizeof(int32_t));
+	offset+=sizeof(int32_t);
+	memcpy(bloqueMemoria+offset,(void *)&pagina->numeroPag,sizeof(int32_t));
+	pthread_mutex_unlock(&mutexMemoriaPrincipal);
+}
+
+void asignarPaginasPID(int32_t pid,int32_t paginasRequeridas,int* pagLibres,bool isNew){
+	int i;
+	int offset = isNew?0:cantPaginasPID(pid);//Se usa en el caso de asignar nuevas paginas ->Para contar desde donde se quedo
+	for(i=0;i<paginasRequeridas;i++){
+		int hashIndice = getHash(pid,offset+i);//Buscamos el indice correspondiente a ese pid y nroPagina
+		int indice=hashIndice;
+		int reverse=0;//Para buscar para atras
+
+		while(!pagLibres[indice]){//Recorremos si no esta libre la pagina del hash hasta encontrar una que si
+			if(indice<(cantPaginasAdms()-1) && !reverse)
+				indice++;
+			else{
+				if(indice>=hashIndice){
+					indice=hashIndice;
+					reverse=1;
+				}
+				indice--;
+			}
+
+		}
+
+		t_pagina* pagina = malloc(sizeof(t_pagina));
+		*pagina = crearPagina(indice,pid,offset+i);
+		escribirPaginaEnTabla(pagina);
+		pagLibres[indice]=0;
+
+		free(pagina);
+	}
+}
+
+//FIN FUNCIONES SOBRE PAGINAS ADMS
 
 //INICIO COMANDOS
 
@@ -248,10 +304,9 @@ void iniciarPrograma(char* data,int socket){
 	int32_t pid;
 	int32_t paginasRequeridas;
 	int32_t cantPaginasLibres = 0;
-	int32_t* paginasLibres = malloc(sizeof(int32_t)*cantPaginasAdms());
-	memset(paginasLibres,0,sizeof(int32_t));
+	int32_t* pagLibres = malloc(sizeof(int32_t)*cantPaginasAdms());
+	memset(pagLibres,0,sizeof(int32_t));
 	int hayEspacio=0;
-	int i;
 
 	memcpy(&pid,(void*)data,sizeof(int32_t));
 	memcpy(&paginasRequeridas,(void*)data+sizeof(int32_t),sizeof(int32_t));
@@ -263,48 +318,16 @@ void iniciarPrograma(char* data,int socket){
 	sleep(retardoMemoria/1000);//pasamos a milisegundos
 	pthread_mutex_lock(&mutexMemoriaPrincipal);
 
-	for(i=0;i<cantPaginasAdms();i++){
-		t_pagina* pag = getPagina(i);
-		if(pag->pid==-1){
-			cantPaginasLibres++;
-			paginasLibres[pag->indice]=1;
-		}
-		free(pag);
-	}
+	cantPaginasLibres=paginasLibres(pagLibres);
 
 	if(cantPaginasLibres>=paginasRequeridas){
 		//Hay paginas suficientes
 		hayEspacio=1;
-		i=0;
-		for(i=0;i<paginasRequeridas;i++){
-			int hashIndice = getHash(pid,i);//Buscamos el indice correspondiente a ese pid y nroPagina
-			int indice=hashIndice;
-			int reverse=0;//Para buscar para atras
-
-			while(!paginasLibres[indice]){//Recorremos si no esta libre la pagina del hash hasta encontrar una que si
-				if(indice<(cantPaginasAdms()-1) && !reverse)
-					indice++;
-				else{
-					if(indice>=hashIndice){
-						indice=hashIndice;
-						reverse=1;
-					}
-					indice--;
-				}
-
-			}
-
-			t_pagina* pagina = malloc(sizeof(t_pagina));
-			*pagina = crearPagina(indice,pid,i);
-			escribirPaginaEnTabla(pagina);
-			paginasLibres[indice]=0;
-
-			free(pagina);
-		}
+		asignarPaginasPID(pid,paginasRequeridas,pagLibres,true);
 	}
 
 	pthread_mutex_unlock(&mutexMemoriaPrincipal);
-	free(paginasLibres);
+	free(pagLibres);
 
 	//TODO Avisar al kernel si pudo o no asignar segun la variable hayEspacio
 }
@@ -318,7 +341,33 @@ void almacenarBytes(char* data,int socket){
 }
 
 void asignarPaginas(char* data,int socket){
-	//TODO
+	int32_t pid;
+	int32_t paginasRequeridas;
+	int32_t cantPaginasLibres = 0;
+	int32_t* pagLibres = malloc(sizeof(int32_t)*cantPaginasAdms());
+	memset(pagLibres,0,sizeof(int32_t));
+	int hayEspacio=0;
+	int i;
+
+	memcpy(&pid,(void*)data,sizeof(int32_t));
+	memcpy(&paginasRequeridas,(void*)data+sizeof(int32_t),sizeof(int32_t));
+
+	pthread_mutex_lock(&mutexLog);
+	log_info(logFile,string_from_format("Pedido de paginas de programa PID:%d PAGS:%d",pid,paginasRequeridas));
+	pthread_mutex_unlock(&mutexLog);
+
+	sleep(retardoMemoria/1000);//pasamos a milisegundos
+	pthread_mutex_lock(&mutexMemoriaPrincipal);
+
+	cantPaginasLibres=paginasLibres(pagLibres);
+
+	if(cantPaginasLibres>=paginasRequeridas)
+		asignarPaginasPID(pid,paginasRequeridas,pagLibres,false);
+
+	pthread_mutex_unlock(&mutexMemoriaPrincipal);
+	free(pagLibres);
+
+
 }
 
 void finalizarPrograma(char* data,int socket){
