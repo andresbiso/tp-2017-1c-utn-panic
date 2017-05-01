@@ -355,7 +355,46 @@ void iniciarPrograma(char* data,int socket){
 }
 
 void solicitarBytes(char* data,int socket){
-	//TODO
+	//TODO Hay que desearilizar data
+	//TODO Hay que buscar en cache primero
+
+	int32_t pid=0;
+	int32_t pagina=0;
+	int32_t offsetPagina=0;
+	int32_t tamanio=10;
+
+	int32_t hashIndice = getHash(pid,pagina);
+
+	pthread_mutex_lock(&mutexMemoriaPrincipal);
+	t_pagina* pag= getPagina(hashIndice);
+	int indice=hashIndice;
+	int reverse=0;//Para buscar para atras
+
+	while(pag->pid!=pid && pag->numeroPag!=pagina){//Recorremos si la pagina que retorna el hash no es la que corresponde
+		free(pag);
+		if(indice<(cantPaginasAdms()-1) && !reverse)
+			indice++;
+		else{
+			if(indice>=hashIndice){
+				indice=hashIndice;
+				reverse=1;
+			}
+			indice--;
+		}
+		pag=getPagina(indice);
+	}
+
+	int32_t offsetEstrucAdmin=cantPaginasAdms()*TAM_ELM_TABLA_INV;
+	int32_t offsetHastaData= (marcoSize*pagina)+offsetPagina;
+	int32_t offsetTotal = offsetEstrucAdmin+offsetHastaData;
+
+	char* dataRecuperada = malloc(tamanio);
+	memcpy(dataRecuperada,bloqueMemoria+offsetTotal,tamanio);
+
+	//Envio de la data en dataRecuperada a socket
+	free(pag);
+	pthread_mutex_unlock(&mutexMemoriaPrincipal);
+
 }
 
 void almacenarBytes(char* data,int socket){
