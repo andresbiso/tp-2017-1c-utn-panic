@@ -133,37 +133,28 @@ t_pcb* deserializar(char* pcbs)
 	return pcb;
 }
 
-t_pedido_inicializar_serializado* serializar_pedido_inicializar(t_pedido_inicializar *pedido){
-	t_pedido_inicializar_serializado *respuesta = malloc(sizeof(t_pedido_inicializar_serializado));
+char* serializar_pedido_inicializar(t_pedido_inicializar *pedido){
+	char *respuesta = malloc(sizeof(t_pedido_inicializar));
 
-	int tamanoidprograma = sizeof(pedido->idPrograma);
-	int tamanopagsrequeridas = sizeof(pedido->pagRequeridas);
-	int tamanocodigo = (strlen(pedido->codigo)+1);
-
-	respuesta->tamano = tamanoidprograma+ tamanopagsrequeridas + tamanocodigo;
-	respuesta->pedido_serializado = malloc(respuesta->tamano);
+	int32_t tamanoidprograma = sizeof(pedido->idPrograma);
+	int32_t tamanopagsrequeridas = sizeof(pedido->pagRequeridas);
 
 	int offset = 0;
-	memcpy(respuesta->pedido_serializado,&pedido->idPrograma,tamanoidprograma);
-	offset += tamanoidprograma;
-
-	memcpy(respuesta->pedido_serializado+offset,&pedido->pagRequeridas,tamanopagsrequeridas);
+	memcpy(respuesta,&(pedido->pagRequeridas),tamanopagsrequeridas);
 	offset += tamanopagsrequeridas;
 
-	strcpy(respuesta->pedido_serializado+offset,pedido->codigo);
+	memcpy(respuesta+offset,&(pedido->idPrograma),tamanoidprograma);
 
 	return respuesta;
 }
 
 t_pedido_inicializar* deserializar_pedido_inicializar(char *pedido_serializado){
 	t_pedido_inicializar *respuesta = malloc(sizeof(t_pedido_inicializar));
-
+	//FIXME no deserializa bien
 	int offset = 0;
-	respuesta->idPrograma = *((int32_t*)pedido_serializado);
-	offset += sizeof(respuesta->idPrograma);
-	respuesta->pagRequeridas = *((int32_t*)(pedido_serializado+offset));
+	memcpy(&respuesta->pagRequeridas,(void*)pedido_serializado,sizeof(int32_t));
 	offset += sizeof(respuesta->pagRequeridas);
-	respuesta->codigo = strdup(pedido_serializado+offset);
+	memcpy(&respuesta->idPrograma,(void*)pedido_serializado+offset,sizeof(int32_t));
 
 	return respuesta;
 }

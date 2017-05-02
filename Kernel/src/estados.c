@@ -55,7 +55,7 @@ void moverA_colaNew(t_pcb *pcb)
 		return;
 
 	queue_push(colaNew, pcb);
-	log_debug(logEstados, "El PCB: %d paso a la cola New",pcb->pid);
+	//log_debug(logEstados, "El PCB: %d paso a la cola New",pcb->pid); TODO inicializar logEstados
 }
 
 void moverA_colaExit(t_pcb *pcb)

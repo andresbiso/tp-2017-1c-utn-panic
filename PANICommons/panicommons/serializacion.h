@@ -55,18 +55,11 @@ typedef struct
 {
 	int32_t idPrograma;
 	int32_t pagRequeridas;
-	char* codigo;
-}t_pedido_inicializar;
-
-typedef struct
-{
-	int32_t tamano;
-	char* pedido_serializado;
-}t_pedido_inicializar_serializado;
+} __attribute__((__packed__)) t_pedido_inicializar;
 
 t_pcb_serializado serializar(t_pcb pcb);
 t_pcb* deserializar(char* pcbs);
 t_pedido_inicializar* deserializar_pedido_inicializar(char *pedido_serializado);
-t_pedido_inicializar_serializado* serializar_pedido_inicializar(t_pedido_inicializar *pedido);
+char* serializar_pedido_inicializar(t_pedido_inicializar *pedido);
 
 #endif /* PANICOMMONS_SERIALIZACION_H_ */

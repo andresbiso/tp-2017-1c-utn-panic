@@ -12,6 +12,7 @@
 #include <panicommons/panisocket.h>
 #include <commons/collections/queue.h>
 #include <panicommons/serializacion.h>
+#include <panicommons/panicommons.h>
 
 int PuertoConsola;
 int PuertoCpu;
@@ -54,6 +55,6 @@ t_config* cargarConfiguracion(char* archivo);
 void cargar_varCompartidas();
 void crear_semaforos();
 t_pcb* armar_nuevo_pcb(char* codigo);
-void inicializar_programa(t_pcb* nuevo_pcb,char* codigo);
+void inicializar_programa(t_pcb* nuevo_pcb);
 
 #endif /* KERNEL_H_ */

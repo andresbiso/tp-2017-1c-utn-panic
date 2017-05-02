@@ -336,21 +336,17 @@ t_config* cargarConfiguracion(char * nombreArchivo){
 //INICIO INTERFAZ MEMORIA
 
 void iniciarPrograma(char* data,int socket){
-	int32_t pid;
-	int32_t paginasRequeridas;
 	int hayEspacio;
+	t_pedido_inicializar* pedido = deserializar_pedido_inicializar(data);
 
-	memcpy(&pid,(void*)data,sizeof(int32_t));
-	memcpy(&paginasRequeridas,(void*)data+sizeof(int32_t),sizeof(int32_t));
-
-	char*message=string_from_format("Pedido de inicio de programa PID:%d PAGS:%d",pid,paginasRequeridas);
+	char*message=string_from_format("Pedido de inicio de programa PID:%d PAGS:%d",pedido->idPrograma,pedido->pagRequeridas);
 	pthread_mutex_lock(&mutexLog);
 	log_info(logFile,message);
 	pthread_mutex_unlock(&mutexLog);
 	free(message);
 
-	hayEspacio=asignarPaginasPID(pid,paginasRequeridas,false);
-
+	hayEspacio=asignarPaginasPID(pedido->idPrograma,pedido->pagRequeridas,false);
+	free(pedido);
 	//TODO Avisar al kernel si pudo o no asignar segun la variable hayEspacio
 }
 
@@ -402,21 +398,19 @@ void almacenarBytes(char* data,int socket){
 }
 
 void asignarPaginas(char* data,int socket){
-	int32_t pid;
-	int32_t paginasRequeridas;
 	int hayEspacio;
 
-	memcpy(&pid,(void*)data,sizeof(int32_t));
-	memcpy(&paginasRequeridas,(void*)data+sizeof(int32_t),sizeof(int32_t));
+	t_pedido_inicializar* pedido = malloc(sizeof(t_pedido_inicializar));
+	pedido = deserializar_pedido_inicializar(data);
 
-	char* message = string_from_format("Pedido de paginas de programa PID:%d PAGS:%d",pid,paginasRequeridas);
+	char* message = string_from_format("Pedido de paginas de programa PID:%d PAGS:%d",pedido->idPrograma,pedido->pagRequeridas);
 	pthread_mutex_lock(&mutexLog);
 	log_info(logFile,message);
 	pthread_mutex_unlock(&mutexLog);
 	free(message);
 
-	hayEspacio=asignarPaginasPID(pid,paginasRequeridas,false);
-
+	hayEspacio=asignarPaginasPID(pedido->idPrograma,pedido->pagRequeridas,false);
+	free(pedido);
 	//TODO Avisarle al kernel que pasó segun la variable hayEspacio
 
 }
@@ -427,7 +421,7 @@ void finalizarPrograma(char* data,int socket){
 
 void getMarcos(char* data,int socket){
 	char* buffer = string_itoa(marcoSize);
-	empaquetarEnviarMensaje(socket,"RECB_MARCOS",1,buffer);
+	empaquetarEnviarMensaje(socket,"RECB_MARCOS",4,1,buffer);
 	free(buffer);
 }
 

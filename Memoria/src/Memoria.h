@@ -17,6 +17,7 @@
 #include <pthread.h>
 #include <panicommons/paniconsole.h>
 #include <panicommons/panicommons.h>
+#include <panicommons/serializacion.h>
 #include <math.h>
 
 int puerto;

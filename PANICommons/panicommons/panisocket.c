@@ -9,7 +9,7 @@
 
 int handshake(int socket, char * keyEnviada, char * keyEsperada){
 	//TODO loguear handshake
-	empaquetarEnviarMensaje(socket,"HANDSHAKE",1,keyEnviada);
+	empaquetarEnviarMensaje(socket,"HANDSHAKE",strlen(keyEnviada),1,keyEnviada);
 
 	t_package* package;
 	package = recibirPaquete(socket,NULL);
@@ -28,25 +28,27 @@ void realizarHandshake(int socket, char* keyRecibida,t_dictionary* diccionarioHa
 	void* returnValue = dictionary_get(diccionarioHandshakes,keyRecibida);
 
 	if(returnValue != NULL)
-		empaquetarEnviarMensaje(socket,(char*)returnValue,1,(char*)returnValue);
+		empaquetarEnviarMensaje(socket,(char*)returnValue,strlen((char*)returnValue),1,(char*)returnValue);
 	else
-		empaquetarEnviarMensaje(socket,"HD_NOT",1,"HD_NOT");
+		empaquetarEnviarMensaje(socket,"HD_NOT",6,1,"HD_NOT");
 
 }
 
 uint32_t tamanioPaquete(t_package paquete){
-	return paquete.longitud+sizeof(uint32_t);
+	return paquete.longitudDatos+strlen(paquete.key)+1+sizeof(uint32_t);//+1 poque suma el separador
 }
 
 char*empaquetar(t_package* paquete){
-	char* paqueteSalida =  (char*)malloc(sizeof(uint32_t)+paquete->longitud);
+	uint32_t tamPaquete = tamanioPaquete(*paquete);
+	char* paqueteSalida =  (char*)malloc(tamPaquete);
 	if(paqueteSalida){
-		memcpy(paqueteSalida, &paquete->longitud, sizeof(uint32_t));
+		memcpy(paqueteSalida, &tamPaquete, sizeof(uint32_t));
 		char* keyArguments = string_new();
 		string_append(&keyArguments,paquete->key);
 		string_append(&keyArguments,";");
-		string_append(&keyArguments,paquete->datos);
-		memcpy(paqueteSalida+sizeof(uint32_t),keyArguments,paquete->longitud);
+		memcpy(paqueteSalida+sizeof(uint32_t),keyArguments,strlen(keyArguments));
+		int offset=sizeof(uint32_t)+strlen(keyArguments);
+		memcpy(paqueteSalida+offset,paquete->datos,paquete->longitudDatos);
 		free(keyArguments);
 	}
 	return paqueteSalida;
@@ -72,7 +74,7 @@ int enviarMensaje(int socket, char * mensaje,uint32_t tamanioPaquete){
 }
 
 
-int empaquetarEnviarMensaje(int socketServidor, char* key, int cantParams, ...){
+int empaquetarEnviarMensaje(int socketServidor, char* key,int longitudDatos, int cantParams, ...){
 
 	va_list arguments;
 	int i;
@@ -86,6 +88,8 @@ int empaquetarEnviarMensaje(int socketServidor, char* key, int cantParams, ...){
 		string_append(&cuerpo, "MULTIPARAM");
 	string_append(&cuerpo, ";");
 
+	int longKey=strlen(cuerpo);
+
 	for (i = 0; i < cantParams; i++){
 		argumento = va_arg(arguments, char*);
 		string_append(&cuerpo, argumento);
@@ -96,7 +100,7 @@ int empaquetarEnviarMensaje(int socketServidor, char* key, int cantParams, ...){
 	va_end(arguments);
 
 	t_package *paquete = malloc(sizeof(t_package));
-	*paquete = crearPaquete(cuerpo,strlen(cuerpo));
+	*paquete = crearPaquete(cuerpo,longitudDatos+longKey+(cantParams-1));//(cantParams-1) para sumar el separador
 
 	free(cuerpo);
 
@@ -133,9 +137,12 @@ int aceptarClienteMultiConexion(int socket,fd_set* fds, int* fdmax) {
 t_package crearPaquete(char*datos,uint32_t longitud){
 	t_package paquete;
 	char ** keyDatos = string_split(datos, ";");
-	paquete.datos=keyDatos[1];
 	paquete.key=keyDatos[0];
-	paquete.longitud=longitud;
+	paquete.longitudDatos=abs(longitud-(strlen(paquete.key)+1));//A la longitud se le resta la key ya que la incluye
+	paquete.datos = malloc(paquete.longitudDatos);
+	memcpy(paquete.datos,datos+strlen(paquete.key)+1,paquete.longitudDatos);
+	paquete.datos[paquete.longitudDatos]='\0';
+	free(keyDatos[1]);
 	free(keyDatos);
 	return paquete;
 }
@@ -144,7 +151,7 @@ t_package crearPaqueteDeError(){
 	t_package paquete;
 	paquete.datos="Error";
 	paquete.key="ERROR_FUNC";
-	paquete.longitud=5;
+	paquete.longitudDatos=5;
 	return paquete;
 }
 
@@ -167,14 +174,14 @@ t_package* recibirPaquete(int socket, void (*desconexion) (int)){
 			return paquete;
 	}
 
-	char* data = (char *)malloc(longitud+1);
+	char* data = (char *)malloc(longitud-sizeof(uint32_t)+1);
 
 	if(data == NULL)
 		return paquete;
 
 	recibidos=0;
 
-	while(recibidos<longitud){
+	while(recibidos<(longitud-sizeof(uint32_t))){
 		ssize_t recibido = recv(socket, data + recibidos, longitud - recibidos, 0);
 		if(recibido <= 0){
 			if(recibido == -1)
@@ -186,7 +193,7 @@ t_package* recibirPaquete(int socket, void (*desconexion) (int)){
 		recibidos+=recibido;
 	}
 	data[recibidos] = '\0';
-	*paquete = crearPaquete(data,longitud);
+	*paquete = crearPaquete(data,(longitud-sizeof(int32_t)));// (sizeof(int32_t)-1) se le resta el tamanio de la longitud y 1 por el separador
 	free(data);
 	return paquete;
 }

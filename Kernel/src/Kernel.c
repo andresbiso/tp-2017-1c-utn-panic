@@ -17,13 +17,7 @@ int socketMemoria;
 int socketFS;
 int socketCPU;
 int socketcpuConectadas;
-int tamanio_pag_memoria;
-
-int roundup(x, y){
-   int a = (x -1)/y +1;
-
-   return a;
-}
+int tamanio_pag_memoria=256;//TODO obtener tamanio de pagina
 
 int obtenerEIncrementarPID()
 {
@@ -75,7 +69,7 @@ void nuevoPrograma(char* codigo, int socket){
 
 	moverA_colaNew(nuevo_pcb);
 
-	inicializar_programa(nuevo_pcb,codigo);
+	inicializar_programa(nuevo_pcb);//TODO cuando responde memoria guardar el codigo
 }
 
 t_pcb* armar_nuevo_pcb(char* codigo){
@@ -102,7 +96,7 @@ t_pcb* armar_nuevo_pcb(char* codigo){
 		nvopcb->indice_codigo[i] = posicion_nueva_instruccion;
 	}
 
-	int result_pag = roundup(sizeof(codigo), tamanio_pag_memoria);
+	int result_pag = divAndRoundUp(sizeof(codigo), tamanio_pag_memoria);
 	nvopcb->cant_pags_totales=(result_pag + StackSize);
 
 	nvopcb->tamano_etiquetas=metadata->etiquetas_size;
@@ -124,19 +118,17 @@ t_pcb* armar_nuevo_pcb(char* codigo){
 	return nvopcb;
 }
 
-void inicializar_programa(t_pcb* nuevo_pcb,char* codigo){
+void inicializar_programa(t_pcb* nuevo_pcb){
 	t_pedido_inicializar pedido_inicializar;
 
-	pedido_inicializar.idPrograma = nuevo_pcb->pid;
 	pedido_inicializar.pagRequeridas = nuevo_pcb->cant_pags_totales;
-	pedido_inicializar.codigo = codigo;
+	pedido_inicializar.idPrograma = nuevo_pcb->pid;
 
-	t_pedido_inicializar_serializado *inicializarserializado = serializar_pedido_inicializar(&pedido_inicializar);
+	char *pedido_serializado = serializar_pedido_inicializar(&pedido_inicializar);
 
-	empaquetarEnviarMensaje(socketMemoria,"INIT_PROGM",1,inicializarserializado);
+	empaquetarEnviarMensaje(socketMemoria,"INIT_PROGM",sizeof(t_pedido_inicializar),1,pedido_serializado);
 
-	free(inicializarserializado->pedido_serializado);
-	free(inicializarserializado);
+	free(pedido_serializado);
 }
 
 void nuevaConexionCPU(int sock){
@@ -150,9 +142,6 @@ void nuevaConexionCPU(int sock){
 
 void mostrarMensaje(char* mensaje,int socket){
 	printf("Mensaje recibido: %s \n",mensaje);
-	empaquetarEnviarMensaje(socketMemoria,"KEY_PRINT",1,mensaje);
-	empaquetarEnviarMensaje(socketcpuConectadas,"KEY_PRINT",1,mensaje);
-	empaquetarEnviarMensaje(socketFS,"KEY_PRINT",1,mensaje);
 }
 
 void correrServidor(void* arg){
@@ -166,7 +155,6 @@ int main(int argc, char** argv) {
 	t_config* configFile= cargarConfiguracion(argv[1]);
 
     t_dictionary* diccionarioFunciones = dictionary_create();
-    dictionary_put(diccionarioFunciones,"KEY_PRINT",&mostrarMensaje);
     dictionary_put(diccionarioFunciones,"ERROR_FUNC",&mostrarMensaje);
     dictionary_put(diccionarioFunciones,"NUEVO_PROG",&nuevoPrograma);
 
@@ -195,7 +183,7 @@ int main(int argc, char** argv) {
     cargar_varCompartidas();
     crear_colas();
 
-    ultimoPID = 0;
+    ultimoPID = 1;
 
     if ((socketMemoria = conectar(IpMemoria,PuertoMemoria)) == -1)
     	exit(EXIT_FAILURE);
