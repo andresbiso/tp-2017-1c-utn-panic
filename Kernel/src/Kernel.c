@@ -126,7 +126,7 @@ void inicializar_programa(t_pcb* nuevo_pcb){
 
 	char *pedido_serializado = serializar_pedido_inicializar(&pedido_inicializar);
 
-	empaquetarEnviarMensaje(socketMemoria,"INIT_PROGM",sizeof(t_pedido_inicializar),1,pedido_serializado);
+	empaquetarEnviarMensaje(socketMemoria,"INIT_PROGM",sizeof(t_pedido_inicializar),pedido_serializado);
 
 	free(pedido_serializado);
 }

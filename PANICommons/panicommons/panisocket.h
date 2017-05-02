@@ -43,13 +43,13 @@ void realizarHandshake(int socket, char* keyRecibida,t_dictionary* diccionarioHa
 uint32_t tamanioPaquete(t_package paquete);
 char*empaquetar(t_package* paquete);
 int enviarMensaje(int socket, char * mensaje,uint32_t tamanioPaquete);
-int empaquetarEnviarMensaje(int socketServidor, char* key,int longitudDatos, int cantParams, ...);
+int empaquetarEnviarMensaje(int socketServidor, char* key,int longitudDatos, char* data);
 int aceptarCliente(int socket);
 int aceptarClienteMultiConexion(int socket,fd_set* fds, int* fdmax);
 t_package crearPaquete(char*datos,uint32_t longitud);
 t_package crearPaqueteDeError();
 t_package* recibirPaquete(int socket, void (*desconexion) (int));
-void correrFuncion(void* (*funcion)(),char* datos, char* key, int socket);
+void correrFuncion(void* (*funcion)(),char* datos, int socket);
 void borrarPaquete(t_package* package);
 void procesarPaquete(t_package* paquete,int socket,t_dictionary* diccionarioFunciones, t_dictionary* diccionarioHandshakes);
 void recibirMensajesThread(void* paramsServidor);

@@ -53,8 +53,8 @@ typedef struct{
 
 typedef struct
 {
-	int32_t idPrograma;
 	int32_t pagRequeridas;
+	int32_t idPrograma;
 } __attribute__((__packed__)) t_pedido_inicializar;
 
 t_pcb_serializado serializar(t_pcb pcb);

@@ -22,7 +22,7 @@ void init(int sizeArgs, char** path){
 
 	buffer[tamanio-1]='\0';
 
-	empaquetarEnviarMensaje(socketKernel,"NUEVO_PROG",strlen(buffer),1,buffer);
+	empaquetarEnviarMensaje(socketKernel,"NUEVO_PROG",strlen(buffer),buffer);
 
 	fclose(arch);
 	free(buffer);

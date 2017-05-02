@@ -9,7 +9,7 @@
 
 int handshake(int socket, char * keyEnviada, char * keyEsperada){
 	//TODO loguear handshake
-	empaquetarEnviarMensaje(socket,"HANDSHAKE",strlen(keyEnviada),1,keyEnviada);
+	empaquetarEnviarMensaje(socket,"HANDSHAKE",strlen(keyEnviada),keyEnviada);
 
 	t_package* package;
 	package = recibirPaquete(socket,NULL);
@@ -28,9 +28,9 @@ void realizarHandshake(int socket, char* keyRecibida,t_dictionary* diccionarioHa
 	void* returnValue = dictionary_get(diccionarioHandshakes,keyRecibida);
 
 	if(returnValue != NULL)
-		empaquetarEnviarMensaje(socket,(char*)returnValue,strlen((char*)returnValue),1,(char*)returnValue);
+		empaquetarEnviarMensaje(socket,(char*)returnValue,strlen((char*)returnValue),(char*)returnValue);
 	else
-		empaquetarEnviarMensaje(socket,"HD_NOT",6,1,"HD_NOT");
+		empaquetarEnviarMensaje(socket,"HD_NOT",6,"HD_NOT");
 
 }
 
@@ -74,33 +74,19 @@ int enviarMensaje(int socket, char * mensaje,uint32_t tamanioPaquete){
 }
 
 
-int empaquetarEnviarMensaje(int socketServidor, char* key,int longitudDatos, int cantParams, ...){
+int empaquetarEnviarMensaje(int socketServidor, char* key,int longitudDatos, char* data){
 
-	va_list arguments;
-	int i;
-	char* argumento;
-	va_start(arguments, cantParams);
+	char * cuerpo = malloc(strlen(key)+2+longitudDatos);//1 de separador 1 de /0
+	memcpy(cuerpo,key,strlen(key));
+	memcpy(cuerpo+strlen(key),";",1);
 
-	char * cuerpo = string_new();
+	int longKey=strlen(key)+1;
+	memcpy(cuerpo+longKey,(void*)data,longitudDatos);
 
-	string_append(&cuerpo, key);
-	if (cantParams>1)
-		string_append(&cuerpo, "MULTIPARAM");
-	string_append(&cuerpo, ";");
-
-	int longKey=strlen(cuerpo);
-
-	for (i = 0; i < cantParams; i++){
-		argumento = va_arg(arguments, char*);
-		string_append(&cuerpo, argumento);
-		if(i<(cantParams-1))
-			string_append(&cuerpo, "|");
-	}
-
-	va_end(arguments);
+	cuerpo[longKey+longitudDatos]='\0';
 
 	t_package *paquete = malloc(sizeof(t_package));
-	*paquete = crearPaquete(cuerpo,longitudDatos+longKey+(cantParams-1));//(cantParams-1) para sumar el separador
+	*paquete = crearPaquete(cuerpo,longitudDatos+longKey);//(cantParams-1) para sumar el separador
 
 	free(cuerpo);
 
@@ -139,7 +125,7 @@ t_package crearPaquete(char*datos,uint32_t longitud){
 	char ** keyDatos = string_split(datos, ";");
 	paquete.key=keyDatos[0];
 	paquete.longitudDatos=abs(longitud-(strlen(paquete.key)+1));//A la longitud se le resta la key ya que la incluye
-	paquete.datos = malloc(paquete.longitudDatos);
+	paquete.datos = malloc(paquete.longitudDatos+1);
 	memcpy(paquete.datos,datos+strlen(paquete.key)+1,paquete.longitudDatos);
 	paquete.datos[paquete.longitudDatos]='\0';
 	free(keyDatos[1]);
@@ -174,7 +160,7 @@ t_package* recibirPaquete(int socket, void (*desconexion) (int)){
 			return paquete;
 	}
 
-	char* data = (char *)malloc(longitud-sizeof(uint32_t)+1);
+	char* data = (char *)malloc(longitud);
 
 	if(data == NULL)
 		return paquete;
@@ -199,14 +185,8 @@ t_package* recibirPaquete(int socket, void (*desconexion) (int)){
 }
 
 
-void correrFuncion(void* (*funcion)(),char* datos, char* key, int socket){
-
-	if(string_contains(key,"MULTIPARAM") && string_contains(datos,"|")){
-		char** parametros = string_split(datos,"|");
-		funcion(parametros,sizeArray(parametros),socket);
-		free(parametros);
-	}else
-		funcion(datos,socket);
+void correrFuncion(void* (*funcion)(),char* datos, int socket){
+	funcion(datos,socket);
 }
 
 void borrarPaquete(t_package* package){
@@ -258,7 +238,7 @@ void procesarPaquete(t_package* paquete,int socket,t_dictionary* diccionarioFunc
 		void* funcion;
 		funcion = dictionary_get(diccionarioFunciones,paquete->key);
 		if(funcion != NULL){
-			correrFuncion(funcion,paquete->datos,paquete->key,socket);
+			correrFuncion(funcion,paquete->datos,socket);
 		}else{
 			perror("Key de funcion no encontrada");
 		}
