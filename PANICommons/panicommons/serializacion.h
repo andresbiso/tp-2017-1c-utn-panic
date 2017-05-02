@@ -57,9 +57,31 @@ typedef struct
 	int32_t idPrograma;
 } __attribute__((__packed__)) t_pedido_inicializar;
 
+typedef struct
+{
+	int32_t pid;
+	int32_t pagina;
+	int32_t offsetPagina;
+	int32_t tamanio;
+} __attribute__((__packed__)) t_pedido_solicitar_bytes;
+
+typedef struct
+{
+	int32_t pid;
+	int32_t pagina;
+	int32_t offsetPagina;
+	int32_t tamanio;
+	char* data;
+} __attribute__((__packed__)) t_pedido_almacenar_bytes;
+
 t_pcb_serializado serializar(t_pcb pcb);
 t_pcb* deserializar(char* pcbs);
 t_pedido_inicializar* deserializar_pedido_inicializar(char *pedido_serializado);
 char* serializar_pedido_inicializar(t_pedido_inicializar *pedido);
+t_pedido_solicitar_bytes* deserializar_pedido_solicitar_bytes(char *pedido_serializado);
+char* serializar_pedido_solicitar_bytes(t_pedido_solicitar_bytes *pedido);
+t_pedido_almacenar_bytes* deserializar_pedido_almacenar_bytes(char *pedido_serializado);
+char* serializar_pedido_almacenar_bytes(t_pedido_almacenar_bytes *pedido);
+
 
 #endif /* PANICOMMONS_SERIALIZACION_H_ */

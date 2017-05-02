@@ -156,6 +156,29 @@ int asignarPaginasPID(int32_t pid,int32_t paginasRequeridas,bool isNew){
 
 }
 
+t_pagina* encontrarPagina(int32_t pid,int32_t nroPagina){
+	int32_t hashIndice = getHash(pid,nroPagina);
+	t_pagina* pag= getPagina(hashIndice);
+	int indice=hashIndice;
+	int reverse=0;//Para buscar para atras
+
+	while(pag->pid!=pid && pag->numeroPag!=nroPagina){//Recorremos si la pagina que retorna el hash no es la que corresponde
+		free(pag);
+		if(indice<(cantPaginasAdms()-1) && !reverse)
+			indice++;
+		else{
+			if(indice>=hashIndice){
+				indice=hashIndice;
+				reverse=1;
+			}
+			indice--;
+		}
+		pag=getPagina(indice);
+	}
+
+	return pag;
+}
+
 //FIN FUNCIONES SOBRE PAGINAS ADMS
 
 //INICIO COMANDOS
@@ -351,41 +374,19 @@ void iniciarPrograma(char* data,int socket){
 }
 
 void solicitarBytes(char* data,int socket){
-	//TODO Hay que desearilizar data
 	//TODO Hay que buscar en cache primero
 
-	int32_t pid=0;
-	int32_t pagina=0;
-	int32_t offsetPagina=0;
-	int32_t tamanio=10;
-
-	int32_t hashIndice = getHash(pid,pagina);
+	t_pedido_solicitar_bytes* pedido = deserializar_pedido_solicitar_bytes(data);
 
 	pthread_mutex_lock(&mutexMemoriaPrincipal);
-	t_pagina* pag= getPagina(hashIndice);
-	int indice=hashIndice;
-	int reverse=0;//Para buscar para atras
-
-	while(pag->pid!=pid && pag->numeroPag!=pagina){//Recorremos si la pagina que retorna el hash no es la que corresponde
-		free(pag);
-		if(indice<(cantPaginasAdms()-1) && !reverse)
-			indice++;
-		else{
-			if(indice>=hashIndice){
-				indice=hashIndice;
-				reverse=1;
-			}
-			indice--;
-		}
-		pag=getPagina(indice);
-	}
+	t_pagina* pag = encontrarPagina(pedido->pid,pedido->pagina);
 
 	int32_t offsetEstrucAdmin=cantPaginasAdms()*TAM_ELM_TABLA_INV;
-	int32_t offsetHastaData= (marcoSize*pagina)+offsetPagina;
+	int32_t offsetHastaData= (marcoSize*(pag->indice))+pedido->offsetPagina;
 	int32_t offsetTotal = offsetEstrucAdmin+offsetHastaData;
 
-	char* dataRecuperada = malloc(tamanio);
-	memcpy(dataRecuperada,bloqueMemoria+offsetTotal,tamanio);
+	char* dataRecuperada = malloc(pedido->tamanio);
+	memcpy(dataRecuperada,bloqueMemoria+offsetTotal,pedido->tamanio);
 
 	//Envio de la data en dataRecuperada a socket
 	free(pag);
