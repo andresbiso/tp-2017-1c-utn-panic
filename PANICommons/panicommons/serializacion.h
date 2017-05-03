@@ -74,6 +74,15 @@ typedef struct
 	char* data;
 } __attribute__((__packed__)) t_pedido_almacenar_bytes;
 
+typedef struct
+{
+	int32_t pid;
+	int32_t pagina;
+	int32_t offsetPagina;
+	int32_t tamanio;
+	char* data;
+} __attribute__((__packed__)) t_respuesta_solicitar_bytes;
+
 t_pcb_serializado serializar(t_pcb pcb);
 t_pcb* deserializar(char* pcbs);
 t_pedido_inicializar* deserializar_pedido_inicializar(char *pedido_serializado);
@@ -82,6 +91,8 @@ t_pedido_solicitar_bytes* deserializar_pedido_solicitar_bytes(char *pedido_seria
 char* serializar_pedido_solicitar_bytes(t_pedido_solicitar_bytes *pedido);
 t_pedido_almacenar_bytes* deserializar_pedido_almacenar_bytes(char *pedido_serializado);
 char* serializar_pedido_almacenar_bytes(t_pedido_almacenar_bytes *pedido);
+t_respuesta_solicitar_bytes* deserializar_respuesta_solicitar_bytes(char *respuesta_serializada);
+char* serializar_respuesta_solicitar_bytes(t_respuesta_solicitar_bytes *respuesta);
 
 
 #endif /* PANICOMMONS_SERIALIZACION_H_ */
