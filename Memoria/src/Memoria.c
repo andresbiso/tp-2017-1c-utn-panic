@@ -421,8 +421,9 @@ void finalizarPrograma(char* data,int socket){
 }
 
 void getMarcos(char* data,int socket){
-	char* buffer = string_itoa(marcoSize);
-	empaquetarEnviarMensaje(socket,"RECB_MARCOS",4,buffer);
+	char* buffer = malloc(sizeof(int32_t));
+	memcpy(buffer,&marcoSize,sizeof(int32_t));
+	empaquetarEnviarMensaje(socket,"RECB_MARCOS",sizeof(int32_t),buffer);
 	free(buffer);
 }
 
