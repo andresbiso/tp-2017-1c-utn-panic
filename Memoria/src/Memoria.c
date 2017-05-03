@@ -438,6 +438,8 @@ void almacenarBytes(char* data,int socket){
 	//TODO mensaje de exito de asignacion de memoria
 
 	pthread_mutex_unlock(&mutexMemoriaPrincipal);
+	free(pedido->data);
+	free(pedido);
 	free(pag);
 }
 
