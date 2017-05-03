@@ -171,7 +171,13 @@ t_pagina* encontrarPagina(int32_t pid,int32_t nroPagina){
 				indice=hashIndice;
 				reverse=1;
 			}
-			indice--;
+			if(indice>0)
+				indice--;
+			else{
+				free(pag);
+				pag=NULL;
+				break;
+			}
 		}
 		pag=getPagina(indice);
 	}
@@ -380,22 +386,59 @@ void solicitarBytes(char* data,int socket){
 
 	pthread_mutex_lock(&mutexMemoriaPrincipal);
 	t_pagina* pag = encontrarPagina(pedido->pid,pedido->pagina);
+	//TODO chequear retorno de pagina no encontrada
 
 	int32_t offsetEstrucAdmin=cantPaginasAdms()*TAM_ELM_TABLA_INV;
 	int32_t offsetHastaData= (marcoSize*(pag->indice))+pedido->offsetPagina;
 	int32_t offsetTotal = offsetEstrucAdmin+offsetHastaData;
 
-	char* dataRecuperada = malloc(pedido->tamanio);
-	memcpy(dataRecuperada,bloqueMemoria+offsetTotal,pedido->tamanio);
+	if(marcoSize -(pedido->offsetPagina+pedido->tamanio) <0){
+		//TODO Overflow enviar mensaje al socket
+	}else{
+		char* dataRecuperada = malloc(pedido->tamanio);
+		memcpy(dataRecuperada,bloqueMemoria+offsetTotal,pedido->tamanio);
 
-	//Envio de la data en dataRecuperada a socket
-	free(pag);
+		t_respuesta_solicitar_bytes* respuesta = malloc(sizeof(t_respuesta_solicitar_bytes));
+		respuesta->pid=pedido->pid;
+		respuesta->pagina=pedido->pagina;
+		respuesta->tamanio=pedido->tamanio;
+		respuesta->offsetPagina=pedido->offsetPagina;
+		respuesta->data=dataRecuperada;
+
+		char* buffer = serializar_respuesta_solicitar_bytes(respuesta);
+		empaquetarEnviarMensaje(socket,"RTA_SL_BYTES",sizeof(t_pedido_solicitar_bytes)+respuesta->tamanio,buffer);//Es el pedido + el tamanio de lo pedido
+		free(dataRecuperada);
+		free(respuesta);
+		free(buffer);
+	}
 	pthread_mutex_unlock(&mutexMemoriaPrincipal);
+	free(pag);
 
 }
 
 void almacenarBytes(char* data,int socket){
-	//TODO
+	t_pedido_almacenar_bytes* pedido = deserializar_pedido_almacenar_bytes(data);
+
+	//TODO hay que hacer update de la cache tambien
+
+	pthread_mutex_lock(&mutexMemoriaPrincipal);
+	t_pagina* pag = encontrarPagina(pedido->pid,pedido->pagina);
+	//TODO chequear retorno de pagina no encontrada
+
+	int32_t offsetEstrucAdmin=cantPaginasAdms()*TAM_ELM_TABLA_INV;
+	int32_t offsetHastaData= (marcoSize*(pag->indice))+pedido->offsetPagina;
+	int32_t offsetTotal = offsetEstrucAdmin+offsetHastaData;
+
+	if(marcoSize-(pedido->offsetPagina + pedido->tamanio) < 0){
+		//TODO Aviso de overflow
+	}
+
+	memcpy(bloqueMemoria+offsetTotal,pedido->data,pedido->tamanio);
+
+	//TODO mensaje de exito de asignacion de memoria
+
+	pthread_mutex_unlock(&mutexMemoriaPrincipal);
+	free(pag);
 }
 
 void asignarPaginas(char* data,int socket){
@@ -413,7 +456,6 @@ void asignarPaginas(char* data,int socket){
 	hayEspacio=asignarPaginasPID(pedido->idPrograma,pedido->pagRequeridas,false);
 	free(pedido);
 	//TODO Avisarle al kernel que pasó segun la variable hayEspacio
-
 }
 
 void finalizarPrograma(char* data,int socket){
