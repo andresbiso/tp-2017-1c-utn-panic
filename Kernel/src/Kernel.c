@@ -17,7 +17,11 @@ int socketMemoria;
 int socketFS;
 int socketCPU;
 int socketcpuConectadas;
-int tamanio_pag_memoria=256;//TODO obtener tamanio de pagina
+int tamanio_pag_memoria;//=256;//TODO obtener tamanio de pagina
+
+void recibirTamanioPagina(char* tamanio, int socket){
+	tamanio_pag_memoria = atoi(tamanio);
+}
 
 int obtenerEIncrementarPID()
 {
@@ -157,6 +161,7 @@ int main(int argc, char** argv) {
     t_dictionary* diccionarioFunciones = dictionary_create();
     dictionary_put(diccionarioFunciones,"ERROR_FUNC",&mostrarMensaje);
     dictionary_put(diccionarioFunciones,"NUEVO_PROG",&nuevoPrograma);
+    dictionary_put(diccionarioFunciones,"RECB_MARCOS",&recibirTamanioPagina);
 
     t_dictionary* diccionarioHandshakes = dictionary_create();
     dictionary_put(diccionarioHandshakes,"HCPKE","HKECP");
@@ -189,6 +194,7 @@ int main(int argc, char** argv) {
     	exit(EXIT_FAILURE);
     if(handshake(socketMemoria,"HKEME","HMEKE")){
     		puts("Se pudo realizar handshake");
+    		empaquetarEnviarMensaje(socketMemoria,"GET_MARCOS",sizeof("GET_MARCOS"),"GET_MARCOS");
     }
     else{
     	puts("No se pudo realizar handshake");
