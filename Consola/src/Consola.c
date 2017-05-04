@@ -35,6 +35,35 @@ void clear(int sizeArgs, char** args){
 	freeElementsArray(args,sizeArgs);
 }
 
+//INTERFAZ CONSOLA
+
+void recbPID(char*data,int socket){
+
+}
+
+//INTERFAZ CONSOLA
+
+void waitKernel(void* args){
+	t_dictionary* diccionarioFunciones=dictionary_create();
+	dictionary_put(diccionarioFunciones,"RECB_PID",&recbPID);
+	while(1){
+		t_package* paquete = recibirPaquete(socketKernel,NULL);
+		void* funcion;
+		funcion = dictionary_get(diccionarioFunciones,paquete->key);
+		if(funcion != NULL){
+			correrFuncion(funcion, paquete->datos, socketKernel);
+		}else{
+			perror("Key de funcion no encontrada");
+		}
+		if(strcmp(paquete->key,"ERROR_FUNC")==0){
+			borrarPaquete(paquete);
+			break;
+		}
+		borrarPaquete(paquete);
+	}
+	dictionary_destroy(diccionarioFunciones);
+}
+
 int main(int argc, char** argv) {
 	if (argc == 1) {
 		printf("Falta parametro: archivo de configuracion");
@@ -58,6 +87,8 @@ int main(int argc, char** argv) {
 	}
 	puts("Conectado con kernel");
 
+	pthread_t hiloKernel;
+	pthread_create(&hiloKernel,NULL,&waitKernel,NULL);
 	waitCommand(commands);
 
 	dictionary_destroy(commands);
