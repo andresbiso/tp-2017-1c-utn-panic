@@ -17,10 +17,11 @@ int socketMemoria;
 int socketFS;
 int socketCPU;
 int socketcpuConectadas;
-int tamanio_pag_memoria;//=256;//TODO obtener tamanio de pagina
+int tamanio_pag_memoria;
 
-void recibirTamanioPagina(char* tamanio, int socket){
-	tamanio_pag_memoria = atoi(tamanio);
+void recibirTamanioPagina(int socket){
+	t_package* paquete = recibirPaquete(socket,NULL);
+	tamanio_pag_memoria = atoi(paquete->datos);
 }
 
 int obtenerEIncrementarPID()
@@ -195,6 +196,7 @@ int main(int argc, char** argv) {
     if(handshake(socketMemoria,"HKEME","HMEKE")){
     		puts("Se pudo realizar handshake");
     		empaquetarEnviarMensaje(socketMemoria,"GET_MARCOS",sizeof("GET_MARCOS"),"GET_MARCOS");
+    		recibirTamanioPagina(socketMemoria);
     }
     else{
     	puts("No se pudo realizar handshake");

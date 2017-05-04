@@ -384,6 +384,11 @@ void solicitarBytes(char* data,int socket){
 
 	t_pedido_solicitar_bytes* pedido = deserializar_pedido_solicitar_bytes(data);
 
+	char*message=string_from_format("Solicitud de bytes PID:%d PAG:%d OFFSET:%d TAMANIO:%d",pedido->pid,pedido->pagina,pedido->offsetPagina,pedido->tamanio);
+	pthread_mutex_lock(&mutexLog);
+	log_info(logFile,message);
+	pthread_mutex_unlock(&mutexLog);
+
 	pthread_mutex_lock(&mutexMemoriaPrincipal);
 	t_pagina* pag = encontrarPagina(pedido->pid,pedido->pagina);
 	//TODO chequear retorno de pagina no encontrada
@@ -420,6 +425,11 @@ void almacenarBytes(char* data,int socket){
 	t_pedido_almacenar_bytes* pedido = deserializar_pedido_almacenar_bytes(data);
 
 	//TODO hay que hacer update de la cache tambien
+
+	char*message=string_from_format("Solicitud de almacenamiento bytes PID:%d PAG:%d OFFSET:%d TAMANIO:%d",pedido->pid,pedido->pagina,pedido->offsetPagina,pedido->tamanio);
+	pthread_mutex_lock(&mutexLog);
+	log_info(logFile,message);
+	pthread_mutex_unlock(&mutexLog);
 
 	pthread_mutex_lock(&mutexMemoriaPrincipal);
 	t_pagina* pag = encontrarPagina(pedido->pid,pedido->pagina);
@@ -465,9 +475,8 @@ void finalizarPrograma(char* data,int socket){
 }
 
 void getMarcos(char* data,int socket){
-	char* buffer = malloc(sizeof(int32_t));
-	memcpy(buffer,&marcoSize,sizeof(int32_t));
-	empaquetarEnviarMensaje(socket,"RECB_MARCOS",sizeof(int32_t),buffer);
+	char* buffer = string_itoa(marcoSize);
+	empaquetarEnviarMensaje(socket,"RECB_MARCOS",strlen(buffer),buffer);
 	free(buffer);
 }
 

@@ -22,7 +22,7 @@
 
 int puerto;
 int marcos;
-int marcoSize;
+int32_t marcoSize;
 int entradasCache;
 int cacheXproc;
 int retardoMemoria;
