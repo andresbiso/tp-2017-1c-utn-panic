@@ -58,8 +58,6 @@ int main(int argc, char** argv) {
 	}
 	puts("Conectado con kernel");
 
-	pthread_t hiloKernel;
-	pthread_create(&hiloKernel,NULL,&waitKernel,NULL);
 	waitCommand(commands);
 
 	dictionary_destroy(commands);
