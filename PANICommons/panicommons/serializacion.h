@@ -57,6 +57,15 @@ typedef struct
 	int32_t idPrograma;
 } __attribute__((__packed__)) t_pedido_inicializar;
 
+typedef enum{OK_INICIALIZAR=1,SIN_ESPACIO_INICIALIZAR=-1} codigo_respuesta_inicializar;
+
+typedef struct
+{
+	int32_t idPrograma;
+	codigo_respuesta_inicializar codigoRespuesta;
+} __attribute__((__packed__)) t_respuesta_inicializar;
+
+
 typedef struct
 {
 	int32_t pid;
@@ -64,6 +73,17 @@ typedef struct
 	int32_t offsetPagina;
 	int32_t tamanio;
 } __attribute__((__packed__)) t_pedido_solicitar_bytes;
+
+typedef enum{OK_SOLICITAR=1,PAGINA_SOL_NOT_FOUND=-1,PAGINA_SOLICITAR_OVERFLOW=-2} codigo_solicitar_bytes;
+
+typedef struct
+{
+	int32_t pid;
+	int32_t pagina;
+	codigo_solicitar_bytes codigo;
+	int32_t tamanio;
+	char* data;
+} __attribute__((__packed__)) t_respuesta_solicitar_bytes;
 
 typedef struct
 {
@@ -74,25 +94,34 @@ typedef struct
 	char* data;
 } __attribute__((__packed__)) t_pedido_almacenar_bytes;
 
+typedef enum{OK_ALMACENAR=1,PAGINA_ALM_NOT_FOUND=-1,PAGINA_ALM_OVERFLOW=-2} codigo_almacenar_bytes;
+
 typedef struct
 {
 	int32_t pid;
-	int32_t pagina;
-	int32_t offsetPagina;
-	int32_t tamanio;
-	char* data;
-} __attribute__((__packed__)) t_respuesta_solicitar_bytes;
+	codigo_almacenar_bytes codigo;
+} __attribute__((__packed__))t_respuesta_almacenar_bytes;
 
 t_pcb_serializado serializar(t_pcb pcb);
 t_pcb* deserializar(char* pcbs);
+
+//Memoria
 t_pedido_inicializar* deserializar_pedido_inicializar(char *pedido_serializado);
 char* serializar_pedido_inicializar(t_pedido_inicializar *pedido);
+t_respuesta_inicializar* deserializar_respuesta_inicializar(char *respuesta_serializado);
+char* serializar_respuesta_inicializar(t_respuesta_inicializar *respuesta);
+
+
 t_pedido_solicitar_bytes* deserializar_pedido_solicitar_bytes(char *pedido_serializado);
 char* serializar_pedido_solicitar_bytes(t_pedido_solicitar_bytes *pedido);
-t_pedido_almacenar_bytes* deserializar_pedido_almacenar_bytes(char *pedido_serializado);
-char* serializar_pedido_almacenar_bytes(t_pedido_almacenar_bytes *pedido);
 t_respuesta_solicitar_bytes* deserializar_respuesta_solicitar_bytes(char *respuesta_serializada);
 char* serializar_respuesta_solicitar_bytes(t_respuesta_solicitar_bytes *respuesta);
 
+t_pedido_almacenar_bytes* deserializar_pedido_almacenar_bytes(char *pedido_serializado);
+char* serializar_pedido_almacenar_bytes(t_pedido_almacenar_bytes *pedido);
+t_respuesta_almacenar_bytes* deserializar_respuesta_almacenar_bytes(char *respuesta_serializado);
+char* serializar_respuesta_almacenar_bytes(t_respuesta_almacenar_bytes *respuesta);
+
+//Memoria
 
 #endif /* PANICOMMONS_SERIALIZACION_H_ */

@@ -159,6 +159,30 @@ t_pedido_inicializar* deserializar_pedido_inicializar(char *pedido_serializado){
 	return respuesta;
 }
 
+t_respuesta_inicializar* deserializar_respuesta_inicializar(char *respuesta_serializado){
+	t_respuesta_inicializar*respuesta = malloc(sizeof(t_respuesta_inicializar));
+
+	int offset = 0;
+	memcpy(&respuesta->idPrograma,(void*)respuesta_serializado,sizeof(int32_t));
+	offset += sizeof(respuesta->idPrograma);
+	memcpy(&respuesta->codigoRespuesta,(void*)respuesta_serializado+offset,sizeof(int32_t));
+
+	return respuesta;
+
+}
+
+char* serializar_respuesta_inicializar(t_respuesta_inicializar *respuesta){
+	char *buffer = malloc(sizeof(t_respuesta_inicializar));
+
+	int offset = 0;
+	memcpy(buffer,&(respuesta->idPrograma),sizeof(respuesta->idPrograma));
+	offset += sizeof(respuesta->idPrograma);
+	memcpy(buffer+offset,&(respuesta->codigoRespuesta),sizeof(respuesta->codigoRespuesta));
+
+	return buffer;
+}
+
+
 t_pedido_solicitar_bytes* deserializar_pedido_solicitar_bytes(char *pedido_serializado){
 	t_pedido_solicitar_bytes *respuesta = malloc(sizeof(t_pedido_solicitar_bytes));
 
@@ -224,18 +248,42 @@ char* serializar_pedido_almacenar_bytes(t_pedido_almacenar_bytes *pedido){
 	return respuesta;
 }
 
+t_respuesta_almacenar_bytes* deserializar_respuesta_almacenar_bytes(char *respuesta_serializado){
+	t_respuesta_almacenar_bytes*respuesta = malloc(sizeof(t_respuesta_almacenar_bytes));
+
+	int offset = 0;
+	memcpy(&respuesta->pid,(void*)respuesta_serializado,sizeof(int32_t));
+	offset += sizeof(respuesta->pid);
+	memcpy(&respuesta->codigo,(void*)respuesta_serializado+offset,sizeof(int32_t));
+
+	return respuesta;
+
+}
+
+char* serializar_respuesta_almacenar_bytes(t_respuesta_almacenar_bytes *respuesta){
+	char *buffer = malloc(sizeof(t_respuesta_almacenar_bytes));
+
+	int offset = 0;
+	memcpy(buffer,&(respuesta->pid),sizeof(respuesta->pid));
+	offset += sizeof(respuesta->pid);
+	memcpy(buffer+offset,&(respuesta->codigo),sizeof(respuesta->codigo));
+
+	return buffer;
+}
+
+
 t_respuesta_solicitar_bytes* deserializar_respuesta_solicitar_bytes(char *respuesta_serializada){
 	t_respuesta_solicitar_bytes *respuesta = malloc(sizeof(t_respuesta_solicitar_bytes));
 
 	int offset = 0;
 	memcpy(&respuesta->pid,(void*)respuesta_serializada,sizeof(int32_t));
 	offset += sizeof(respuesta->pid);
+	memcpy(&respuesta->codigo,(void*)respuesta_serializada+offset,sizeof(respuesta->codigo));
+	offset += sizeof(respuesta->codigo);
 	memcpy(&respuesta->pagina,(void*)respuesta_serializada+offset,sizeof(int32_t));
 	offset += sizeof(respuesta->pagina);
 	memcpy(&respuesta->tamanio,(void*)respuesta_serializada+offset,sizeof(int32_t));
 	offset += sizeof(respuesta->tamanio);
-	memcpy(&respuesta->offsetPagina,(void*)respuesta_serializada+offset,sizeof(int32_t));
-	offset += sizeof(respuesta->offsetPagina);
 	respuesta->data=malloc(respuesta->tamanio);
 	memcpy(respuesta->data,(void*)respuesta_serializada+offset,respuesta->tamanio);
 
@@ -248,12 +296,12 @@ char* serializar_respuesta_solicitar_bytes(t_respuesta_solicitar_bytes *respuest
 	int offset = 0;
 	memcpy(respuesta,&(respuesta->pid),sizeof(respuesta->pid));
 	offset += sizeof(respuesta->pid);
+	memcpy(respuesta+offset,&(respuesta->codigo),sizeof(respuesta->codigo));
+	offset += sizeof(respuesta->codigo);
 	memcpy(respuesta+offset,&(respuesta->pagina),sizeof(respuesta->pagina));
 	offset += sizeof(respuesta->pagina);
 	memcpy(respuesta+offset,&(respuesta->tamanio),sizeof(respuesta->tamanio));
 	offset += sizeof(respuesta->tamanio);
-	memcpy(respuesta+offset,&(respuesta->offsetPagina),sizeof(respuesta->offsetPagina));
-	offset += sizeof(respuesta->offsetPagina);
 	memcpy(respuesta+offset,respuesta->data,respuesta->tamanio);
 
 	return buffer;
