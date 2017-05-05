@@ -52,24 +52,6 @@ t_config* cargarConfiguracion(char * nombreArchivo){
 }
 
 
-void waitKernel(int socketKernel,t_dictionary* diccionarioFunciones){
-	while(1){
-		t_package* paquete = recibirPaquete(socketKernel,NULL);
-		void* funcion;
-		funcion = dictionary_get(diccionarioFunciones,paquete->key);
-		if(funcion != NULL){
-			correrFuncion(funcion, paquete->datos, paquete->key, socketKernel);
-		}else{
-			perror("Key de funcion no encontrada");
-		}
-		if(strcmp(paquete->key,"ERROR_FUNC")==0){
-			borrarPaquete(paquete);
-			break;
-		}
-		borrarPaquete(paquete);
-	}
-}
-
 int main(int argc, char** argv) {
 	if (argc == 1) {
 		printf("Falta parametro: archivo de configuracion");
@@ -100,8 +82,6 @@ int main(int argc, char** argv) {
 		log_error(log,"No se pudo realizar la conexion con la memoria");
 		exit(EXIT_FAILURE);
 	}
-
-	waitKernel(socketKernel,diccionarioFunciones);
 
 	dictionary_destroy(diccionarioFunciones);
 	config_destroy(configFile);
