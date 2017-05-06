@@ -202,13 +202,52 @@ void dumpCache(int size, char** functionAndParams){
 }
 
 void dumpProcesos(int size, char** functionAndParams){
-	if(size!=1){
-		printf("La funcion de dumpCache no debe recibir parametros.\n\r");
+	if(size>2){
+		printf("La funcion de dumpProcesos no debe recibir parametros o solo el PID del proceso a filtrar.\n\r");
 		freeElementsArray(functionAndParams,size);
 		return;
 	}
-	//TODO
-	printf("Do dump procesos\n\r");
+	int32_t pid = -1;
+
+	if(size==2){
+		pid = atoi(functionAndParams[1]);
+	}
+
+	pthread_mutex_lock(&mutexLogDump);
+	showInScreenAndLog("-----------------------------------------------------------------------------------------------");
+	showInScreenAndLog("| #FRAME |					CONTENIDO					|");
+	showInScreenAndLog("-----------------------------------------------------------------------------------------------");
+
+	int i;
+	int32_t offsetEstrucAdmin=cantPaginasAdms()*TAM_ELM_TABLA_INV;
+
+	pthread_mutex_lock(&mutexMemoriaPrincipal);
+	for(i=0;i<cantPaginasAdms();i++){
+		t_pagina* pag = getPagina(i);
+
+		int32_t offsetHastaPagina= (marcoSize*(pag->indice));
+		int32_t offsetTotal = offsetEstrucAdmin+offsetHastaPagina;
+
+		if(pid == -1 || pag->pid == pid){
+			char*contenido = malloc(marcoSize);
+			memcpy(contenido,bloqueMemoria+offsetTotal,marcoSize);
+
+			char* message = string_from_format("|   %d	 |					%s						|",pag->indice,contenido);
+			showInScreenAndLog(message);
+			showInScreenAndLog("-----------------------------------------------------------------------------------------------");
+
+			free(pag);
+			free(message);
+			free(contenido);
+		}else{
+			free(pag);
+			continue;
+		}
+	}
+	pthread_mutex_unlock(&mutexMemoriaPrincipal);
+	pthread_mutex_unlock(&mutexLogDump);
+
+
 
 	freeElementsArray(functionAndParams,size);
 }
@@ -375,7 +414,6 @@ void iniciarPrograma(char* data,int socket){
 	free(message);
 
 	hayEspacio=asignarPaginasPID(pedido->idPrograma,pedido->pagRequeridas,false);
-	free(pedido);
 
 	t_respuesta_inicializar* respuesta = malloc(sizeof(t_respuesta_inicializar));
 	respuesta->idPrograma=pedido->idPrograma;
@@ -389,6 +427,9 @@ void iniciarPrograma(char* data,int socket){
 
 	empaquetarEnviarMensaje(socket,"RES_INICIALIZAR",sizeof(t_respuesta_inicializar),buffer);
 
+	free(buffer);
+	free(pedido);
+	free(respuesta);
 }
 
 void solicitarBytes(char* data,int socket){
@@ -439,6 +480,7 @@ void solicitarBytes(char* data,int socket){
 	if(pag!=NULL)
 		free(pag);
 	free(buffer);
+	free(pedido);
 	free(respuesta);
 
 }
@@ -499,7 +541,6 @@ void asignarPaginas(char* data,int socket){
 	free(message);
 
 	hayEspacio=asignarPaginasPID(pedido->idPrograma,pedido->pagRequeridas,false);
-	free(pedido);
 
 	t_respuesta_inicializar* respuesta = malloc(sizeof(t_respuesta_inicializar));
 	respuesta->idPrograma=pedido->idPrograma;
@@ -515,6 +556,7 @@ void asignarPaginas(char* data,int socket){
 
 	free(respuesta);
 	free(buffer);
+	free(pedido);
 
 }
 
