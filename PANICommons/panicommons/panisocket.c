@@ -8,7 +8,6 @@
 
 
 int handshake(int socket, char * keyEnviada, char * keyEsperada){
-	//TODO loguear handshake
 	empaquetarEnviarMensaje(socket,"HANDSHAKE",strlen(keyEnviada),keyEnviada);
 
 	t_package* package;
@@ -24,7 +23,6 @@ int handshake(int socket, char * keyEnviada, char * keyEsperada){
 }
 
 void realizarHandshake(int socket, char* keyRecibida,t_dictionary* diccionarioHandshakes){
-	//TODO loguear envio de handshake
 	void* returnValue = dictionary_get(diccionarioHandshakes,keyRecibida);
 
 	if(returnValue != NULL)

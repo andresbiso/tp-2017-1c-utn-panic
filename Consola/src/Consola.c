@@ -1,5 +1,26 @@
 #include "Consola.h"
 
+#include <panicommons/panicommons.h>
+#include <pthread.h>
+#include <string.h>
+
+void logMessage(char*data,int socket){
+	pthread_mutex_lock(&mutexLog);
+	log_info(logConsola,data);
+	pthread_mutex_unlock(&mutexLog);
+}
+
+void esperarKernel(void* args){
+	t_dictionary* diccionario = dictionary_create();
+	dictionary_put(diccionario,"LOG_MESSAGE",&logMessage);
+	while(1){
+		t_package* paquete = recibirPaquete(socketKernel,NULL);
+		procesarPaquete(paquete,socketKernel,diccionario,NULL);
+	}
+	dictionary_destroy(diccionario);
+}
+
+
 void init(int sizeArgs, char** path){
 	if(sizeArgs != 2){
 		printf("Numero de argumentos incorrectos, el init solo debe recibir el path del archivo\n\r");
@@ -24,6 +45,9 @@ void init(int sizeArgs, char** path){
 
 	empaquetarEnviarMensaje(socketKernel,"NUEVO_PROG",strlen(buffer),buffer);
 
+	pthread_t hilo;
+	pthread_create(&hilo,NULL,(void*)esperarKernel,NULL);
+
 	fclose(arch);
 	free(buffer);
 	freeElementsArray(path,sizeArgs);
@@ -41,6 +65,7 @@ int main(int argc, char** argv) {
 		exit(EXIT_FAILURE);
 	}
 	t_config* configFile = cargarConfiguracion(argv[1]);
+	logConsola = log_create("Consola.log","Consola",false,LOG_LEVEL_TRACE);
 
 	t_dictionary* commands = dictionary_create();
 	dictionary_put(commands,"init",&init);
@@ -62,6 +87,7 @@ int main(int argc, char** argv) {
 
 	dictionary_destroy(commands);
 	config_destroy(configFile);
+	log_destroy(logConsola);
 	return EXIT_SUCCESS;
 }
 
