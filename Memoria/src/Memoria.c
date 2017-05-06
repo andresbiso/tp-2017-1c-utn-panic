@@ -464,6 +464,7 @@ void solicitarBytes(char* data,int socket){
 			respuesta->tamanio=5;
 			respuesta->data="ERROR";
 		}else{
+			respuesta->codigo=OK_SOLICITAR;
 			respuesta->tamanio=pedido->tamanio;
 			dataRecuperada = malloc(pedido->tamanio);
 			memcpy(dataRecuperada,bloqueMemoria+offsetTotal,pedido->tamanio);
@@ -524,6 +525,7 @@ void almacenarBytes(char* data,int socket){
 	free(buffer);
 	free(pedido->data);
 	free(pedido);
+	free(respuesta);
 	if(pag!=NULL)
 		free(pag);
 }
