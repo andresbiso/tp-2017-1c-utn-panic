@@ -342,7 +342,7 @@ int conectar(char*direccion,int puerto){
 
 	if (connect(socketCliente, (void*) &direccionServidor, sizeof(direccionServidor)) != 0) {
 		perror("No se pudo conectar\n");
-		return 1;
+		return -1;
 	}
 
 	return socketCliente;

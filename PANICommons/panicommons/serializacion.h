@@ -60,7 +60,7 @@ typedef struct
 typedef struct
 {
 	char* mensaje;
-	int tamanomensaje;
+	int32_t tamanomensaje;
 	int32_t idPrograma;
 } __attribute__((__packed__)) t_aviso_consola;
 
@@ -113,6 +113,7 @@ t_pcb_serializado serializar(t_pcb pcb);
 t_pcb* deserializar(char* pcbs);
 
 char* serializar_aviso_consola(t_aviso_consola *pedido);
+t_aviso_consola* deserializar_aviso_consola(char *pedido_serializado);
 
 //Memoria
 t_pedido_inicializar* deserializar_pedido_inicializar(char *pedido_serializado);

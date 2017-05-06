@@ -149,14 +149,15 @@ char* serializar_pedido_inicializar(t_pedido_inicializar *pedido){
 }
 
 char* serializar_aviso_consola(t_aviso_consola *pedido){
-	char *respuesta = malloc(sizeof(t_aviso_consola));
+	char *respuesta = malloc((sizeof(int32_t)*2)+pedido->tamanomensaje);
 
 	int32_t tamanoidprograma = sizeof(pedido->idPrograma);
 
 	int offset = 0;
-	memcpy(respuesta,&(pedido->mensaje),pedido->tamanomensaje);
+	memcpy(respuesta,&(pedido->tamanomensaje),sizeof(pedido->tamanomensaje));
+	offset += sizeof(pedido->tamanomensaje);
+	memcpy(respuesta+offset,pedido->mensaje,pedido->tamanomensaje);
 	offset += pedido->tamanomensaje;
-
 	memcpy(respuesta+offset,&(pedido->idPrograma),tamanoidprograma);
 
 	return respuesta;
@@ -164,11 +165,15 @@ char* serializar_aviso_consola(t_aviso_consola *pedido){
 
 t_aviso_consola* deserializar_aviso_consola(char *pedido_serializado){
 	t_aviso_consola *respuesta = malloc(sizeof(t_aviso_consola));
-	respuesta->mensaje = malloc(respuesta->tamanomensaje);
 
 	int offset = 0;
-	memcpy(respuesta->mensaje,(void*)pedido_serializado,respuesta->tamanomensaje);
+
+	memcpy(&(respuesta->tamanomensaje),(void*)pedido_serializado,sizeof(respuesta->tamanomensaje));
 	offset += sizeof(respuesta->tamanomensaje);
+	respuesta->mensaje=malloc(respuesta->tamanomensaje+1);
+	memcpy(respuesta->mensaje,(void*)pedido_serializado+offset,respuesta->tamanomensaje);
+	respuesta->mensaje[respuesta->tamanomensaje]='\0';
+	offset += respuesta->tamanomensaje;
 	memcpy(&respuesta->idPrograma,(void*)pedido_serializado+offset,sizeof(int32_t));
 
 	return respuesta;

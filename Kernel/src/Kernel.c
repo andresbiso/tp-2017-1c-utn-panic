@@ -15,9 +15,9 @@ typedef struct {
 }threadParams;
 
 typedef struct {
+	int32_t socket;
 	char* codigo;
-	int socket;
-}threadPrograma;
+} __attribute__((__packed__)) threadPrograma;
 
 int socketMemoria;
 int socketFS;
@@ -78,11 +78,14 @@ void crear_semaforos(){
 void nuevoPrograma(char* codigo, int socket){
 	pthread_t thread_nuevoprograma;
 
-	threadPrograma parametrosPrograma;
-	parametrosPrograma.codigo = codigo;
-	parametrosPrograma.socket = socket;
+	threadPrograma* parametrosPrograma = malloc(sizeof(threadPrograma));
+	parametrosPrograma->socket = socket;
+	int32_t tamanio = strlen(codigo);
+	parametrosPrograma->codigo = malloc(tamanio+1);
+	memcpy(parametrosPrograma->codigo,codigo,tamanio);
+	parametrosPrograma->codigo[tamanio]='\0';
 
-	if (pthread_create(&thread_nuevoprograma, NULL, (void*)programa, &parametrosPrograma)){
+	if (pthread_create(&thread_nuevoprograma, NULL, (void*)programa, (void*)parametrosPrograma)){
 	    perror("Error el crear el thread programa.");
 	    exit(EXIT_FAILURE);
 	}
@@ -91,24 +94,29 @@ void nuevoPrograma(char* codigo, int socket){
 
 void programa(void* arg){
 	threadPrograma* params = arg;
+	int socket = params->socket;
 	int gradoActual;
 	t_pcb* nuevo_pcb;
-	t_aviso_consola aviso_consola;
 
 	nuevo_pcb = armar_nuevo_pcb(params->codigo);
+
+	free(params->codigo);
+	free(params);
 
 	moverA_colaNew(nuevo_pcb);
 
 	sem_getvalue(&grado,&gradoActual);
 
 	if(gradoActual <= 0){
-		aviso_consola.mensaje = "Rechazo por Multiprogramacion";
-		aviso_consola.tamanomensaje = strlen("Rechazo por Multiprogramacion");
+		t_aviso_consola aviso_consola;
+		aviso_consola.mensaje = "Rechazo por Multiprogramacion\0";
+		aviso_consola.tamanomensaje = strlen(aviso_consola.mensaje);
 		aviso_consola.idPrograma = nuevo_pcb->pid;
 
 		char *pedido_serializado = serializar_aviso_consola(&aviso_consola);
 
-		empaquetarEnviarMensaje(params->socket,"LOG_MESSAGE",sizeof(t_aviso_consola),pedido_serializado);
+		empaquetarEnviarMensaje(socket,"LOG_MESSAGE",aviso_consola.tamanomensaje+(sizeof(int32_t)*2),pedido_serializado);
+		free(pedido_serializado);
 	}
 
 	sem_wait(&grado);
@@ -120,7 +128,7 @@ void programa(void* arg){
 }
 
 t_pcb* armar_nuevo_pcb(char* codigo){
-	log_debug(logNucleo,"Armando pcb para programa original:\n%s\nTamano: %d bytes",codigo,sizeof(codigo));
+	log_debug(logNucleo,"Armando pcb para programa original:\n %s \nTamano: %d bytes",codigo,strlen(codigo));
 	t_pcb* nvopcb = malloc(sizeof(t_pcb));
 	t_metadata_program* metadata;
 	int i;
@@ -403,8 +411,8 @@ int main(int argc, char** argv) {
     cargar_varCompartidas();
     crear_colas();
 
-    t_log *logNucleo = log_create("logNucleo.log", "nucleo.c", false, LOG_LEVEL_TRACE);
-    t_log *logEstados = log_create("logEstados.log", "estados.c", false, LOG_LEVEL_TRACE);
+    logNucleo = log_create("logNucleo.log", "nucleo.c", false, LOG_LEVEL_TRACE);
+    logEstados = log_create("logEstados.log", "estados.c", false, LOG_LEVEL_TRACE);
 
     sem_init(&grado, 0, GradoMultiprog);
 
