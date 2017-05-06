@@ -368,16 +368,6 @@ void correrServidor(void* arg){
 	correrServidorMultiConexion(params->socketEscucha,params->nuevaConexion,params->desconexion,params->funciones,params->handshakes);
 }
 
-t_log* crearLog(){
-	t_log *logNucleo = log_create("logNucleo.log", "nucleo.c", false, LOG_LEVEL_TRACE);
-	return logNucleo;
-}
-
-t_log* crearLogEstados(){
-	t_log *logEstados = log_create("logEstados.log", "estados.c", false, LOG_LEVEL_TRACE);
-	return logEstados;
-}
-
 int main(int argc, char** argv) {
 	pthread_t thread_consola, thread_cpu;
 
@@ -412,6 +402,9 @@ int main(int argc, char** argv) {
     crear_semaforos();
     cargar_varCompartidas();
     crear_colas();
+
+    t_log *logNucleo = log_create("logNucleo.log", "nucleo.c", false, LOG_LEVEL_TRACE);
+    t_log *logEstados = log_create("logEstados.log", "estados.c", false, LOG_LEVEL_TRACE);
 
     sem_init(&grado, 0, GradoMultiprog);
 

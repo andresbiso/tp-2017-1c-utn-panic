@@ -80,8 +80,6 @@ t_relacion* matchear_relacion_por_socketcpu(int socket);
 void elminar_consola_por_socket(int socket);
 void elminar_consola_por_pid(int pid);
 bool esta_libre(void * unaCpu);
-t_log* crearLog();
-t_log* crearLogEstados();
 void programa(void* arg);
 
 #endif /* KERNEL_H_ */
