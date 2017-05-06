@@ -8,8 +8,8 @@
 #include "estados.h"
 #include <semaphore.h>
 #include <pthread.h>
-#include <commons/log.h>
 
+pthread_mutex_t colaNewMutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t colaReadyMutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t colaBlockedMutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t colaExecMutex = PTHREAD_MUTEX_INITIALIZER;
@@ -54,8 +54,11 @@ void moverA_colaNew(t_pcb *pcb)
 	if(!pcb)
 		return;
 
+	pthread_mutex_lock(&colaNewMutex);
 	queue_push(colaNew, pcb);
-	//log_debug(logEstados, "El PCB: %d paso a la cola New",pcb->pid); TODO inicializar logEstados
+	pthread_mutex_unlock(&colaNewMutex);
+
+	log_debug(logEstados, "El PCB: %d paso a la cola New",pcb->pid);
 }
 
 void moverA_colaExit(t_pcb *pcb)

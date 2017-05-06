@@ -4,6 +4,7 @@
 #include <parser/metadata_program.h>
 #include "Kernel.h"
 #include "estados.h"
+#include <semaphore.h>
 
 typedef struct {
     int socketEscucha;
@@ -13,11 +14,18 @@ typedef struct {
     t_dictionary* handshakes;
 }threadParams;
 
+typedef struct {
+	char* codigo;
+	int socket;
+}threadPrograma;
+
 int socketMemoria;
 int socketFS;
 int socketCPU;
 int socketcpuConectadas;
 int tamanio_pag_memoria;
+
+sem_t grado;
 
 void recibirTamanioPagina(int socket){
 	t_package* paquete = recibirPaquete(socket,NULL);
@@ -68,16 +76,51 @@ void crear_semaforos(){
 }
 
 void nuevoPrograma(char* codigo, int socket){
-	t_pcb* nuevo_pcb;
+	pthread_t thread_nuevoprograma;
 
-	nuevo_pcb = armar_nuevo_pcb(codigo);
+	threadPrograma parametrosPrograma;
+	parametrosPrograma.codigo = codigo;
+	parametrosPrograma.socket = socket;
+
+	if (pthread_create(&thread_nuevoprograma, NULL, (void*)programa, &parametrosPrograma)){
+	    perror("Error el crear el thread programa.");
+	    exit(EXIT_FAILURE);
+	}
+
+}
+
+void programa(void* arg){
+	threadPrograma* params = arg;
+	int gradoActual;
+	t_pcb* nuevo_pcb;
+	t_aviso_consola aviso_consola;
+
+	nuevo_pcb = armar_nuevo_pcb(params->codigo);
 
 	moverA_colaNew(nuevo_pcb);
 
+	sem_getvalue(&grado,&gradoActual);
+
+	if(gradoActual <= 0){
+		aviso_consola.mensaje = "Rechazo por Multiprogramacion";
+		aviso_consola.tamanomensaje = strlen("Rechazo por Multiprogramacion");
+		aviso_consola.idPrograma = nuevo_pcb->pid;
+
+		char *pedido_serializado = serializar_aviso_consola(&aviso_consola);
+
+		empaquetarEnviarMensaje(params->socket,"LOG_MESSAGE",sizeof(t_aviso_consola),pedido_serializado);
+	}
+
+	sem_wait(&grado);
+
 	inicializar_programa(nuevo_pcb);//TODO cuando responde memoria guardar el codigo
+
+	//respuesta_inicializar_programa(params->socket);
+
 }
 
 t_pcb* armar_nuevo_pcb(char* codigo){
+	log_debug(logNucleo,"Armando pcb para programa original:\n%s\nTamano: %d bytes",codigo,sizeof(codigo));
 	t_pcb* nvopcb = malloc(sizeof(t_pcb));
 	t_metadata_program* metadata;
 	int i;
@@ -99,10 +142,16 @@ t_pcb* armar_nuevo_pcb(char* codigo){
 		posicion_nueva_instruccion.offset= metadata->instrucciones_serializado[i].start%tamanio_pag_memoria;
 		posicion_nueva_instruccion.size = metadata->instrucciones_serializado[i].offset;
 		nvopcb->indice_codigo[i] = posicion_nueva_instruccion;
+
+		log_trace(logNucleo,"Instruccion %d pag %d offset %d size %d",i,posicion_nueva_instruccion.pag,posicion_nueva_instruccion.offset,posicion_nueva_instruccion.size);
+		log_trace(logNucleo,"%.*s",posicion_nueva_instruccion.size,codigo+metadata->instrucciones_serializado[i].start);
 	}
 
 	int result_pag = divAndRoundUp(sizeof(codigo), tamanio_pag_memoria);
 	nvopcb->cant_pags_totales=(result_pag + StackSize);
+	log_debug(logNucleo,"Cant paginas codigo: %d",result_pag);
+	log_debug(logNucleo,"Cant paginas stack: %d",StackSize);
+	log_debug(logNucleo,"Cant paginas totales: %d",nvopcb->cant_pags_totales);
 
 	nvopcb->tamano_etiquetas=metadata->etiquetas_size;
 	nvopcb->indice_etiquetas=malloc(nvopcb->tamano_etiquetas);
@@ -132,17 +181,182 @@ void inicializar_programa(t_pcb* nuevo_pcb){
 	char *pedido_serializado = serializar_pedido_inicializar(&pedido_inicializar);
 
 	empaquetarEnviarMensaje(socketMemoria,"INIT_PROGM",sizeof(t_pedido_inicializar),pedido_serializado);
+	log_debug(logNucleo,"Pedido inicializar enviado. PID: %d, Paginas: %d",pedido_inicializar.idPrograma,pedido_inicializar.pagRequeridas);
 
 	free(pedido_serializado);
 }
 
+void respuesta_inicializar_programa(int* socket){
+	//TODO procesar la respuesta
+}
+
 void nuevaConexionCPU(int sock){
 	socketcpuConectadas = sock;
+	log_trace(logNucleo,"Cargando nueva CPU con socket %d",socket);
 	t_cpu* cpu_nuevo;
 	cpu_nuevo=malloc(sizeof(t_cpu));
 	cpu_nuevo->socket=sock;
 	cpu_nuevo->corriendo=false;
 	list_add(lista_cpus_conectadas,cpu_nuevo);
+	log_debug(logNucleo,"se agrego a la lista el cpu con socket %d", socket);
+}
+
+void cargar_programa(int32_t socket, int pid){
+	t_consola *programa_nuevo;
+	programa_nuevo=malloc(sizeof(t_consola));
+	programa_nuevo->socket=socket;
+	programa_nuevo->corriendo=false;
+	programa_nuevo->pid=pid;
+	list_add(lista_programas_actuales,programa_nuevo);
+	log_debug(logNucleo,"se agrego a la lista el programa con socket %d, pid: %d", socket, programa_nuevo->pid);
+}
+
+void relacionar_cpu_programa(t_cpu *cpu, t_consola *programa, t_pcb *pcb){
+	t_relacion *nueva_relacion;
+	nueva_relacion=malloc(sizeof(t_relacion));
+	cpu->corriendo=true;
+	programa->corriendo=true;
+	nueva_relacion->cpu=cpu;
+	nueva_relacion->programa=programa;
+	list_add(lista_relacion,nueva_relacion);
+	log_info(logNucleo,"Se agrego la relacion entre cpu del socket: %d y el programa del socket: %d",cpu->socket, programa->socket);
+	moverA_colaExec(pcb);
+	log_debug(logNucleo, "Movi a la cola Exec el pcb con pid: %d", pcb->pid);
+}
+
+void elminar_consola_por_pid(int pid){
+
+	bool matchconsola(void *consola) {
+						return ((t_consola*)consola)->pid == pid;
+					}
+
+	free(list_remove_by_condition(lista_programas_actuales,matchconsola));
+}
+
+void liberar_una_relacion(t_pcb *pcb_devuelto){
+
+	bool matchPID(void *relacion) {
+		return ((t_relacion*)relacion)->programa->pid == pcb_devuelto->pid;
+	}
+
+	t_relacion *rel = list_remove_by_condition(lista_relacion,matchPID);
+	rel->cpu->corriendo= false;
+	rel->programa->corriendo= false;
+
+	//TODO DELEGAR EN OTRA FUNCION
+
+	if(rel->programa->socket==-1){ //esta consola ya se murio
+		log_warning(logNucleo,"Aprovecho para eliminar del sistema la consola cerrada del PID %d",rel->programa->pid);
+		moverA_colaExit(sacarDe_colaExec(rel->programa->pid));
+		//enviar(FINALIZA_PROGRAMA,sizeof(int32_t),&(rel->programa->pid),socket_umc);
+		elminar_consola_por_pid(rel->programa->pid);
+	}
+	free(rel);
+}
+
+void liberar_una_relacion_porsocket_cpu(int socketcpu){
+
+	bool matchsocketcpu(void *relacion) {
+		return ((t_relacion*)relacion)->cpu->socket == socketcpu;
+	}
+
+	t_relacion *rel = list_remove_by_condition(lista_relacion,matchsocketcpu);
+	rel->cpu->corriendo= false;
+	rel->programa->corriendo= false;
+
+	//TODO ES IGUAL QUE liberar_una_relacion
+
+	free(rel);
+}
+
+void eliminar_cpu_por_socket(int socketcpu){
+
+	bool matchSocket_Cpu(void *cpu) {
+						return ((t_cpu*)cpu)->socket == socketcpu;
+					}
+
+	t_cpu* cpu = list_remove_by_condition(lista_cpus_conectadas,matchSocket_Cpu);
+	free(cpu);
+}
+
+t_consola* matchear_consola_por_pid(int pid){
+
+	bool matchPID_Consola(void *consola) {
+						return ((t_consola*)consola)->pid == pid;
+					}
+
+	t_consola * programa_terminado=list_find(lista_programas_actuales, matchPID_Consola);
+	return programa_terminado;
+}
+
+t_relacion* matchear_relacion_por_socketcpu(int socket){
+
+	bool matchsocketcpurelacion(void *relacion) {
+						return ((t_relacion*)relacion)->cpu->socket == socket;
+					}
+
+	return list_find(lista_relacion, matchsocketcpurelacion);
+}
+
+t_relacion* matchear_relacion_por_socketconsola(int socket){
+
+	bool matchsocketconsolarelacion(void *relacion) {
+						return ((t_relacion*)relacion)->programa->socket == socket;
+					}
+
+	return list_find(lista_relacion, matchsocketconsolarelacion);
+}
+
+void elminar_consola_por_socket(int socket){
+
+	bool matchconsola(void *consola) {
+						return ((t_consola*)consola)->socket == socket;
+					}
+
+	free(list_remove_by_condition(lista_programas_actuales,matchconsola));
+}
+
+bool esta_libre(void * unaCpu){
+	return !(((t_cpu*)unaCpu)->corriendo);
+}
+
+void enviar_a_cpu(){
+	t_cpu *cpu_libre = list_find(lista_cpus_conectadas,esta_libre);
+	if(!cpu_libre){
+		return;
+	}
+	log_info(logNucleo, "la CPU del socket %d esta libre y lista para ejecutar", cpu_libre->socket);
+
+	t_pcb *pcb_ready;
+	pcb_ready=queue_pop(colaReady);
+	if(!pcb_ready){
+		return;
+	}
+	log_info(logEstados, "El PCB con el pid %d salio de la cola Ready y esta listo"
+			" para ser enviado al CPU del socket %d", pcb_ready->pid, cpu_libre->socket);
+	log_info(logNucleo, "Se levanto el pcb con id %d", pcb_ready->pid);
+
+	bool matchPID(void *programa) {
+		return ((t_consola*)programa)->pid == pcb_ready->pid;
+	}
+
+	t_consola *programa = list_find(lista_programas_actuales, matchPID);
+	if(!programa){
+		return;
+	}
+
+	log_debug(logNucleo,"Corriendo el PCB (PID %d) del programa (socket %d)en el CPU (socket %d)",pcb_ready->pid,programa->socket,cpu_libre->socket);
+	relacionar_cpu_programa(cpu_libre,programa,pcb_ready);
+	log_info(logNucleo, "Pude relacionar cpu con programa");
+
+	//enviar(QUANTUM,sizeof(int32_t),&config_nucleo->quantum, cpu_libre->socket);
+	//enviar(RETARDOQUANTUM,sizeof(int32_t),&config_nucleo->quantum_sleep, cpu_libre->socket);
+
+	t_pcb_serializado serializado = serializar(*pcb_ready);
+	log_trace(logNucleo,"Se serializo un pcb");
+	//enviar(CORRER_PCB,serializado.tamanio,serializado.contenido_pcb,cpu_libre->socket);
+	log_info(logNucleo,"Se envio un pcb a correr en la cpu %d",cpu_libre->socket);
+	free(serializado.contenido_pcb);
 }
 
 void mostrarMensaje(char* mensaje,int socket){
@@ -152,6 +366,16 @@ void mostrarMensaje(char* mensaje,int socket){
 void correrServidor(void* arg){
 	threadParams* params = arg;
 	correrServidorMultiConexion(params->socketEscucha,params->nuevaConexion,params->desconexion,params->funciones,params->handshakes);
+}
+
+t_log* crearLog(){
+	t_log *logNucleo = log_create("logNucleo.log", "nucleo.c", false, LOG_LEVEL_TRACE);
+	return logNucleo;
+}
+
+t_log* crearLogEstados(){
+	t_log *logEstados = log_create("logEstados.log", "estados.c", false, LOG_LEVEL_TRACE);
+	return logEstados;
 }
 
 int main(int argc, char** argv) {
@@ -188,6 +412,8 @@ int main(int argc, char** argv) {
     crear_semaforos();
     cargar_varCompartidas();
     crear_colas();
+
+    sem_init(&grado, 0, GradoMultiprog);
 
     ultimoPID = 1;
 

@@ -57,6 +57,13 @@ typedef struct
 	int32_t idPrograma;
 } __attribute__((__packed__)) t_pedido_inicializar;
 
+typedef struct
+{
+	char* mensaje;
+	int tamanomensaje;
+	int32_t idPrograma;
+} __attribute__((__packed__)) t_aviso_consola;
+
 typedef enum{OK_INICIALIZAR=1,SIN_ESPACIO_INICIALIZAR=-1} codigo_respuesta_inicializar;
 
 typedef struct
@@ -104,6 +111,8 @@ typedef struct
 
 t_pcb_serializado serializar(t_pcb pcb);
 t_pcb* deserializar(char* pcbs);
+
+char* serializar_aviso_consola(t_aviso_consola *pedido);
 
 //Memoria
 t_pedido_inicializar* deserializar_pedido_inicializar(char *pedido_serializado);
