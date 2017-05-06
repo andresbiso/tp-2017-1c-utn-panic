@@ -45,9 +45,6 @@ void init(int sizeArgs, char** path){
 
 	empaquetarEnviarMensaje(socketKernel,"NUEVO_PROG",strlen(buffer),buffer);
 
-	pthread_t hilo;
-	pthread_create(&hilo,NULL,(void*)esperarKernel,NULL);
-
 	fclose(arch);
 	free(buffer);
 	freeElementsArray(path,sizeArgs);
@@ -84,6 +81,9 @@ int main(int argc, char** argv) {
 	puts("Conectado con kernel");
 
 	waitCommand(commands);
+
+	pthread_t hilo;
+	pthread_create(&hilo,NULL,(void*)esperarKernel,NULL);
 
 	dictionary_destroy(commands);
 	config_destroy(configFile);
