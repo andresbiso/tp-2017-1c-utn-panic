@@ -9,13 +9,13 @@
 #define CPU_H_
 
 #include "PrimitivasAnsisop.h"
-#include <panicommons/pcb.h>
 
 int puertoKernel;
 char* ipKernel;
 int puertoMemoria;
 char* ipMemoria;
-
-t_pcb* pcb_ejecutandose;
+int quantum;
+int quantumSleep;
+t_log* log;
 
 #endif /* CPU_H_ */

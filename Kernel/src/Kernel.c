@@ -130,7 +130,7 @@ t_pcb* armar_nuevo_pcb(char* codigo){
 	nvopcb->pid = obtenerEIncrementarPID();
     nvopcb->pc = metadata->instruccion_inicio;
 
-	nvopcb->cant_instrucciones=metadata->instrucciones_size;
+	nvopcb->cant_instrucciones = metadata->instrucciones_size;
 
 	int tamano_instrucciones = sizeof(t_posMemoria)*(nvopcb->cant_instrucciones);
 
@@ -139,7 +139,7 @@ t_pcb* armar_nuevo_pcb(char* codigo){
 	for(i=0;i<(metadata->instrucciones_size);i++){
 		t_posMemoria posicion_nueva_instruccion;
 		posicion_nueva_instruccion.pag = metadata->instrucciones_serializado[i].start/tamanio_pag_memoria;
-		posicion_nueva_instruccion.offset= metadata->instrucciones_serializado[i].start%tamanio_pag_memoria;
+		posicion_nueva_instruccion.offset = metadata->instrucciones_serializado[i].start%tamanio_pag_memoria;
 		posicion_nueva_instruccion.size = metadata->instrucciones_serializado[i].offset;
 		nvopcb->indice_codigo[i] = posicion_nueva_instruccion;
 

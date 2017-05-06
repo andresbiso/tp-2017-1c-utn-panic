@@ -6,6 +6,7 @@
 #include <parser/parser.h>
 #include <parser/metadata_program.h>
 #include <ctype.h>
+#include <panicommons/serializacion.h>
 
 #define PAGESIZE 4
 
@@ -19,16 +20,12 @@ typedef struct grabar_valor{
 	void* valorGrabar;
 }t_grabar_valor;
 
-typedef struct posMemoria{
-	u_int32_t page;
-	u_int32_t offset;
-	u_int32_t size;
-}t_posMemoria;
-
 typedef struct funciones_ansisop{
 	AnSISOP_funciones funciones_comunes;
 	AnSISOP_kernel funciones_kernel;
 } FuncionesAnsisop;
+
+t_pcb* actual_pcb;
 
 FuncionesAnsisop* inicializar_primitivas();
 

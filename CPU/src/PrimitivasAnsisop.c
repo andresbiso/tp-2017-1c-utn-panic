@@ -1,12 +1,12 @@
 #include "PrimitivasAnsisop.h"
 
 t_puntero pos_fisica_a_logica(t_posMemoria posfisica){
-	return posfisica.page*PAGESIZE+posfisica.offset;
+	return posfisica.pag*PAGESIZE+posfisica.offset;
 }
 
 t_posMemoria pos_logica_a_fisica(t_puntero poslogica){
 	t_posMemoria respuesta;
-	respuesta.page = poslogica/PAGESIZE;
+	respuesta.pag = poslogica/PAGESIZE;
 	respuesta.offset = poslogica % PAGESIZE;
 	respuesta.size = 4; //todas las variables pesan 4 Bytes
 	return respuesta;
@@ -14,6 +14,7 @@ t_posMemoria pos_logica_a_fisica(t_puntero poslogica){
 
 // AnSISOP_funciones
 t_puntero definirVariable(t_nombre_variable identificador_variable) {
+
 	t_puntero a;
 	return a;
 }

@@ -6,8 +6,26 @@
 #include <commons/log.h>
 #include "CPU.h"
 
+
+void waitKernel(int socketKernel,t_dictionary* diccionarioFunciones){
+	while(1){
+		t_package* paquete = recibirPaquete(socketKernel,NULL);
+		procesarPaquete(paquete, socketKernel, diccionarioFunciones, NULL);
+	 }
+}
+
+void modificarQuantum(int nuevoQuantum) {
+	quantum = nuevoQuantum;
+	log_info(log, "Quantum=" + quantum);
+}
+
+void modificarQuantumSleep(int nuevoQuantumSleep) {
+	quantumSleep = nuevoQuantumSleep;
+	log_info(log, "QuantumSleep=" + quantumSleep);
+}
+
 void nuevoPCB(char* pcb){
-	pcb_ejecutandose = deserializar(pcb);
+	actual_pcb = deserializar(pcb);
 }
 
 void mostrarMensaje(char* mensaje){
@@ -68,8 +86,11 @@ int main(int argc, char** argv) {
 	dictionary_put(diccionarioFunciones,"KEY_PRINT",&mostrarMensaje);
 	dictionary_put(diccionarioFunciones,"ERROR_FUNC",&mostrarMensaje);
 	dictionary_put(diccionarioFunciones,"NUEVO_PCB",&nuevoPCB);
+	dictionary_put(diccionarioFunciones,"NUEVO_QUANTUM",&modificarQuantum);
+	dictionary_put(diccionarioFunciones,"NUEVO_QUANTUM_SLEEP",&modificarQuantumSleep);
+	// ver comuncicaciones memoria-kernel
 
-	t_log* log = log_create("cpu.log","CPU",0,LOG_LEVEL_TRACE);
+	log = log_create("cpu.log","CPU",1,LOG_LEVEL_TRACE);
 
 	int socketKernel = conectar(ipKernel,puertoKernel);
 	if(!handshake(socketKernel,"HCPKE","HKECP")){
@@ -89,3 +110,7 @@ int main(int argc, char** argv) {
 
 	return EXIT_SUCCESS;
 }
+
+
+
+
