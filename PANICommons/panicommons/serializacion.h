@@ -44,6 +44,7 @@ typedef struct{
 	char* indice_etiquetas;
 	u_int32_t cant_entradas_indice_stack;
 	registro_indice_stack* indice_stack;
+	int32_t exit_code;
 }__attribute__((__packed__)) t_pcb;
 
 typedef struct{
@@ -109,8 +110,8 @@ typedef struct
 	codigo_almacenar_bytes codigo;
 } __attribute__((__packed__))t_respuesta_almacenar_bytes;
 
-t_pcb_serializado serializar(t_pcb pcb);
-t_pcb* deserializar(char* pcbs);
+t_pcb_serializado* serializar_pcb(t_pcb* pcb);
+t_pcb* deserializar_pcb(char* pcbs);
 
 char* serializar_aviso_consola(t_aviso_consola *pedido);
 t_aviso_consola* deserializar_aviso_consola(char *pedido_serializado);
