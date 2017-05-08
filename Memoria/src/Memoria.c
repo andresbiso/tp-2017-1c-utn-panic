@@ -213,7 +213,6 @@ void dumpProcesos(int size, char** functionAndParams){
 		pid = atoi(functionAndParams[1]);
 	}
 
-	pthread_mutex_lock(&mutexLogDump);
 	showInScreenAndLog("-----------------------------------------------------------------------------------------------");
 	showInScreenAndLog("| #FRAME |					CONTENIDO					|");
 	showInScreenAndLog("-----------------------------------------------------------------------------------------------");
@@ -245,7 +244,6 @@ void dumpProcesos(int size, char** functionAndParams){
 		}
 	}
 	pthread_mutex_unlock(&mutexMemoriaPrincipal);
-	pthread_mutex_unlock(&mutexLogDump);
 
 
 
@@ -258,7 +256,6 @@ void dumpTabla(int size, char** functionAndParams){
 		freeElementsArray(functionAndParams,size);
 		return;
 	}
-	pthread_mutex_lock(&mutexLogDump);
 	showInScreenAndLog("----------------------");
 	showInScreenAndLog("|  I  |  PID | NRO |");
 	showInScreenAndLog("----------------------");
@@ -274,7 +271,6 @@ void dumpTabla(int size, char** functionAndParams){
 		free(message);
 	}
 	pthread_mutex_unlock(&mutexMemoriaPrincipal);
-	pthread_mutex_unlock(&mutexLogDump);
 
 	freeElementsArray(functionAndParams,size);
 }
@@ -407,24 +403,21 @@ void iniciarPrograma(char* data,int socket){
 	int hayEspacio;
 	t_pedido_inicializar* pedido = deserializar_pedido_inicializar(data);
 
-	char*message=string_from_format("Pedido de inicio de programa PID:%d PAGS:%d",pedido->idPrograma,pedido->pagRequeridas);
-	pthread_mutex_lock(&mutexLog);
-	log_info(logFile,message);
-	pthread_mutex_unlock(&mutexLog);
-	free(message);
+	log_info(logFile,"Pedido de inicio de programa PID:%d PAGS:%d",pedido->idPrograma,pedido->pagRequeridas);
 
 	hayEspacio=asignarPaginasPID(pedido->idPrograma,pedido->pagRequeridas,false);
 
 	t_respuesta_inicializar* respuesta = malloc(sizeof(t_respuesta_inicializar));
 	respuesta->idPrograma=pedido->idPrograma;
 
-	if(hayEspacio)
+	if(hayEspacio){
 		respuesta->codigoRespuesta= OK_INICIALIZAR;
-	else
+		log_info(logFile,"Pedido de inicio de programa exitoso PID:%d PAGS:%d",pedido->idPrograma,pedido->pagRequeridas);
+	}else{
+		log_info(logFile,"Pedido de inicio de programa sin espacio PID:%d PAGS:%d",pedido->idPrograma,pedido->pagRequeridas);
 		respuesta->codigoRespuesta= SIN_ESPACIO_INICIALIZAR;
-
+	}
 	char* buffer = serializar_respuesta_inicializar(respuesta);
-
 	empaquetarEnviarMensaje(socket,"RES_INICIALIZAR",sizeof(t_respuesta_inicializar),buffer);
 
 	free(buffer);
@@ -437,10 +430,7 @@ void solicitarBytes(char* data,int socket){
 
 	t_pedido_solicitar_bytes* pedido = deserializar_pedido_solicitar_bytes(data);
 
-	char*message=string_from_format("Solicitud de bytes PID:%d PAG:%d OFFSET:%d TAMANIO:%d",pedido->pid,pedido->pagina,pedido->offsetPagina,pedido->tamanio);
-	pthread_mutex_lock(&mutexLog);
-	log_info(logFile,message);
-	pthread_mutex_unlock(&mutexLog);
+	log_info(logFile,"Solicitud de bytes PID:%d PAG:%d OFFSET:%d TAMANIO:%d",pedido->pid,pedido->pagina,pedido->offsetPagina,pedido->tamanio);
 
 	pthread_mutex_lock(&mutexMemoriaPrincipal);
 	t_respuesta_solicitar_bytes* respuesta = malloc(sizeof(t_respuesta_solicitar_bytes));
@@ -491,10 +481,7 @@ void almacenarBytes(char* data,int socket){
 
 	//TODO hay que hacer update de la cache tambien
 
-	char*message=string_from_format("Solicitud de almacenamiento bytes PID:%d PAG:%d OFFSET:%d TAMANIO:%d",pedido->pid,pedido->pagina,pedido->offsetPagina,pedido->tamanio);
-	pthread_mutex_lock(&mutexLog);
-	log_info(logFile,message);
-	pthread_mutex_unlock(&mutexLog);
+	log_info(logFile,"Solicitud de almacenamiento bytes PID:%d PAG:%d OFFSET:%d TAMANIO:%d",pedido->pid,pedido->pagina,pedido->offsetPagina,pedido->tamanio);
 
 	t_respuesta_almacenar_bytes* respuesta = malloc(sizeof(t_respuesta_almacenar_bytes));
 	respuesta->pid=pedido->pid;
@@ -536,11 +523,7 @@ void asignarPaginas(char* data,int socket){
 	t_pedido_inicializar* pedido = malloc(sizeof(t_pedido_inicializar));
 	pedido = deserializar_pedido_inicializar(data);
 
-	char* message = string_from_format("Pedido de paginas de programa PID:%d PAGS:%d",pedido->idPrograma,pedido->pagRequeridas);
-	pthread_mutex_lock(&mutexLog);
-	log_info(logFile,message);
-	pthread_mutex_unlock(&mutexLog);
-	free(message);
+	log_info(logFile,"Pedido de paginas de programa PID:%d PAGS:%d",pedido->idPrograma,pedido->pagRequeridas);
 
 	hayEspacio=asignarPaginasPID(pedido->idPrograma,pedido->pagRequeridas,false);
 
@@ -638,7 +621,6 @@ int main(int argc, char** argv) {
 
 	pthread_mutex_init(&mutexCache,NULL);
 	pthread_mutex_init(&mutexMemoriaPrincipal,NULL);
-	pthread_mutex_init(&mutexLog,NULL);
 
 	pthread_t threadConsola;
 	pthread_create(&threadConsola,NULL,(void *)correrConsola,NULL);
@@ -652,8 +634,6 @@ int main(int argc, char** argv) {
 
 	pthread_mutex_destroy(&mutexCache);
 	pthread_mutex_destroy(&mutexMemoriaPrincipal);
-	pthread_mutex_destroy(&mutexLog);
-	pthread_mutex_destroy(&mutexLogDump);
 
 	config_destroy(configFile);
 
