@@ -14,6 +14,7 @@
 #include <panicommons/serializacion.h>
 #include <panicommons/panicommons.h>
 #include <commons/log.h>
+#include "inotify.h"
 
 int PuertoConsola;
 int PuertoCpu;
@@ -24,6 +25,7 @@ int PuertoFS;
 int Quantum;
 int QuantumSleep;
 char* Algoritmo;
+char* configFileName;
 int GradoMultiprog;
 char** SemIds;
 char** SemInit;

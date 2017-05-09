@@ -27,6 +27,27 @@ int tamanio_pag_memoria;
 
 sem_t grado;
 
+//inotify
+
+void configChange(){
+	t_config* archivo = config_create(configFileName);
+	if(config_has_property(archivo,"QUANTUM_SLEEP")){
+		QuantumSleep = config_get_int_value(archivo, "QUANTUM_SLEEP");
+		log_info(logNucleo,"Nuevo QUANTUM_SLEEP: %d",QuantumSleep);
+	}else
+		log_warning(logNucleo,"La Configuracion QUANTUM_SLEEP no se encuentra");
+
+	config_destroy(archivo);
+}
+
+void inotifyWatch(void*path){
+	char cwd[1024]; // Variable donde voy a guardar el path absoluto hasta el /Debug
+	getcwd(cwd,sizeof(cwd));
+	watchFile(cwd,configFileName,&configChange);
+}
+
+//inotify
+
 void recibirTamanioPagina(int socket){
 	t_package* paquete = recibirPaquete(socket,NULL);
 	tamanio_pag_memoria = atoi(paquete->datos);
@@ -441,7 +462,11 @@ void correrServidor(void* arg){
 int main(int argc, char** argv) {
 	pthread_t thread_consola, thread_cpu;
 
-	t_config* configFile= cargarConfiguracion(argv[1]);
+	configFileName=argv[1];
+	t_config* configFile= cargarConfiguracion(configFileName);
+
+	pthread_t hiloInotify;
+	pthread_create(&hiloInotify,NULL,inotifyWatch,configFile->path);
 
     t_dictionary* diccionarioFunciones = dictionary_create();
     dictionary_put(diccionarioFunciones,"ERROR_FUNC",&mostrarMensaje);
