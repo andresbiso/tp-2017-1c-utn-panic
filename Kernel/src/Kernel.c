@@ -41,7 +41,7 @@ void configChange(){
 }
 
 void inotifyWatch(void*path){
-	char cwd[1024]; // Variable donde voy a guardar el path absoluto hasta el /Debug
+	char cwd[1024];
 	getcwd(cwd,sizeof(cwd));
 	watchFile(cwd,configFileName,&configChange);
 }
