@@ -231,8 +231,15 @@ void dumpProcesos(int size, char** functionAndParams){
 			char*contenido = malloc(marcoSize);
 			memcpy(contenido,bloqueMemoria+offsetTotal,marcoSize);
 
-			char* message = string_from_format("|   %d	 |					%s						|",pag->indice,contenido);
-			showInScreenAndLog(message);
+			char* message = string_from_format("|   %d	 |",pag->indice);
+
+			log_info(logDumpFile,message);
+			printf("%s",message);
+
+			fwrite(contenido,marcoSize,1,stdout);
+			log_info(logDumpFile,contenido);
+
+			printf("\r\n");
 			showInScreenAndLog("-----------------------------------------------------------------------------------------------");
 
 			free(pag);
