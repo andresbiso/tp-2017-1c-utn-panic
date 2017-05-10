@@ -40,7 +40,7 @@ void configChange(){
 	config_destroy(archivo);
 }
 
-void inotifyWatch(void*path){
+void inotifyWatch(void*args){
 	char cwd[1024];
 	getcwd(cwd,sizeof(cwd));
 	watchFile(cwd,configFileName,&configChange);
@@ -466,7 +466,7 @@ int main(int argc, char** argv) {
 	t_config* configFile= cargarConfiguracion(configFileName);
 
 	pthread_t hiloInotify;
-	pthread_create(&hiloInotify,NULL,inotifyWatch,configFile->path);
+	pthread_create(&hiloInotify,NULL,(void*)&inotifyWatch,NULL);
 
     t_dictionary* diccionarioFunciones = dictionary_create();
     dictionary_put(diccionarioFunciones,"ERROR_FUNC",&mostrarMensaje);
