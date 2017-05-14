@@ -451,6 +451,7 @@ void solicitarBytes(char* data,int socket){
 		respuesta->codigo=PAGINA_SOL_NOT_FOUND;
 		respuesta->tamanio=5;
 		respuesta->data="ERROR";
+		log_info(logFile,"Pagina no encontrada PID:%d PAG:%d",pedido->pid,pedido->pagina);
 	}else{
 		int32_t offsetEstrucAdmin=cantPaginasAdms()*TAM_ELM_TABLA_INV;
 		int32_t offsetHastaData= (marcoSize*(pag->indice))+pedido->offsetPagina;
@@ -460,12 +461,14 @@ void solicitarBytes(char* data,int socket){
 			respuesta->codigo=PAGINA_SOLICITAR_OVERFLOW;
 			respuesta->tamanio=5;
 			respuesta->data="ERROR";
+			log_info(logFile,"Overflow al solicitar bytes PID:%d PAG:%d OFFSET:%d TAMANIO:%d",pedido->pid,pedido->pagina,pedido->offsetPagina,pedido->tamanio);
 		}else{
 			respuesta->codigo=OK_SOLICITAR;
 			respuesta->tamanio=pedido->tamanio;
 			dataRecuperada = malloc(pedido->tamanio);
 			memcpy(dataRecuperada,bloqueMemoria+offsetTotal,pedido->tamanio);
 			respuesta->data=dataRecuperada;
+			log_info(logFile,"Exito al solicitar bytes PID:%d PAG:%d OFFSET:%d TAMANIO:%d",pedido->pid,pedido->pagina,pedido->offsetPagina,pedido->tamanio);
 		}
 	}
 
@@ -498,6 +501,7 @@ void almacenarBytes(char* data,int socket){
 	t_pagina* pag = encontrarPagina(pedido->pid,pedido->pagina);
 	if(pag==NULL){
 		respuesta->codigo=PAGINA_ALM_NOT_FOUND;
+		log_info(logFile,"Pagina no encontrada PID:%d PAG:%d",pedido->pid,pedido->pagina);
 	}else{
 		int32_t offsetEstrucAdmin=cantPaginasAdms()*TAM_ELM_TABLA_INV;
 		int32_t offsetHastaData= (marcoSize*(pag->indice))+pedido->offsetPagina;
@@ -505,8 +509,10 @@ void almacenarBytes(char* data,int socket){
 
 		if(marcoSize-(pedido->offsetPagina + pedido->tamanio) < 0){
 			respuesta->codigo=PAGINA_ALM_OVERFLOW;
+			log_info(logFile,"Overflow al escribir en pagina PID:%d PAG:%d TAMANIO:%d OFFSET:%d",pedido->pid,pedido->pagina,pedido->tamanio,pedido->offsetPagina);
 		}else{
 			memcpy(bloqueMemoria+offsetTotal,pedido->data,pedido->tamanio);
+			log_info(logFile,"Pedido correcto escribir en pagina PID:%d PAG:%d TAMANIO:%d OFFSET:%d",pedido->pid,pedido->pagina,pedido->tamanio,pedido->offsetPagina);
 			respuesta->codigo=OK_ALMACENAR;
 		}
 	}
@@ -537,10 +543,13 @@ void asignarPaginas(char* data,int socket){
 	t_respuesta_inicializar* respuesta = malloc(sizeof(t_respuesta_inicializar));
 	respuesta->idPrograma=pedido->idPrograma;
 
-	if(hayEspacio)
+	if(hayEspacio){
 		respuesta->codigoRespuesta= OK_INICIALIZAR;
-	else
+		log_info(logFile,"Pedido de paginas de programa exitoso PID:%d PAGS:%d",pedido->idPrograma,pedido->pagRequeridas);
+	}else{
 		respuesta->codigoRespuesta= SIN_ESPACIO_INICIALIZAR;
+		log_info(logFile,"Pedido de paginas de programa sin espacio PID:%d PAGS:%d",pedido->idPrograma,pedido->pagRequeridas);
+	}
 
 	char* buffer = serializar_respuesta_inicializar(respuesta);
 
