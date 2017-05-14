@@ -48,6 +48,47 @@ void inotifyWatch(void*args){
 
 //inotify
 
+//consola
+
+void changeMultiprogramacion(int size, char** functionAndParams){
+	if(size != 2){
+		printf("El comando multiprog debe recibir el numero nuevo\n\r");
+		freeElementsArray(functionAndParams,size);
+		return;
+	}
+
+	int nuevoMultiprog = atoi(functionAndParams[1]);
+
+	if(nuevoMultiprog <0){
+		printf("El grado de multiprogramacion no puede ser menor a 0\n\r");
+		freeElementsArray(functionAndParams,size);
+		return;
+	}
+
+	int oldValue = GradoMultiprog;
+	GradoMultiprog = nuevoMultiprog;
+	int i;
+	for(i=0;i<(abs(nuevoMultiprog-oldValue));i++){
+		if(nuevoMultiprog>oldValue)
+			sem_post(&grado);
+		else
+			sem_wait(&grado);
+	}
+
+	log_info(logNucleo,"Nuevo grado de multiprogramacion %d",GradoMultiprog);
+
+	freeElementsArray(functionAndParams,size);
+}
+
+void consolaCreate(void*args){
+	t_dictionary* commands = dictionary_create();
+	dictionary_put(commands,"multiprog",&changeMultiprogramacion);
+	waitCommand(commands);
+	dictionary_destroy(commands);
+}
+
+//consola
+
 void recibirTamanioPagina(int socket){
 	t_package* paquete = recibirPaquete(socket,NULL);
 	tamanio_pag_memoria = atoi(paquete->datos);
@@ -535,9 +576,9 @@ int main(int argc, char** argv) {
       		        exit(EXIT_FAILURE);
       		}
 
-    pthread_join(thread_consola, NULL);
-
-    pthread_join(thread_cpu, NULL);
+    pthread_t hiloConsola;
+    pthread_create(&hiloConsola,NULL,(void*)&consolaCreate,NULL);
+    pthread_join(hiloConsola,NULL);
 
     dictionary_destroy(diccionarioFunciones);
     dictionary_destroy(diccionarioHandshakes);

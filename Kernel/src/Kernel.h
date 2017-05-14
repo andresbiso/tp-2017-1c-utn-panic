@@ -13,7 +13,9 @@
 #include <commons/collections/queue.h>
 #include <panicommons/serializacion.h>
 #include <panicommons/panicommons.h>
+#include <panicommons/paniconsole.h>
 #include <commons/log.h>
+#include <commons/string.h>
 #include "inotify.h"
 
 int PuertoConsola;
