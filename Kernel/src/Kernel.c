@@ -80,9 +80,58 @@ void changeMultiprogramacion(int size, char** functionAndParams){
 	freeElementsArray(functionAndParams,size);
 }
 
+void showProcess(int size, char** functionAndParams){
+	if(size>2){
+		printf("El comando showProcess no puede recibir mas de 1 parametro\n\r");
+		freeElementsArray(functionAndParams,size);
+		return;
+	}
+
+	void logPID(void *process) {
+		log_info(logNucleo,"PID: %d",((t_pcb*)process)->pid);
+	}
+	if(size==2){
+		if(string_equals_ignore_case("new",functionAndParams[1])){
+			log_info(logNucleo,"-------- Procesos en NEW    --------",functionAndParams[1]);
+			list_iterate(colaNew->elements,logPID);
+		}
+		if(string_equals_ignore_case("ready",functionAndParams[1])){
+			log_info(logNucleo,"-------- Procesos en READY  --------",functionAndParams[1]);
+			list_iterate(colaReady->elements,logPID);
+		}
+		if(string_equals_ignore_case("exec",functionAndParams[1])){
+			log_info(logNucleo,"-------- Procesos en EXEC   --------",functionAndParams[1]);
+			list_iterate(colaExec->elements,logPID);
+		}
+		if(string_equals_ignore_case("block",functionAndParams[1])){
+			log_info(logNucleo,"-------- Procesos en BLOCKED--------",functionAndParams[1]);
+			list_iterate(colaBlocked->elements,logPID);
+		}
+		if(string_equals_ignore_case("exit",functionAndParams[1])){
+			log_info(logNucleo,"-------- Procesos en EXIT 	--------",functionAndParams[1]);
+			list_iterate(colaExit->elements,logPID);
+		}
+	}else{
+		log_info(logNucleo,"-------- Procesos en NEW    --------",functionAndParams[1]);
+		list_iterate(colaNew->elements,logPID);
+		log_info(logNucleo,"-------- Procesos en READY  --------",functionAndParams[1]);
+		list_iterate(colaReady->elements,logPID);
+		log_info(logNucleo,"-------- Procesos en EXEC   --------",functionAndParams[1]);
+		list_iterate(colaExec->elements,logPID);
+		log_info(logNucleo,"-------- Procesos en BLOCKED--------",functionAndParams[1]);
+		list_iterate(colaBlocked->elements,logPID);
+		log_info(logNucleo,"-------- Procesos en EXIT 	--------",functionAndParams[1]);
+		list_iterate(colaExit->elements,logPID);
+	}
+
+	freeElementsArray(functionAndParams,size);
+}
+
+
 void consolaCreate(void*args){
 	t_dictionary* commands = dictionary_create();
 	dictionary_put(commands,"multiprog",&changeMultiprogramacion);
+	dictionary_put(commands,"showProcess",&showProcess);
 	waitCommand(commands);
 	dictionary_destroy(commands);
 }
