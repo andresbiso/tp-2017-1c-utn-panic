@@ -360,15 +360,53 @@ char* serializar_respuesta_solicitar_bytes(t_respuesta_solicitar_bytes *respuest
 	char *buffer = malloc(sizeof(t_respuesta_solicitar_bytes));
 
 	int offset = 0;
-	memcpy(respuesta,&(respuesta->pid),sizeof(respuesta->pid));
+	memcpy(buffer,&(respuesta->pid),sizeof(respuesta->pid));
 	offset += sizeof(respuesta->pid);
-	memcpy(respuesta+offset,&(respuesta->codigo),sizeof(respuesta->codigo));
+	memcpy(buffer+offset,&(respuesta->codigo),sizeof(respuesta->codigo));
 	offset += sizeof(respuesta->codigo);
-	memcpy(respuesta+offset,&(respuesta->pagina),sizeof(respuesta->pagina));
+	memcpy(buffer+offset,&(respuesta->pagina),sizeof(respuesta->pagina));
 	offset += sizeof(respuesta->pagina);
-	memcpy(respuesta+offset,&(respuesta->tamanio),sizeof(respuesta->tamanio));
+	memcpy(buffer+offset,&(respuesta->tamanio),sizeof(respuesta->tamanio));
 	offset += sizeof(respuesta->tamanio);
-	memcpy(respuesta+offset,respuesta->data,respuesta->tamanio);
+	memcpy(buffer+offset,respuesta->data,respuesta->tamanio);
+
+	return buffer;
+}
+
+t_pedido_finalizar_programa* deserializar_pedido_finalizar_programa(char *pedido_serializado){
+	t_pedido_finalizar_programa* pedido = malloc(sizeof(t_pedido_finalizar_programa));
+
+	memcpy(&pedido->pid,(void*)pedido_serializado,sizeof(int32_t));
+
+	return pedido;
+}
+
+char* serializar_pedido_finalizar_programa(t_pedido_finalizar_programa *pedido){
+	char *buffer = malloc(sizeof(t_pedido_finalizar_programa));
+
+	memcpy(buffer,&(pedido->pid),sizeof(pedido->pid));
+
+	return buffer;
+}
+
+t_respuesta_finalizar_programa* deserializar_respuesta_finalizar_programa(char *respuesta_serializado){
+	t_respuesta_finalizar_programa* respuesta = malloc(sizeof(t_respuesta_finalizar_programa));
+
+	int offset=0;
+	memcpy(&respuesta->pid,(void*)respuesta_serializado,sizeof(int32_t));
+	offset+=sizeof(respuesta->pid);
+	memcpy(&respuesta->codigo,(void*)respuesta_serializado,sizeof(int32_t));
+
+	return respuesta;
+}
+
+char* serializar_respuesta_finalizar_programa(t_respuesta_finalizar_programa *respuesta){
+	char *buffer = malloc(sizeof(t_respuesta_finalizar_programa));
+
+	int offset=0;
+	memcpy(buffer,&(respuesta->pid),sizeof(respuesta->pid));
+	offset+=sizeof(respuesta->pid);
+	memcpy(buffer+offset,&(respuesta->codigo),sizeof(respuesta->codigo));
 
 	return buffer;
 }
