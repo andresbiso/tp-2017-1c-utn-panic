@@ -395,7 +395,7 @@ t_respuesta_finalizar_programa* deserializar_respuesta_finalizar_programa(char *
 	int offset=0;
 	memcpy(&respuesta->pid,(void*)respuesta_serializado,sizeof(int32_t));
 	offset+=sizeof(respuesta->pid);
-	memcpy(&respuesta->codigo,(void*)respuesta_serializado,sizeof(int32_t));
+	memcpy(&respuesta->codigo,(void*)respuesta_serializado+offset,sizeof(int32_t));
 
 	return respuesta;
 }

@@ -562,7 +562,43 @@ void asignarPaginas(char* data,int socket){
 }
 
 void finalizarPrograma(char* data,int socket){
-	//TODO
+	t_pedido_finalizar_programa* pedido = deserializar_pedido_finalizar_programa(data);
+
+	//TODO Falta eliminar de cache
+
+	log_info(logFile,"Pedido para finalizar programa PID:%d",pedido->pid);
+
+	int i;
+	pthread_mutex_lock(&mutexMemoriaPrincipal);
+	for(i=0;i<cantPaginasAdms();i++){
+		t_pagina* pag = getPagina(i);
+		if(pag->pid==pedido->pid){
+			pag->pid=-1;
+
+			int32_t offsetEstrucAdmin=cantPaginasAdms()*TAM_ELM_TABLA_INV;
+			int32_t offsetHastaData= (marcoSize*(pag->indice));
+			int32_t offsetTotal = offsetEstrucAdmin+offsetHastaData;
+
+			memset(bloqueMemoria+offsetTotal,0,marcoSize);
+
+			pag->numeroPag=0;
+			escribirEnEstrucAdmin(pag);
+		}
+		free(pag);
+	}
+	pthread_mutex_unlock(&mutexMemoriaPrincipal);
+
+	t_respuesta_finalizar_programa* respuesta = malloc(sizeof(t_respuesta_finalizar_programa));
+	respuesta->pid=pedido->pid;
+	respuesta->codigo=OK_FINALIZAR;
+
+	char*buffer = serializar_respuesta_finalizar_programa(respuesta);
+
+	empaquetarEnviarMensaje(socket,"RES_FINALIZAR",sizeof(t_respuesta_finalizar_programa),buffer);
+
+	free(buffer);
+	free(respuesta);
+	free(pedido);
 }
 
 void getMarcos(char* data,int socket){
