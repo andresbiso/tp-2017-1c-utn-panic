@@ -1,13 +1,15 @@
 #include "Consola.h"
 
 #include <panicommons/panicommons.h>
+#include <panicommons/serializacion.h>
 #include <pthread.h>
 #include <string.h>
 
 void logMessage(char*data,int socket){
-	pthread_mutex_lock(&mutexLog);
-	log_info(logConsola,data);
-	pthread_mutex_unlock(&mutexLog);
+	t_aviso_consola* aviso = deserializar_aviso_consola(data);
+	log_info(logConsola,"Mensaje de Kernel:%s PID:%d",aviso->mensaje,aviso->idPrograma);
+	free(aviso->mensaje);
+	free(aviso);
 }
 
 void esperarKernel(void* args){
@@ -72,18 +74,19 @@ int main(int argc, char** argv) {
 	printf("Puerto_Kernel: %d\n", PuertoKernel);
 
 	if ((socketKernel = conectar(IpKernel, PuertoKernel)) == -1) {
-		puts("No se encontro kernel");
+		perror("No se encontro kernel");
 		exit(EXIT_FAILURE);
 	}
 	while (!handshake(socketKernel, "HCSKE", "HKECS")) {
-		puts("Fallo la conexion con el Kernel");
+		perror("Fallo la conexion con el Kernel");
+		exit(EXIT_FAILURE);
 	}
 	puts("Conectado con kernel");
 
-	waitCommand(commands);
-
 	pthread_t hilo;
 	pthread_create(&hilo,NULL,(void*)esperarKernel,NULL);
+
+	waitCommand(commands);
 
 	dictionary_destroy(commands);
 	config_destroy(configFile);

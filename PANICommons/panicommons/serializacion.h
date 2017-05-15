@@ -61,7 +61,7 @@ typedef struct
 typedef struct
 {
 	char* mensaje;
-	int tamanomensaje;
+	int32_t tamanomensaje;
 	int32_t idPrograma;
 } __attribute__((__packed__)) t_aviso_consola;
 
@@ -110,10 +110,25 @@ typedef struct
 	codigo_almacenar_bytes codigo;
 } __attribute__((__packed__))t_respuesta_almacenar_bytes;
 
-t_pcb_serializado* serializar_pcb(t_pcb pcb);
+typedef struct
+{
+	int32_t pid;
+} __attribute__((__packed__)) t_pedido_finalizar_programa;
+
+typedef enum{OK_FINALIZAR=1,ERROR_FINALIZAR=-1} codigo_finalizar_programa;
+
+typedef struct
+{
+	int32_t pid;
+	codigo_finalizar_programa codigo;
+} __attribute__((__packed__))t_respuesta_finalizar_programa;
+
+
+t_pcb_serializado* serializar_pcb(t_pcb* pcb);
 t_pcb* deserializar_pcb(char* pcbs);
 
 char* serializar_aviso_consola(t_aviso_consola *pedido);
+t_aviso_consola* deserializar_aviso_consola(char *pedido_serializado);
 
 //Memoria
 t_pedido_inicializar* deserializar_pedido_inicializar(char *pedido_serializado);
@@ -131,6 +146,11 @@ t_pedido_almacenar_bytes* deserializar_pedido_almacenar_bytes(char *pedido_seria
 char* serializar_pedido_almacenar_bytes(t_pedido_almacenar_bytes *pedido);
 t_respuesta_almacenar_bytes* deserializar_respuesta_almacenar_bytes(char *respuesta_serializado);
 char* serializar_respuesta_almacenar_bytes(t_respuesta_almacenar_bytes *respuesta);
+
+t_pedido_finalizar_programa* deserializar_pedido_finalizar_programa(char *pedido_serializado);
+char* serializar_pedido_finalizar_programa(t_pedido_finalizar_programa *pedido);
+t_respuesta_finalizar_programa* deserializar_respuesta_finalizar_programa(char *respuesta_serializado);
+char* serializar_respuesta_finalizar_programa(t_respuesta_finalizar_programa *respuesta);
 
 //Memoria
 

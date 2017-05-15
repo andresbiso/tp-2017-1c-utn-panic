@@ -13,7 +13,10 @@
 #include <commons/collections/queue.h>
 #include <panicommons/serializacion.h>
 #include <panicommons/panicommons.h>
+#include <panicommons/paniconsole.h>
 #include <commons/log.h>
+#include <commons/string.h>
+#include "inotify.h"
 
 int PuertoConsola;
 int PuertoCpu;
@@ -24,6 +27,7 @@ int PuertoFS;
 int Quantum;
 int QuantumSleep;
 char* Algoritmo;
+char* configFileName;
 int GradoMultiprog;
 char** SemIds;
 char** SemInit;
@@ -75,11 +79,15 @@ void cargar_programa(int32_t socket, int pid);
 void relacionar_cpu_programa(t_cpu *cpu, t_consola *programa, t_pcb *pcb);
 void liberar_una_relacion(t_pcb *pcb_devuelto);
 void liberar_una_relacion_porsocket_cpu(int socketcpu);
+void liberar_consola(t_relacion *rel);
 t_consola* matchear_consola_por_pid(int pid);
 t_relacion* matchear_relacion_por_socketcpu(int socket);
 void elminar_consola_por_socket(int socket);
 void elminar_consola_por_pid(int pid);
 bool esta_libre(void * unaCpu);
 void programa(void* arg);
+void enviar_a_cpu();
+void cargarCPU(int32_t socket);
+void respuesta_inicializar_programa(int socket, int socketMemoria);
 
 #endif /* KERNEL_H_ */
