@@ -15,6 +15,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <panicommons/serializacion.h>
+#include <semaphore.h>
 
 t_queue *colaNew;
 t_queue *colaReady;
@@ -25,6 +26,8 @@ t_list *lista_programas_actuales;
 t_list *lista_cpus_conectadas;
 t_list *lista_relacion;
 t_log* logEstados;
+
+sem_t grado;
 
 void crear_colas();
 void destruir_colas();

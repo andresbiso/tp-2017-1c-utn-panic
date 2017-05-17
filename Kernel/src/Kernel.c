@@ -242,16 +242,16 @@ void programa(void* arg){
 		enviarMensajeConsola("Espera por Multiprogramacion\0","LOG_MESSAGE",nuevo_pcb->pid,socket);
 	}
 
-	free(params->codigo);
-	free(params);
-
 	moverA_colaNew(nuevo_pcb);
 
 	sem_wait(&grado);
 
 	inicializar_programa(nuevo_pcb);
 
-	respuesta_inicializar_programa(socket, socketMemoria);
+	respuesta_inicializar_programa(socket, socketMemoria, params->codigo);
+
+	free(params->codigo);
+	free(params);
 }
 
 t_pcb* armar_nuevo_pcb(char* codigo){
@@ -321,7 +321,51 @@ void inicializar_programa(t_pcb* nuevo_pcb){
 	free(pedido_serializado);
 }
 
-void respuesta_inicializar_programa(int socket, int socketMemoria){
+bool almacenarBytes(t_pcb* pcb,int socketMemoria,char* data){
+	int i;
+	t_pedido_almacenar_bytes *pedido = malloc(sizeof(t_pedido_almacenar_bytes));
+
+	for(i=0;i<pcb->cant_instrucciones;i++){
+		pedido->pid = pcb->pid;
+		pedido->pagina = pcb->indice_codigo[i].pag;
+		pedido->tamanio = pcb->indice_codigo[i].size;
+		pedido->offsetPagina = pcb->indice_codigo[i].offset;
+		pedido->data = malloc(pedido->tamanio);
+		memcpy(pedido->data,data+pedido->offsetPagina,pedido->tamanio);
+
+		char* buffer = serializar_pedido_almacenar_bytes(pedido);
+		empaquetarEnviarMensaje(socketMemoria,"ALMC_BYTES",sizeof(t_pedido_almacenar_bytes)+pedido->tamanio,buffer);
+		free(buffer);
+
+		t_package* paquete = recibirPaquete(socketMemoria,NULL);
+
+		t_respuesta_almacenar_bytes* respuesta = deserializar_respuesta_almacenar_bytes(paquete->datos);
+
+		switch (respuesta->codigo) {
+			case OK_ALMACENAR:
+				log_info(logNucleo,"Almacenamiento correcto en pagina PID:%d PAG:%d TAMANIO:%d OFFSET:%d",pedido->pid,pedido->pagina,pedido->tamanio,pedido->offsetPagina);
+				break;
+			case PAGINA_ALM_OVERFLOW:
+				//TODO enviar finalizar programa
+				log_info(logNucleo,"Overflow al almacenar el PID: %d",respuesta->pid);
+				return false;
+				break;
+			case PAGINA_ALM_NOT_FOUND:
+				//TODO enviar finalizar programa
+				log_info(logNucleo,"No se encontro pagina para el PID: %d",respuesta->pid);
+				return false;
+				break;
+		}
+
+		borrarPaquete(paquete);
+		free(respuesta);
+	}
+	free(pedido->data);
+	free(pedido);
+	return true;
+}
+
+void respuesta_inicializar_programa(int socket, int socketMemoria, char* codigo){
 
 	t_package* paquete = recibirPaquete(socketMemoria,NULL);
 
@@ -332,26 +376,31 @@ void respuesta_inicializar_programa(int socket, int socketMemoria){
 	cargar_programa(socket,respuesta->idPrograma);
 
 	t_pcb* pcb_respuesta = sacarDe_colaNew(respuesta->idPrograma);
-
 	switch (respuesta->codigoRespuesta) {
 		case OK_INICIALIZAR:
-			log_info(logNucleo,"Inicializacion correcta del PID: %d",respuesta->idPrograma);
-			moverA_colaReady(pcb_respuesta);
-			log_debug(logNucleo, "Movi a la cola Ready el PCB con PID: %d",respuesta->idPrograma);
+			if(almacenarBytes(pcb_respuesta,socketMemoria,codigo)){
+				log_info(logNucleo,"Inicializacion correcta del PID: %d",respuesta->idPrograma);
+				moverA_colaReady(pcb_respuesta);
+				log_debug(logNucleo, "Movi a la cola Ready el PCB con PID: %d",respuesta->idPrograma);
 
-			log_info(logNucleo,"Se envia mensaje a la consola del socket %d que pudo poner en Ready su PCB", socket);
-			t_aviso_consola aviso_ok;
-			aviso_ok.mensaje = "Proceso inicializado\0";
-			aviso_ok.tamanomensaje = strlen(aviso_ok.mensaje);
-			aviso_ok.idPrograma = respuesta->idPrograma;
+				log_info(logNucleo,"Se envia mensaje a la consola del socket %d que pudo poner en Ready su PCB", socket);
+				t_aviso_consola aviso_ok;
+				aviso_ok.mensaje = "Proceso inicializado\0";
+				aviso_ok.tamanomensaje = strlen(aviso_ok.mensaje);
+				aviso_ok.idPrograma = respuesta->idPrograma;
 
-			char* pedido_ok = serializar_aviso_consola(&aviso_ok);
+				char* pedido_ok = serializar_aviso_consola(&aviso_ok);
 
-			empaquetarEnviarMensaje(socket,"LOG_MESSAGE",aviso_ok.tamanomensaje+(sizeof(int32_t)*2),pedido_ok);
-			free(pedido_ok);
+				empaquetarEnviarMensaje(socket,"LOG_MESSAGE",aviso_ok.tamanomensaje+(sizeof(int32_t)*2),pedido_ok);
+				free(pedido_ok);
 
-			log_info(logNucleo,"Se envia a CPU el PCB inicializado");
-			enviar_a_cpu();
+				log_info(logNucleo,"Se envia a CPU el PCB inicializado");
+				enviar_a_cpu();
+			}
+			else{
+				moverA_colaExit(pcb_respuesta);
+				log_debug(logNucleo, "Movi a la cola Exit el PCB con PID: %d",respuesta->idPrograma);
+			}
 			break;
 		case SIN_ESPACIO_INICIALIZAR:
 			log_warning(logNucleo,"Inicializacion incorrecta del PID %d",respuesta->idPrograma);
@@ -429,7 +478,7 @@ void liberar_consola(t_relacion *rel){
 	rel->cpu->corriendo= false;
 	rel->programa->corriendo= false;
 
-	if(rel->programa->socket==-1){ //esta consola ya se murio
+	if(rel->programa->socket==-1){
 		log_warning(logNucleo,"Aprovecho para eliminar del sistema la consola cerrada del PID %d",rel->programa->pid);
 		moverA_colaExit(sacarDe_colaExec(rel->programa->pid));
 		//enviar(FINALIZA_PROGRAMA,sizeof(int32_t),&(rel->programa->pid),socket_umc);
@@ -578,8 +627,6 @@ int main(int argc, char** argv) {
     t_dictionary* diccionarioFunciones = dictionary_create();
     dictionary_put(diccionarioFunciones,"ERROR_FUNC",&mostrarMensaje);
     dictionary_put(diccionarioFunciones,"NUEVO_PROG",&nuevoPrograma);
-    dictionary_put(diccionarioFunciones,"RECB_MARCOS",&recibirTamanioPagina);
-    dictionary_put(diccionarioFunciones,"RES_INICIALIZAR",&respuesta_inicializar_programa);
 
     t_dictionary* diccionarioHandshakes = dictionary_create();
     dictionary_put(diccionarioHandshakes,"HCPKE","HKECP");

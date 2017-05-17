@@ -1,23 +1,44 @@
 #include "Consola.h"
 
 #include <panicommons/panicommons.h>
-#include <panicommons/serializacion.h>
 #include <pthread.h>
+#include <stdbool.h>
 #include <string.h>
 
-void logMessage(char*data,int socket){
-	t_aviso_consola* aviso = deserializar_aviso_consola(data);
-	log_info(logConsola,"Mensaje de Kernel:%s PID:%d",aviso->mensaje,aviso->idPrograma);
-	free(aviso->mensaje);
-	free(aviso);
+void esperarMensajePID(void*paramPid){
+	int32_t pid = (int32_t)paramPid;
+	sem_t* mutexPID;
+	mutexPID = (sem_t*)dictionary_get(semaforosPID,string_itoa(pid));
+
+	while(1){
+		sem_wait(mutexPID);
+		log_info(logConsola,"El PID:%d recibió un mensaje :%s",pid,avisoKernel->mensaje);
+	}
+}
+
+void newPID(char*data,int socket){
+	avisoKernel = deserializar_aviso_consola(data);
+
+	sem_t* sem=malloc(sizeof(sem_t));
+	sem_init(sem,0,1);
+
+	dictionary_put(semaforosPID,string_itoa(avisoKernel->idPrograma),sem);
+
+	pthread_t hiloPID;
+	pthread_create(&hiloPID,NULL,(void*)esperarMensajePID,(void*)avisoKernel->idPrograma);
 }
 
 void esperarKernel(void* args){
 	t_dictionary* diccionario = dictionary_create();
-	dictionary_put(diccionario,"LOG_MESSAGE",&logMessage);
+	dictionary_put(diccionario,"NEW_PID",&newPID);
 	while(1){
-		t_package* paquete = recibirPaquete(socketKernel,NULL);
-		procesarPaquete(paquete,socketKernel,diccionario,NULL);
+		t_package* paqueteKernel = recibirPaquete(socketKernel,NULL);
+		if(strcmp(paqueteKernel->key,"NEW_PID")==0)
+			procesarPaquete(paqueteKernel,socketKernel,diccionario,NULL);
+		else{
+			avisoKernel = deserializar_aviso_consola(paqueteKernel->datos);
+			sem_post((sem_t*)dictionary_get(semaforosPID,string_itoa(avisoKernel->idPrograma)));
+		}
 	}
 	dictionary_destroy(diccionario);
 }
@@ -66,6 +87,8 @@ int main(int argc, char** argv) {
 	t_config* configFile = cargarConfiguracion(argv[1]);
 	logConsola = log_create("Consola.log","Consola",false,LOG_LEVEL_TRACE);
 
+	semaforosPID = dictionary_create();
+
 	t_dictionary* commands = dictionary_create();
 	dictionary_put(commands,"init",&init);
 	dictionary_put(commands,"clear",&clear);
@@ -89,6 +112,7 @@ int main(int argc, char** argv) {
 	waitCommand(commands);
 
 	dictionary_destroy(commands);
+	dictionary_destroy_and_destroy_elements(semaforosPID,free);
 	config_destroy(configFile);
 	log_destroy(logConsola);
 	return EXIT_SUCCESS;

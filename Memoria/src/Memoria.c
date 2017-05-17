@@ -45,6 +45,28 @@ void freeCache(t_cache*cache){
 	free(cache);
 }
 
+int32_t cantEntradasCachePID(int32_t pid){
+	int32_t cant=0;
+	int i;
+	for(i=0;i<entradasCache;i++){
+		t_cache* cache= getPaginaCache(i);
+		if(cache->pid==pid)
+			cant++;
+	}
+	return cant;
+}
+
+t_cache* findInCache(int32_t pid,int32_t nroPagina){
+	int i;
+	for(i=0;i<entradasCache;i++){
+		t_cache* cache= getPaginaCache(i);
+		if(cache->pid==pid && cache->nroPagina==nroPagina)
+			return cache;
+	}
+	return NULL;
+}
+
+
 t_cache* getPaginaCache(int indice){
 	int offset = indice*(marcoSize+(sizeof(int32_t)*2));
 	t_cache* cache = malloc(sizeof(t_cache));
@@ -78,7 +100,7 @@ void inicializarCache(){
 		offset+=sizeof(int32_t);
 		memcpy(bloqueCache+offset,&cache->nroPagina,sizeof(int32_t));
 		offset+=sizeof(int32_t);
-		memset(bloqueCache,0,marcoSize);
+		memset(bloqueCache+offset,0,marcoSize);
 		offset+=marcoSize;
 	}
 }
