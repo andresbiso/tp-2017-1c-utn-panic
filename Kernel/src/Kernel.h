@@ -88,6 +88,7 @@ bool esta_libre(void * unaCpu);
 void programa(void* arg);
 void enviar_a_cpu();
 void cargarCPU(int32_t socket);
-void respuesta_inicializar_programa(int socket, int socketMemoria);
+void respuesta_inicializar_programa(int socket, int socketMemoria, char* codigo);
+bool almacenarBytes(t_pcb* pcb,int socketMemoria,char* codigo);
 
 #endif /* KERNEL_H_ */
