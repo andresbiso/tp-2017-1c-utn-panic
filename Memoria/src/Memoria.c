@@ -45,6 +45,18 @@ void freeCache(t_cache*cache){
 	free(cache);
 }
 
+t_cache* getPaginaCache(int indice){
+	int offset = indice*(marcoSize+(sizeof(int32_t)*2));
+	t_cache* cache = malloc(sizeof(t_cache));
+	memcpy(&cache->pid,bloqueCache+offset,sizeof(int32_t));
+	offset+=sizeof(int32_t);
+	memcpy(&cache->nroPagina,bloqueCache+offset,sizeof(int32_t));
+	offset+=sizeof(int32_t);
+	cache->contenido = malloc(marcoSize);
+	memcpy(&cache->contenido,bloqueCache+offset,marcoSize);
+	return cache;
+}
+
 int32_t cantEntradasCachePID(int32_t pid){
 	int32_t cant=0;
 	int i;
@@ -54,6 +66,60 @@ int32_t cantEntradasCachePID(int32_t pid){
 			cant++;
 	}
 	return cant;
+}
+
+
+t_cache_admin* findMinorEntradas(){
+
+	bool minorEntradas(void* e1,void* e2){
+		if(((t_cache_admin*)e1)->pid ==-1)
+			return true;
+		if(((t_cache_admin*)e2)->pid ==-1)
+			return false;
+		if(((t_cache_admin*)e1)->entradas <((t_cache_admin*)e2)->entradas)
+			return true;
+		else
+			return false;
+	}
+
+	list_sort(cacheEntradas,minorEntradas);
+
+	return list_get(cacheEntradas,0);
+}
+
+void clearEntradasCache(int32_t pid,int32_t nroPagina,int32_t pidReplace,int32_t nroPaginaReplace){
+
+	void clearEntradas(void* entrada){
+		if( (((t_cache_admin*)entrada)->pid == pid) && (nroPagina==-1 || (((t_cache_admin*)entrada)->nroPagina==nroPagina))){
+			((t_cache_admin*)entrada)->entradas=0;
+			if(pidReplace != -1 && nroPaginaReplace != -1){
+				((t_cache_admin*)entrada)->pid=pidReplace;
+				((t_cache_admin*)entrada)->nroPagina=nroPaginaReplace;
+			}else{
+				((t_cache_admin*)entrada)->pid=-1;
+				((t_cache_admin*)entrada)->nroPagina=0;
+			}
+		}
+	}
+
+	list_iterate(cacheEntradas,clearEntradas);
+}
+
+void findAndReplaceInCache(int32_t oldPID, int32_t oldNroPagina, int32_t pid, int32_t nroPagina, char* contenido){
+
+}
+
+
+void cacheMiss(int32_t pid, int32_t nroPagina,char* contenido){
+	int32_t cantActuales = cantEntradasCachePID(pid);
+
+	if (cantActuales < cacheXproc) {// Si tiene menos entradas que las permitidas por proceso en cache
+		t_cache_admin* menorEntradas = findMinorEntradas();
+		clearEntradasCache(menorEntradas->pid,menorEntradas->nroPagina,pid,nroPagina);
+		findAndReplaceInCache(menorEntradas->pid,menorEntradas->nroPagina,pid,nroPagina,contenido);
+	}
+
+
 }
 
 t_cache* findInCache(int32_t pid,int32_t nroPagina){
@@ -66,18 +132,6 @@ t_cache* findInCache(int32_t pid,int32_t nroPagina){
 	return NULL;
 }
 
-
-t_cache* getPaginaCache(int indice){
-	int offset = indice*(marcoSize+(sizeof(int32_t)*2));
-	t_cache* cache = malloc(sizeof(t_cache));
-	memcpy(&cache->pid,bloqueCache+offset,sizeof(int32_t));
-	offset+=sizeof(int32_t);
-	memcpy(&cache->nroPagina,bloqueCache+offset,sizeof(int32_t));
-	offset+=sizeof(int32_t);
-	cache->contenido = malloc(marcoSize);
-	memcpy(&cache->contenido,bloqueCache+offset,marcoSize);
-	return cache;
-}
 
 t_cache crearCache(int32_t pid,int32_t nroPagina,char*contenido){
 	t_cache cache;
@@ -117,24 +171,6 @@ void inicializarEntradasCache(){
 	}
 }
 
-t_cache_admin* findMinorEntradas(){
-
-	bool minorEntradas(void* e1,void* e2){
-		if(((t_cache_admin*)e1)->pid ==-1)
-			return true;
-		if(((t_cache_admin*)e2)->pid ==-1)
-			return false;
-		if(((t_cache_admin*)e1)->entradas <((t_cache_admin*)e2)->entradas)
-			return true;
-		else
-			return false;
-	}
-
-	list_sort(cacheEntradas,minorEntradas);
-
-	return list_get(cacheEntradas,0);
-}
-
 void addEntradaCache(int32_t pid, int32_t nroPagina){
 
 	bool findByPID(void*entrada){
@@ -143,24 +179,6 @@ void addEntradaCache(int32_t pid, int32_t nroPagina){
 
 	t_cache_admin* entrada = (t_cache_admin*)list_find(cacheEntradas,findByPID);
 	entrada->entradas++;
-}
-
-void clearEntradasCache(int32_t pid,int32_t nroPagina,int32_t pidReplace,int32_t nroPaginaReplace){
-
-	void clearEntradas(void* entrada){
-		if( (((t_cache_admin*)entrada)->pid == pid) && (nroPagina==-1 || (((t_cache_admin*)entrada)->nroPagina==nroPagina))){
-			((t_cache_admin*)entrada)->entradas=0;
-			if(pidReplace != -1 && nroPaginaReplace != -1){
-				((t_cache_admin*)entrada)->pid=pidReplace;
-				((t_cache_admin*)entrada)->nroPagina=nroPaginaReplace;
-			}else{
-				((t_cache_admin*)entrada)->pid=-1;
-				((t_cache_admin*)entrada)->nroPagina=0;
-			}
-		}
-	}
-
-	list_iterate(cacheEntradas,clearEntradas);
 }
 
 //CACHE
