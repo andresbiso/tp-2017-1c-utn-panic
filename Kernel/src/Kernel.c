@@ -1,10 +1,18 @@
+#include "Kernel.h"
+
+#include <commons/collections/dictionary.h>
+#include <commons/collections/list.h>
+#include <parser/metadata_program.h>
+#include <pthread.h>
+#include <semaphore.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <pthread.h>
-#include <parser/metadata_program.h>
-#include "Kernel.h"
+#include <string.h>
+#include <sys/types.h>
+#include <unistd.h>
+
 #include "estados.h"
-#include <semaphore.h>
 
 typedef struct {
     int socketEscucha;
@@ -26,6 +34,22 @@ int socketcpuConectadas;
 int tamanio_pag_memoria;
 
 sem_t grado;
+
+//consola
+
+void enviarMensajeConsola(char*mensaje,char*key,int32_t pid,int32_t socket){
+	t_aviso_consola aviso_nuevo_proceso;
+	aviso_nuevo_proceso.mensaje = mensaje;
+	aviso_nuevo_proceso.tamanomensaje = strlen(aviso_nuevo_proceso.mensaje);
+	aviso_nuevo_proceso.idPrograma = pid;
+
+	char *pedido_serializado = serializar_aviso_consola(&aviso_nuevo_proceso);
+
+	empaquetarEnviarMensaje(socket,key,aviso_nuevo_proceso.tamanomensaje+(sizeof(int32_t)*2),pedido_serializado);
+	free(pedido_serializado);
+}
+
+//consola
 
 //inotify
 
@@ -209,20 +233,13 @@ void programa(void* arg){
 	int gradoActual;
 	t_pcb* nuevo_pcb;
 
-	sem_getvalue(&grado,&gradoActual);
-
 	nuevo_pcb = armar_nuevo_pcb(params->codigo);
 
+	enviarMensajeConsola("Nuevo Proceso creado \0","NEW_PID",nuevo_pcb->pid,socket);
+
+	sem_getvalue(&grado,&gradoActual);
 	if(gradoActual <= 0){
-		t_aviso_consola aviso_consola;
-		aviso_consola.mensaje = "Rechazo por Multiprogramacion\0";
-		aviso_consola.tamanomensaje = strlen(aviso_consola.mensaje);
-		aviso_consola.idPrograma = nuevo_pcb->pid;
-
-		char *pedido_serializado = serializar_aviso_consola(&aviso_consola);
-
-		empaquetarEnviarMensaje(socket,"LOG_MESSAGE",aviso_consola.tamanomensaje+(sizeof(int32_t)*2),pedido_serializado);
-		free(pedido_serializado);
+		enviarMensajeConsola("Espera por Multiprogramacion\0","LOG_MESSAGE",nuevo_pcb->pid,socket);
 	}
 
 	free(params->codigo);
