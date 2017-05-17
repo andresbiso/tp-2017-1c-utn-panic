@@ -298,7 +298,7 @@ t_pedido_almacenar_bytes* deserializar_pedido_almacenar_bytes(char *pedido_seria
 }
 
 char* serializar_pedido_almacenar_bytes(t_pedido_almacenar_bytes *pedido){
-	char *respuesta = malloc(sizeof(t_pedido_almacenar_bytes));
+	char *respuesta = malloc(sizeof(int32_t)*4+pedido->tamanio);
 
 	int offset = 0;
 	memcpy(respuesta,&(pedido->pid),sizeof(pedido->pid));

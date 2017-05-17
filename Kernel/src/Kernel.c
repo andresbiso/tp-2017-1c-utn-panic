@@ -323,19 +323,20 @@ void inicializar_programa(t_pcb* nuevo_pcb){
 
 bool almacenarBytes(t_pcb* pcb,int socketMemoria,char* data){
 	int i;
-	t_pedido_almacenar_bytes *pedido = malloc(sizeof(t_pedido_almacenar_bytes));
+	t_pedido_almacenar_bytes pedido;
 
 	for(i=0;i<pcb->cant_instrucciones;i++){
-		pedido->pid = pcb->pid;
-		pedido->pagina = pcb->indice_codigo[i].pag;
-		pedido->tamanio = pcb->indice_codigo[i].size;
-		pedido->offsetPagina = pcb->indice_codigo[i].offset;
-		pedido->data = malloc(pedido->tamanio);
-		memcpy(pedido->data,data+pedido->offsetPagina,pedido->tamanio);
+		pedido.pid = pcb->pid;
+		pedido.pagina = pcb->indice_codigo[i].pag;
+		pedido.tamanio = pcb->indice_codigo[i].size;
+		pedido.offsetPagina = pcb->indice_codigo[i].offset;
+		pedido.data = malloc(pedido.tamanio);
+		memcpy(pedido.data,data+pedido.offsetPagina,pedido.tamanio);
 
-		char* buffer = serializar_pedido_almacenar_bytes(pedido);
-		empaquetarEnviarMensaje(socketMemoria,"ALMC_BYTES",sizeof(t_pedido_almacenar_bytes)+pedido->tamanio,buffer);
+		char* buffer = serializar_pedido_almacenar_bytes(&pedido);
+		empaquetarEnviarMensaje(socketMemoria,"ALMC_BYTES",sizeof(int32_t)*4+pedido.tamanio,buffer);
 		free(buffer);
+		free(pedido.data);
 
 		t_package* paquete = recibirPaquete(socketMemoria,NULL);
 
@@ -343,7 +344,7 @@ bool almacenarBytes(t_pcb* pcb,int socketMemoria,char* data){
 
 		switch (respuesta->codigo) {
 			case OK_ALMACENAR:
-				log_info(logNucleo,"Almacenamiento correcto en pagina PID:%d PAG:%d TAMANIO:%d OFFSET:%d",pedido->pid,pedido->pagina,pedido->tamanio,pedido->offsetPagina);
+				log_info(logNucleo,"Almacenamiento correcto en pagina PID:%d PAG:%d TAMANIO:%d OFFSET:%d",pedido.pid,pedido.pagina,pedido.tamanio,pedido.offsetPagina);
 				break;
 			case PAGINA_ALM_OVERFLOW:
 				//TODO enviar finalizar programa
@@ -360,8 +361,6 @@ bool almacenarBytes(t_pcb* pcb,int socketMemoria,char* data){
 		borrarPaquete(paquete);
 		free(respuesta);
 	}
-	free(pedido->data);
-	free(pedido);
 	return true;
 }
 
