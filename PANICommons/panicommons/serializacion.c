@@ -357,7 +357,7 @@ t_respuesta_solicitar_bytes* deserializar_respuesta_solicitar_bytes(char *respue
 }
 
 char* serializar_respuesta_solicitar_bytes(t_respuesta_solicitar_bytes *respuesta){
-	char *buffer = malloc(sizeof(t_respuesta_solicitar_bytes));
+	char *buffer = malloc(sizeof(int32_t)*3+sizeof(codigo_solicitar_bytes)+respuesta->tamanio);
 
 	int offset = 0;
 	memcpy(buffer,&(respuesta->pid),sizeof(respuesta->pid));

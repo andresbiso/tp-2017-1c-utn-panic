@@ -642,7 +642,7 @@ void solicitarBytes(char* data,int socket){
 		pthread_mutex_unlock(&mutexCache);
 
 		char* buffer = serializar_respuesta_solicitar_bytes(respuesta);
-		empaquetarEnviarMensaje(socket,"RTA_SL_BYTES",sizeof(t_pedido_solicitar_bytes)+respuesta->tamanio,buffer);//Es el pedido + el tamanio de lo pedido
+		empaquetarEnviarMensaje(socket,"RTA_SL_BYTES",sizeof(int32_t)*3+sizeof(codigo_solicitar_bytes)+respuesta->tamanio,buffer);
 		free(buffer);
 		free(respuesta);
 		free(pedido);
@@ -688,7 +688,7 @@ void solicitarBytes(char* data,int socket){
 
 	pthread_mutex_unlock(&mutexMemoriaPrincipal);
 	char* buffer = serializar_respuesta_solicitar_bytes(respuesta);
-	empaquetarEnviarMensaje(socket,"RTA_SL_BYTES",sizeof(t_pedido_solicitar_bytes)+respuesta->tamanio,buffer);//Es el pedido + el tamanio de lo pedido
+	empaquetarEnviarMensaje(socket,"RTA_SL_BYTES",sizeof(int32_t)*3+sizeof(codigo_solicitar_bytes)+respuesta->tamanio,buffer);
 
 	if(dataRecuperada!=NULL){
 		pthread_mutex_lock(&mutexCache);
