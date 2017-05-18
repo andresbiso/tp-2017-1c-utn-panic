@@ -123,11 +123,11 @@ void findAndReplaceInCache(int32_t oldPID, int32_t oldNroPagina, int32_t pid, in
 			offset+=sizeof(int32_t);
 			memcpy(bloqueCache+offset,&nroPagina,sizeof(int32_t));
 			offset+=sizeof(int32_t);
-			if(contenido != NULL)
+			if(contenido != NULL){
 				memcpy(bloqueCache+offset,contenido,marcoSize);
-			else
+				break;
+			}else
 				memset(bloqueCache+offset,0,marcoSize);
-			break;
 		}
 		offset+=(sizeof(int32_t)*2)+marcoSize;
 		freeCache(cache);
