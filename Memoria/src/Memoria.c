@@ -635,6 +635,7 @@ void solicitarBytes(char* data,int socket){
 			respuesta->tamanio=pedido->tamanio;
 			dataRecuperada = malloc(pedido->tamanio);
 			memcpy(dataRecuperada,cache->contenido+pedido->offsetPagina,pedido->tamanio);
+			freeCache(cache);
 			respuesta->data=dataRecuperada;
 			log_info(logFile,"Exito al solicitar bytes PID:%d PAG:%d OFFSET:%d TAMANIO:%d",pedido->pid,pedido->pagina,pedido->offsetPagina,pedido->tamanio);
 		}
@@ -648,12 +649,9 @@ void solicitarBytes(char* data,int socket){
 		free(pedido);
 		if(dataRecuperada != NULL)
 			free(dataRecuperada);
-		free(cache);
 
 		return;
 	}
-
-	pthread_mutex_unlock(&mutexCache);
 
 	sleep(retardoMemoria/1000);
 	pthread_mutex_lock(&mutexMemoriaPrincipal);
@@ -681,21 +679,20 @@ void solicitarBytes(char* data,int socket){
 			respuesta->tamanio=pedido->tamanio;
 			dataRecuperada = malloc(pedido->tamanio);
 			memcpy(dataRecuperada,bloqueMemoria+offsetTotal,pedido->tamanio);
+			cacheMiss(pedido->pid,pedido->pagina,bloqueMemoria+(offsetEstrucAdmin+(marcoSize*(pag->indice))));
+
 			respuesta->data=dataRecuperada;
 			log_info(logFile,"Exito al solicitar bytes PID:%d PAG:%d OFFSET:%d TAMANIO:%d",pedido->pid,pedido->pagina,pedido->offsetPagina,pedido->tamanio);
 		}
 	}
 
+	pthread_mutex_unlock(&mutexCache);
 	pthread_mutex_unlock(&mutexMemoriaPrincipal);
 	char* buffer = serializar_respuesta_solicitar_bytes(respuesta);
 	empaquetarEnviarMensaje(socket,"RTA_SL_BYTES",sizeof(int32_t)*3+sizeof(codigo_solicitar_bytes)+respuesta->tamanio,buffer);
 
-	if(dataRecuperada!=NULL){
-		pthread_mutex_lock(&mutexCache);
-		cacheMiss(pedido->pid,pedido->pagina,dataRecuperada);
-		pthread_mutex_unlock(&mutexCache);
+	if(dataRecuperada!=NULL)
 		free(dataRecuperada);
-	}
 	if(pag!=NULL)
 		free(pag);
 	free(buffer);
