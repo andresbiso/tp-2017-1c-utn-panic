@@ -712,11 +712,14 @@ void almacenarBytes(char* data,int socket){
 	t_respuesta_almacenar_bytes* respuesta = malloc(sizeof(t_respuesta_almacenar_bytes));
 	respuesta->pid=pedido->pid;
 
+	bool inCache = true;
+
 	pthread_mutex_lock(&mutexCache);
 	t_cache* cache = findInCache(pedido->pid,pedido->pagina);
-	if(cache==NULL)
+	if(cache==NULL){
+		inCache=false;
 		pthread_mutex_unlock(&mutexCache);//Si no esta en cache desbloqueamos el acceso sino se espera hasta que escribamos en memoria
-
+	}
 	sleep(retardoMemoria/1000);
 	pthread_mutex_lock(&mutexMemoriaPrincipal);
 
@@ -744,7 +747,8 @@ void almacenarBytes(char* data,int socket){
 		}
 	}
 
-	pthread_mutex_unlock(&mutexCache);
+	if(inCache)
+		pthread_mutex_unlock(&mutexCache);
 	pthread_mutex_unlock(&mutexMemoriaPrincipal);
 
 	char*buffer = serializar_respuesta_almacenar_bytes(respuesta);
