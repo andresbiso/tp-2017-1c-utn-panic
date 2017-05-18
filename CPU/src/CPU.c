@@ -43,17 +43,18 @@ void ejecutarPrograma() {
 			perror("Hubo un error procesando el paquete");
 			exit(EXIT_FAILURE);
 		}
-		t_package* paqueteRespueta = recibirPaquete(socketMemoria, NULL);
-		t_respuesta_solicitar_bytes* bufferRespuesta = deserializar_respuesta_solicitar_bytes();
+		t_package* paqueteRespuesta = recibirPaquete(socketMemoria, NULL);
+		t_respuesta_solicitar_bytes* bufferRespuesta = deserializar_respuesta_solicitar_bytes(paqueteRespuesta);
 		ejecutarInstruccion(bufferRespuesta);
-		free(paqueteRespueta);
+		borrarPaquete(paqueteRespuesta);
+		free(bufferRespuesta->data);
 		free(bufferRespuesta);
 	}
 	free(pedido);
 }
 
 void ejecutarInstruccion(t_respuesta_solicitar_bytes* respuesta) {
-	analizadorLinea(respuesta, funcionesParser->funciones_comunes, funcionesParser->funciones_kernel);
+	analizadorLinea(respuesta->data, funcionesParser->funciones_comunes, funcionesParser->funciones_kernel);
 }
 
 void mostrarMensaje(char* mensaje, int socket){
@@ -135,6 +136,7 @@ int main(int argc, char** argv) {
 	funcionesParser = inicializar_primitivas();
 	wait_kernel();
 
+	free(actual_pcb);
 	dictionary_destroy(diccionarioFunciones);
 	config_destroy(configFile);
 	log_destroy(log);
