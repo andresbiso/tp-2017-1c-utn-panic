@@ -18,4 +18,7 @@ int quantum;
 int quantumSleep;
 t_log* log;
 
+int socketKernel;
+int socketMemoria;
+
 #endif /* CPU_H_ */

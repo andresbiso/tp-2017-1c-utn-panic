@@ -26,6 +26,7 @@ typedef struct funciones_ansisop{
 } FuncionesAnsisop;
 
 t_pcb* actual_pcb;
+FuncionesAnsisop* funcionesParser;
 
 FuncionesAnsisop* inicializar_primitivas();
 

@@ -24,11 +24,39 @@ void modificarQuantumSleep(int nuevoQuantumSleep) {
 	log_info(log, "QuantumSleep=" + quantumSleep);
 }
 
-void nuevoPCB(char* pcb){
+void nuevoPCB(char* pcb, int socket){
 	actual_pcb = deserializar(pcb);
+	ejectuarPrograma();
 }
 
-void mostrarMensaje(char* mensaje){
+void ejecutarPrograma() {
+	t_pedido_solicitar_bytes* pedido = (t_pedido_solicitar_bytes*)malloc(sizeof (t_pedido_solicitar_bytes));
+	int instruccionActual = 0;
+	while(instruccionActual < actual_pcb->cant_instrucciones) {
+		pedido->pid = actual_pcb->pid;
+		pedido->pagina = actual_pcb->indice_codigo->pag;
+		pedido->offsetPagina = actual_pcb->indice_codigo->offset;
+		pedido->tamanio = actual_pcb->indice_codigo->size;
+		char* buffer =  serializar_pedido_solicitar_bytes(t_pedido_solicitar_bytes *pedido);
+		int longitudMensaje = sizeof(t_pedido_solicitar_bytes);
+		if(empaquetarEnviarMensaje(socketMemoria, "SOLC_BYTES", longitudMensaje, buffer)) {
+			perror("Hubo un error procesando el paquete");
+			exit(EXIT_FAILURE);
+		}
+		t_package* paqueteRespueta = recibirPaquete(socketMemoria, NULL);
+		t_respuesta_solicitar_bytes* bufferRespuesta = deserializar_respuesta_solicitar_bytes();
+		ejecutarInstruccion(bufferRespuesta);
+		free(paqueteRespueta);
+		free(bufferRespuesta);
+	}
+	free(pedido);
+}
+
+void ejecutarInstruccion(t_respuesta_solicitar_bytes* respuesta) {
+	analizadorLinea(respuesta, funcionesParser->funciones_comunes, funcionesParser->funciones_kernel);
+}
+
+void mostrarMensaje(char* mensaje, int socket){
 	printf("Mensaje recibido: %s \n",mensaje);
 }
 
@@ -92,17 +120,20 @@ int main(int argc, char** argv) {
 
 	log = log_create("cpu.log","CPU",1,LOG_LEVEL_TRACE);
 
-	int socketKernel = conectar(ipKernel,puertoKernel);
+	socketKernel = conectar(ipKernel,puertoKernel);
 	if(!handshake(socketKernel,"HCPKE","HKECP")){
 		log_error(log,"No se pudo realizar la conexion con el kernel");
 		exit(EXIT_FAILURE);
 	}
 
-	int socketMemoria = conectar(ipMemoria,puertoMemoria);
+	socketMemoria = conectar(ipMemoria,puertoMemoria);
 	if(!handshake(socketMemoria,"HCPME","HMECP")){
 		log_error(log,"No se pudo realizar la conexion con la memoria");
 		exit(EXIT_FAILURE);
 	}
+
+	funcionesParser = inicializar_primitivas();
+	wait_kernel();
 
 	dictionary_destroy(diccionarioFunciones);
 	config_destroy(configFile);
