@@ -29,6 +29,18 @@ void nuevoPCB(char* pcb, int socket){
 	ejectuarPrograma();
 }
 
+void borrarPCB(t_pcb* pcb){
+	if(!pcb) {
+		return;
+	}
+	free(pcb->indice_codigo);
+	free(pcb->indice_etiquetas);
+	free(pcb->indice_stack->argumentos);
+	free(pcb->indice_stack->variables);
+	free(pcb->indice_stack);
+	free(pcb);
+}
+
 void ejecutarPrograma() {
 	t_pedido_solicitar_bytes* pedido = (t_pedido_solicitar_bytes*)malloc(sizeof (t_pedido_solicitar_bytes));
 	int instruccionActual = 0;
@@ -44,7 +56,7 @@ void ejecutarPrograma() {
 			exit(EXIT_FAILURE);
 		}
 		t_package* paqueteRespuesta = recibirPaquete(socketMemoria, NULL);
-		t_respuesta_solicitar_bytes* bufferRespuesta = deserializar_respuesta_solicitar_bytes(paqueteRespuesta);
+		t_respuesta_solicitar_bytes* bufferRespuesta = deserializar_respuesta_solicitar_bytes(paqueteRespuesta.datos);
 		ejecutarInstruccion(bufferRespuesta);
 		borrarPaquete(paqueteRespuesta);
 		free(bufferRespuesta->data);
@@ -136,7 +148,7 @@ int main(int argc, char** argv) {
 	funcionesParser = inicializar_primitivas();
 	wait_kernel();
 
-	free(actual_pcb);
+	borrarPCB(actual_pcb);
 	dictionary_destroy(diccionarioFunciones);
 	config_destroy(configFile);
 	log_destroy(log);
