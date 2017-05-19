@@ -58,24 +58,25 @@ t_cache* getPaginaCache(int indice){
 }
 
 int32_t cantEntradasCachePID(int32_t pid){
-	int32_t cant=0;
-	int i;
-	for(i=0;i<entradasCache;i++){
-		t_cache* cache= getPaginaCache(i);
-		if(cache->pid==pid)
-			cant++;
+	bool matchPID(void* entrada){
+			return ((t_cache_admin*)entrada)->pid==pid;
 	}
-	return cant;
+	return list_count_satisfying(cacheEntradas,matchPID);
 }
 
 
-t_cache_admin* findMinorEntradas(){
+t_cache_admin* findMinorEntradas(){//Si hay alguna libre le doy esa sino busco la de menor entradas
+
+	bool isFreeCache(void*e1){
+		return ((t_cache_admin*)e1)->pid==-1;
+	}
+
+	t_cache_admin* posible = list_find(cacheEntradas,isFreeCache);
+
+	if(posible!=NULL)
+		return posible;
 
 	bool minorEntradas(void* e1,void* e2){
-		if(((t_cache_admin*)e1)->pid ==-1)
-			return true;
-		if(((t_cache_admin*)e2)->pid ==-1)
-			return false;
 		if(((t_cache_admin*)e1)->entradas <((t_cache_admin*)e2)->entradas)
 			return true;
 		else

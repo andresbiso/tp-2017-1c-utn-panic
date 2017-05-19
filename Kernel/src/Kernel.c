@@ -273,9 +273,18 @@ t_pcb* armar_nuevo_pcb(char* codigo){
 
 	for(i=0;i<(metadata->instrucciones_size);i++){
 		t_posMemoria posicion_nueva_instruccion;
-		posicion_nueva_instruccion.pag = (metadata->instrucciones_serializado[i].start+posicion_nueva_instruccion.size)/tamanio_pag_memoria;
 		posicion_nueva_instruccion.size = metadata->instrucciones_serializado[i].offset;
-		posicion_nueva_instruccion.offset = metadata->instrucciones_serializado[i].start%tamanio_pag_memoria;
+
+		posicion_nueva_instruccion.pag = (metadata->instrucciones_serializado[i].start+posicion_nueva_instruccion.size)/tamanio_pag_memoria;
+
+		if (posicion_nueva_instruccion.pag !=0 && (metadata->instrucciones_serializado[i].start < (posicion_nueva_instruccion.pag*tamanio_pag_memoria)) ){
+			posicion_nueva_instruccion.offset = 0;
+		}else if (posicion_nueva_instruccion.pag !=0){
+			posicion_nueva_instruccion.offset = (metadata->instrucciones_serializado[i].start%(posicion_nueva_instruccion.pag*tamanio_pag_memoria));
+			if((posicion_nueva_instruccion.offset)<(nvopcb->indice_codigo[i-1].offset+nvopcb->indice_codigo[i-1].size))
+				posicion_nueva_instruccion.offset=(nvopcb->indice_codigo[i-1].size+nvopcb->indice_codigo[i-1].offset);
+		}else
+			posicion_nueva_instruccion.offset = metadata->instrucciones_serializado[i].start;
 		nvopcb->indice_codigo[i] = posicion_nueva_instruccion;
 
 		log_trace(logNucleo,"Instruccion %d pag %d offset %d size %d",i,posicion_nueva_instruccion.pag,posicion_nueva_instruccion.offset,posicion_nueva_instruccion.size);
@@ -325,13 +334,29 @@ bool almacenarBytes(t_pcb* pcb,int socketMemoria,char* data){
 	int i;
 	t_pedido_almacenar_bytes pedido;
 
-	for(i=0;i<pcb->cant_instrucciones;i++){
+	int offset=0;
+
+	int paginasCodigo=pcb->cant_pags_totales-StackSize;
+
+	int j;
+	int nextInstruction=0;
+	for(i=0;i<paginasCodigo;i++){
 		pedido.pid = pcb->pid;
-		pedido.pagina = pcb->indice_codigo[i].pag;
-		pedido.tamanio = pcb->indice_codigo[i].size;
-		pedido.offsetPagina = pcb->indice_codigo[i].offset;
+		pedido.pagina = i;
+
+		for(j=nextInstruction;j<pcb->cant_instrucciones;j++){
+			if(pcb->indice_codigo[j].pag ==i  && ((j+1>pcb->cant_instrucciones)|| pcb->indice_codigo[j+1].pag !=i)){
+				pedido.tamanio=pcb->indice_codigo[j].size+pcb->indice_codigo[j].offset;
+				nextInstruction=j+1;
+				break;
+			}
+		}
+
+		pedido.offsetPagina = 0;
 		pedido.data = malloc(pedido.tamanio);
-		memcpy(pedido.data,data+pedido.offsetPagina,pedido.tamanio);
+		memcpy(pedido.data,data+offset,pedido.tamanio);
+
+		offset+=pedido.tamanio;
 
 		char* buffer = serializar_pedido_almacenar_bytes(&pedido);
 		empaquetarEnviarMensaje(socketMemoria,"ALMC_BYTES",sizeof(int32_t)*4+pedido.tamanio,buffer);
