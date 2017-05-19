@@ -4,8 +4,7 @@
 void recibirTamanioPagina(int socket){
 	empaquetarEnviarMensaje(socket,"GET_MARCOS",sizeof("GET_MARCOS"),"GET_MARCOS");
 	t_package* paquete = recibirPaquete(socket,NULL);
-	char* eptr;
-	pagesize = strtol(paquete->datos, &eptr, 10);
+	pagesize = atoi(paquete->datos);
 }
 
 void waitKernel(int socketKernel,t_dictionary* diccionarioFunciones){
@@ -15,19 +14,20 @@ void waitKernel(int socketKernel,t_dictionary* diccionarioFunciones){
 	 }
 }
 
-void modificarQuantum(int nuevoQuantum) {
-	quantum = nuevoQuantum;
-	log_info(cpu_log, "Quantum=" + quantum);
+void modificarQuantum(char*data, int socket) {
+	quantum = atoi(data);
+	log_info(cpu_log, "Quantum=%d", quantum);
 }
 
-void modificarQuantumSleep(int nuevoQuantumSleep) {
-	quantumSleep = nuevoQuantumSleep;
-	log_info(cpu_log, "QuantumSleep=" + quantumSleep);
+void modificarQuantumSleep(char*data, int socket) {
+	quantumSleep = atoi(data);
+	log_info(cpu_log, "QuantumSleep=%d", quantumSleep);
 }
 
 void nuevoPCB(char* pcb, int socket){
 	actual_pcb = deserializar_pcb(pcb);
-	ejecutarPrograma();
+	ejecutarPrograma();//TODO hay que chequear el tema del QUANTUM
+	destruir_pcb(actual_pcb);
 }
 
 void ejecutarPrograma() {
@@ -143,7 +143,6 @@ int main(int argc, char** argv) {
 	funcionesParser = inicializar_primitivas();
 	waitKernel(socketKernel, diccionarioFunciones);
 
-	destruir_pcb(actual_pcb);
 	liberarFuncionesAnsisop(funcionesParser);
 	dictionary_destroy(diccionarioFunciones);
 	config_destroy(configFile);

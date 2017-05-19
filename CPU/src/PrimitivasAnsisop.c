@@ -86,8 +86,9 @@ t_puntero definirVariable(t_nombre_variable identificador_variable) {
 		pedido->pagina = actual_pcb->indice_codigo->pag;
 		pedido->offsetPagina = actual_pcb->indice_codigo->offset;
 		pedido->tamanio = actual_pcb->indice_codigo->size;
+		//TODO falta la data !!!
 		char* buffer =  serializar_pedido_almacenar_bytes(pedido);
-		int longitudMensaje = sizeof(t_pedido_almacenar_bytes);
+		int longitudMensaje = sizeof(t_pedido_almacenar_bytes);//FIXME la longitud del mensaje debe contener el largo de la data !!
 		if(empaquetarEnviarMensaje(socketMemoria, "ALMC_BYTES", longitudMensaje, buffer)) {
 			perror("Hubo un error procesando el paquete");
 			exit(EXIT_FAILURE);
@@ -96,7 +97,7 @@ t_puntero definirVariable(t_nombre_variable identificador_variable) {
 		t_respuesta_almacenar_bytes* bufferRespuesta = deserializar_respuesta_almacenar_bytes(paqueteRespuesta->datos);
 
 		if (bufferRespuesta->codigo == OK_ALMACENAR){
-			puts("Pagina modificada con exito");
+			log_info(cpu_log,"Exito al almacenar en el stack");
 		} else {
 			perror("Hubo un error al modificar la pagina");
 			exit(EXIT_FAILURE);
