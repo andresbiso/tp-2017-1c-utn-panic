@@ -79,6 +79,33 @@ void clear(int sizeArgs, char** args){
 	freeElementsArray(args,sizeArgs);
 }
 
+void end(int sizeArgs, char** path){
+	if(sizeArgs != 2){
+			printf("Numero de argumentos incorrectos, el end solo debe recibir el path del archivo\n\r");
+			freeElementsArray(path,sizeArgs);
+			return;
+		}
+	char* pid= path[1];
+	empaquetarEnviarMensaje(socketKernel,"END_PROG",strlen(pid) ,pid);
+	while (1){
+		if(avisoKernel->terminoProceso ==1){
+			break;
+		}
+	}
+	dictionary_destroy_and_destroy_elements(semaforosPID,pid);
+	log_info(logConsola,"Se finalizo el proyecto, con el PID:%d",avisoKernel->idPrograma);
+
+	freeElementsArray(path,sizeArgs);
+ }
+
+void cerrarConsola(int sizeArgs,char** args){
+	while (!dictionary_is_empty(semaforosPID)){
+		//TODO
+	}
+
+	freeElementsArray(args,sizeArgs);
+}
+
 int main(int argc, char** argv) {
 	if (argc == 1) {
 		printf("Falta parametro: archivo de configuracion");
@@ -92,6 +119,8 @@ int main(int argc, char** argv) {
 	t_dictionary* commands = dictionary_create();
 	dictionary_put(commands,"init",&init);
 	dictionary_put(commands,"clear",&clear);
+	dictionary_put(commands,"end",&end);
+	dictionary_put(commands,"shutdown",&cerrarConsola);
 
 	printf("IP_Kernel: %s\n", IpKernel);
 	printf("Puerto_Kernel: %d\n", PuertoKernel);
