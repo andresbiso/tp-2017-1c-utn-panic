@@ -28,10 +28,23 @@ int cacheXproc;
 int retardoMemoria;
 char* bloqueMemoria;
 char* bloqueCache;
+t_list* cacheEntradas;
 t_log* logFile;
 t_log* logDumpFile;
 pthread_mutex_t mutexCache;
 pthread_mutex_t mutexMemoriaPrincipal;
+
+typedef struct{
+	int32_t pid;
+	int32_t nroPagina;
+	int32_t entradas;
+}t_cache_admin;
+
+typedef struct{
+	int32_t pid;
+	int32_t nroPagina;
+	char* contenido;
+}t_cache;
 
 typedef struct{
 	int32_t indice;

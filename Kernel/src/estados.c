@@ -6,7 +6,6 @@
  */
 
 #include "estados.h"
-#include <semaphore.h>
 #include <pthread.h>
 
 pthread_mutex_t colaNewMutex = PTHREAD_MUTEX_INITIALIZER;
@@ -68,6 +67,7 @@ void moverA_colaExit(t_pcb *pcb)
 	pthread_mutex_lock(&colaExitMutex);
 	queue_push(colaExit, pcb);
 	pthread_mutex_unlock(&colaExitMutex);
+	sem_post(&grado);
 	log_debug(logEstados, "El PCB: %d paso a la cola Exit",pcb->pid);
 }
 
