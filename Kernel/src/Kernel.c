@@ -37,11 +37,12 @@ sem_t grado;
 
 //consola
 
-void enviarMensajeConsola(char*mensaje,char*key,int32_t pid,int32_t socket){
+void enviarMensajeConsola(char*mensaje,char*key,int32_t pid,int32_t socket,int32_t terminoProceso){
 	t_aviso_consola aviso_nuevo_proceso;
 	aviso_nuevo_proceso.mensaje = mensaje;
 	aviso_nuevo_proceso.tamanomensaje = strlen(aviso_nuevo_proceso.mensaje);
 	aviso_nuevo_proceso.idPrograma = pid;
+	aviso_nuevo_proceso.terminoProceso = terminoProceso;
 
 	char *pedido_serializado = serializar_aviso_consola(&aviso_nuevo_proceso);
 
@@ -235,11 +236,11 @@ void programa(void* arg){
 
 	nuevo_pcb = armar_nuevo_pcb(params->codigo);
 
-	enviarMensajeConsola("Nuevo Proceso creado \0","NEW_PID",nuevo_pcb->pid,socket);
+	enviarMensajeConsola("Nuevo Proceso creado \0","NEW_PID",nuevo_pcb->pid,socket,false);
 
 	sem_getvalue(&grado,&gradoActual);
 	if(gradoActual <= 0){
-		enviarMensajeConsola("Espera por Multiprogramacion\0","LOG_MESSAGE",nuevo_pcb->pid,socket);
+		enviarMensajeConsola("Espera por Multiprogramacion\0","LOG_MESSAGE",nuevo_pcb->pid,socket,false);
 	}
 
 	moverA_colaNew(nuevo_pcb);
