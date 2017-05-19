@@ -86,7 +86,7 @@ t_puntero definirVariable(t_nombre_variable identificador_variable) {
 		pedido->pagina = actual_pcb->indice_codigo->pag;
 		pedido->offsetPagina = actual_pcb->indice_codigo->offset;
 		pedido->tamanio = actual_pcb->indice_codigo->size;
-		char* buffer =  serializar_pedido_almacenar_bytes(t_pedido_almacenar_bytes *pedido);
+		char* buffer =  serializar_pedido_almacenar_bytes(pedido);
 		int longitudMensaje = sizeof(t_pedido_almacenar_bytes);
 		if(empaquetarEnviarMensaje(socketMemoria, "ALMC_BYTES", longitudMensaje, buffer)) {
 			perror("Hubo un error procesando el paquete");
