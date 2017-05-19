@@ -154,4 +154,6 @@ char* serializar_respuesta_finalizar_programa(t_respuesta_finalizar_programa *re
 
 //Memoria
 
+void destruir_pcb (t_pcb *pcbADestruir);
+
 #endif /* PANICOMMONS_SERIALIZACION_H_ */

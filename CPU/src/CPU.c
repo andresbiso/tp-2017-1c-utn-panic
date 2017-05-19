@@ -7,6 +7,12 @@
 #include "CPU.h"
 
 
+void recibirTamanioPagina(int socket){
+	empaquetarEnviarMensaje(socket,"GET_MARCOS",sizeof("GET_MARCOS"),"GET_MARCOS");
+	t_package* paquete = recibirPaquete(socket,NULL);
+	pagesize = strtol(paquete->datos);
+}
+
 void waitKernel(int socketKernel,t_dictionary* diccionarioFunciones){
 	while(1){
 		t_package* paquete = recibirPaquete(socketKernel,NULL);
@@ -27,18 +33,6 @@ void modificarQuantumSleep(int nuevoQuantumSleep) {
 void nuevoPCB(char* pcb, int socket){
 	actual_pcb = deserializar(pcb);
 	ejectuarPrograma();
-}
-
-void borrarPCB(t_pcb* pcb){
-	if(!pcb) {
-		return;
-	}
-	free(pcb->indice_codigo);
-	free(pcb->indice_etiquetas);
-	free(pcb->indice_stack->argumentos);
-	free(pcb->indice_stack->variables);
-	free(pcb->indice_stack);
-	free(pcb);
 }
 
 void ejecutarPrograma() {
@@ -66,6 +60,10 @@ void ejecutarPrograma() {
 }
 
 void ejecutarInstruccion(t_respuesta_solicitar_bytes* respuesta) {
+	if (respuesta->codigo != OK_SOLICITAR) {
+		perror("Hubo un error al solicitar la página");
+		exit(EXIT_FAILURE);
+	}
 	analizadorLinea(respuesta->data, funcionesParser->funciones_comunes, funcionesParser->funciones_kernel);
 }
 
@@ -145,10 +143,12 @@ int main(int argc, char** argv) {
 		exit(EXIT_FAILURE);
 	}
 
+    recibirTamanioPagina(socketMemoria);
+
 	funcionesParser = inicializar_primitivas();
 	wait_kernel();
 
-	borrarPCB(actual_pcb);
+	destruir_pcb(actual_pcb);
 	dictionary_destroy(diccionarioFunciones);
 	config_destroy(configFile);
 	log_destroy(log);

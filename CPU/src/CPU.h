@@ -30,5 +30,6 @@ void ejecutarPrograma();
 void ejecutarInstruccion(t_respuesta_solicitar_bytes* respuesta);
 void mostrarMensaje(char* mensaje, int socket);
 t_config* cargarConfiguracion(char * nombreArchivo);
+void recibirTamanioPagina(int socket);
 
 #endif /* CPU_H_ */

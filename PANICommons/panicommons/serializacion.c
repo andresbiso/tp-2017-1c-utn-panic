@@ -411,4 +411,24 @@ char* serializar_respuesta_finalizar_programa(t_respuesta_finalizar_programa *re
 	return buffer;
 }
 
+void destruir_pcb (t_pcb *pcbADestruir){
+	int i;
+
+	if(pcbADestruir==NULL)
+		return;
+
+	free(pcbADestruir->indice_codigo); //hago este free por que se asigno la memoria con un unico malloc
+	free(pcbADestruir->indice_etiquetas);
+	for(i=0; i <(pcbADestruir->cant_entradas_indice_stack) ; i++){
+		if(pcbADestruir->indice_stack[i].cant_argumentos)
+			free(pcbADestruir->indice_stack[i].argumentos);
+		if(pcbADestruir->indice_stack[i].cant_variables)
+			free(pcbADestruir->indice_stack[i].variables);
+	}
+	if(pcbADestruir->cant_entradas_indice_stack>0)
+		free(pcbADestruir->indice_stack);
+
+	free(pcbADestruir);
+	pcbADestruir = NULL;
+}
 

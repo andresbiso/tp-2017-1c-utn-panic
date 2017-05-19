@@ -8,8 +8,6 @@
 #include <ctype.h>
 #include <panicommons/serializacion.h>
 
-#define PAGESIZE 4
-
 /*typedef struct entrada_salida{
 	t_nombre_dispositivo dispositivo;
 	int tiempo;
@@ -27,6 +25,8 @@ typedef struct funciones_ansisop{
 
 t_pcb* actual_pcb;
 FuncionesAnsisop* funcionesParser;
+int stack_overflow;
+int pagesize;
 
 FuncionesAnsisop* inicializar_primitivas();
 
