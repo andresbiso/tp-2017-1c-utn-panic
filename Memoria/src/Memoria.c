@@ -53,7 +53,7 @@ t_cache* getPaginaCache(int indice){
 	memcpy(&cache->nroPagina,bloqueCache+offset,sizeof(int32_t));
 	offset+=sizeof(int32_t);
 	cache->contenido = malloc(marcoSize);
-	memcpy(&cache->contenido,bloqueCache+offset,marcoSize);
+	memcpy(cache->contenido,bloqueCache+offset,marcoSize);
 	return cache;
 }
 

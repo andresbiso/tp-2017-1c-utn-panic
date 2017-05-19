@@ -273,9 +273,9 @@ t_pcb* armar_nuevo_pcb(char* codigo){
 
 	for(i=0;i<(metadata->instrucciones_size);i++){
 		t_posMemoria posicion_nueva_instruccion;
-		posicion_nueva_instruccion.pag = metadata->instrucciones_serializado[i].start/tamanio_pag_memoria;
-		posicion_nueva_instruccion.offset = metadata->instrucciones_serializado[i].start%tamanio_pag_memoria;
+		posicion_nueva_instruccion.pag = (metadata->instrucciones_serializado[i].start+posicion_nueva_instruccion.size)/tamanio_pag_memoria;
 		posicion_nueva_instruccion.size = metadata->instrucciones_serializado[i].offset;
+		posicion_nueva_instruccion.offset = metadata->instrucciones_serializado[i].start%tamanio_pag_memoria;
 		nvopcb->indice_codigo[i] = posicion_nueva_instruccion;
 
 		log_trace(logNucleo,"Instruccion %d pag %d offset %d size %d",i,posicion_nueva_instruccion.pag,posicion_nueva_instruccion.offset,posicion_nueva_instruccion.size);
