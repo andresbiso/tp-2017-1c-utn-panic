@@ -10,17 +10,6 @@
 
 #include "PrimitivasAnsisop.h"
 
-int puertoKernel;
-char* ipKernel;
-int puertoMemoria;
-char* ipMemoria;
-int quantum;
-int quantumSleep;
-t_log* log;
-
-int socketKernel;
-int socketMemoria;
-
 void waitKernel(int socketKernel,t_dictionary* diccionarioFunciones);
 void modificarQuantum(int nuevoQuantum);
 void modificarQuantumSleep(int nuevoQuantumSleep);

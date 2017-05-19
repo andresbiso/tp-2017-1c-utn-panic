@@ -3,10 +3,14 @@
 
 #include <stdio.h>
 #include <string.h>
+#include <stdlib.h>
+#include <ctype.h>
 #include <parser/parser.h>
 #include <parser/metadata_program.h>
-#include <ctype.h>
 #include <panicommons/serializacion.h>
+#include <panicommons/panisocket.h>
+#include <commons/config.h>
+#include <commons/log.h>
 
 /*typedef struct entrada_salida{
 	t_nombre_dispositivo dispositivo;
@@ -19,16 +23,30 @@ typedef struct grabar_valor{
 }t_grabar_valor;
 
 typedef struct funciones_ansisop{
-	AnSISOP_funciones funciones_comunes;
-	AnSISOP_kernel funciones_kernel;
+	AnSISOP_funciones* funciones_comunes;
+	AnSISOP_kernel* funciones_kernel;
 } FuncionesAnsisop;
+
+int puertoKernel;
+char* ipKernel;
+int puertoMemoria;
+char* ipMemoria;
+int quantum;
+int quantumSleep;
+
+int socketKernel;
+int socketMemoria;
 
 t_pcb* actual_pcb;
 FuncionesAnsisop* funcionesParser;
+
 int stack_overflow;
 int pagesize;
 
+t_log* cpu_log;
+
 FuncionesAnsisop* inicializar_primitivas();
+void liberarFuncionesAnsisop(FuncionesAnsisop* funciones_ansisop);
 
 // AnSISOP_funciones
 t_puntero definirVariable(t_nombre_variable identificador_variable);

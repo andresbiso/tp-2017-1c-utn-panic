@@ -1,16 +1,11 @@
-#include <stdio.h>
-#include <stdlib.h>
-
-#include <panicommons/panisocket.h>
-#include <commons/config.h>
-#include <commons/log.h>
 #include "CPU.h"
 
 
 void recibirTamanioPagina(int socket){
 	empaquetarEnviarMensaje(socket,"GET_MARCOS",sizeof("GET_MARCOS"),"GET_MARCOS");
 	t_package* paquete = recibirPaquete(socket,NULL);
-	pagesize = strtol(paquete->datos);
+	char* eptr;
+	pagesize = strtol(paquete->datos, &eptr, 10);
 }
 
 void waitKernel(int socketKernel,t_dictionary* diccionarioFunciones){
@@ -22,17 +17,17 @@ void waitKernel(int socketKernel,t_dictionary* diccionarioFunciones){
 
 void modificarQuantum(int nuevoQuantum) {
 	quantum = nuevoQuantum;
-	log_info(log, "Quantum=" + quantum);
+	log_info(cpu_log, "Quantum=" + quantum);
 }
 
 void modificarQuantumSleep(int nuevoQuantumSleep) {
 	quantumSleep = nuevoQuantumSleep;
-	log_info(log, "QuantumSleep=" + quantumSleep);
+	log_info(cpu_log, "QuantumSleep=" + quantumSleep);
 }
 
 void nuevoPCB(char* pcb, int socket){
-	actual_pcb = deserializar(pcb);
-	ejectuarPrograma();
+	actual_pcb = deserializar_pcb(pcb);
+	ejecutarPrograma();
 }
 
 void ejecutarPrograma() {
@@ -43,14 +38,14 @@ void ejecutarPrograma() {
 		pedido->pagina = actual_pcb->indice_codigo->pag;
 		pedido->offsetPagina = actual_pcb->indice_codigo->offset;
 		pedido->tamanio = actual_pcb->indice_codigo->size;
-		char* buffer =  serializar_pedido_solicitar_bytes(t_pedido_solicitar_bytes *pedido);
+		char* buffer =  serializar_pedido_solicitar_bytes(pedido);
 		int longitudMensaje = sizeof(t_pedido_solicitar_bytes);
 		if(empaquetarEnviarMensaje(socketMemoria, "SOLC_BYTES", longitudMensaje, buffer)) {
 			perror("Hubo un error procesando el paquete");
 			exit(EXIT_FAILURE);
 		}
 		t_package* paqueteRespuesta = recibirPaquete(socketMemoria, NULL);
-		t_respuesta_solicitar_bytes* bufferRespuesta = deserializar_respuesta_solicitar_bytes(paqueteRespuesta.datos);
+		t_respuesta_solicitar_bytes* bufferRespuesta = deserializar_respuesta_solicitar_bytes(paqueteRespuesta->datos);
 		ejecutarInstruccion(bufferRespuesta);
 		borrarPaquete(paqueteRespuesta);
 		free(bufferRespuesta->data);
@@ -129,29 +124,30 @@ int main(int argc, char** argv) {
 	dictionary_put(diccionarioFunciones,"NUEVO_QUANTUM_SLEEP",&modificarQuantumSleep);
 	// ver comuncicaciones memoria-kernel
 
-	log = log_create("cpu.log","CPU",1,LOG_LEVEL_TRACE);
+	cpu_log = log_create("cpu.log","CPU",1,LOG_LEVEL_TRACE);
 
 	socketKernel = conectar(ipKernel,puertoKernel);
 	if(!handshake(socketKernel,"HCPKE","HKECP")){
-		log_error(log,"No se pudo realizar la conexion con el kernel");
+		log_error(cpu_log,"No se pudo realizar la conexion con el kernel");
 		exit(EXIT_FAILURE);
 	}
 
 	socketMemoria = conectar(ipMemoria,puertoMemoria);
 	if(!handshake(socketMemoria,"HCPME","HMECP")){
-		log_error(log,"No se pudo realizar la conexion con la memoria");
+		log_error(cpu_log,"No se pudo realizar la conexion con la memoria");
 		exit(EXIT_FAILURE);
 	}
 
     recibirTamanioPagina(socketMemoria);
 
 	funcionesParser = inicializar_primitivas();
-	wait_kernel();
+	waitKernel(socketKernel, diccionarioFunciones);
 
 	destruir_pcb(actual_pcb);
+	liberarFuncionesAnsisop(funcionesParser);
 	dictionary_destroy(diccionarioFunciones);
 	config_destroy(configFile);
-	log_destroy(log);
+	log_destroy(cpu_log);
 
 	return EXIT_SUCCESS;
 }

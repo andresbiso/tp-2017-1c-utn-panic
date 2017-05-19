@@ -19,10 +19,10 @@ t_puntero definirVariable(t_nombre_variable identificador_variable) {
 			return -1;
 		}
 
-		log_info(log,"Se solicita definir %c", identificador_variable);
+		log_info(cpu_log,"Se solicita definir %c", identificador_variable);
 
 		if(actual_pcb->fin_stack.pag == actual_pcb->cant_pags_totales){
-			log_warning(log,"Stack Overflow: Se ha intentado leer una pagina invalida");
+			log_warning(cpu_log,"Stack Overflow: Se ha intentado leer una pagina invalida");
 			puts("Stack Overflow: Se ha intentado leer una pagina invalida");
 			stack_overflow = true;
 			return -1;
@@ -34,7 +34,7 @@ t_puntero definirVariable(t_nombre_variable identificador_variable) {
 		int poslogica;
 
 		if(isalpha(identificador_variable)) {
-			log_debug(log,"%c es una variable",identificador_variable);
+			log_debug(cpu_log,"%c es una variable",identificador_variable);
 
 			actual_stack->cant_variables++;
 			int cant_variables = actual_stack->cant_variables;
@@ -48,7 +48,7 @@ t_puntero definirVariable(t_nombre_variable identificador_variable) {
 			actual_stack->variables[cant_variables-1] = nueva_variable;
 
 			poslogica = pos_fisica_a_logica(nueva_variable.posicionVar);
-			log_info(log,"Se definio la variable %c\n Posicion fisica: Pagina %d, offset %d\n Posicion logica: %d",
+			log_info(cpu_log,"Se definio la variable %c\n Posicion fisica: Pagina %d, offset %d\n Posicion logica: %d",
 					identificador_variable,
 					nueva_variable.posicionVar.pag,
 					nueva_variable.posicionVar.offset,
@@ -56,7 +56,7 @@ t_puntero definirVariable(t_nombre_variable identificador_variable) {
 		}
 
 		if(isdigit(identificador_variable)){
-			log_debug(log,"%c es un argumento",identificador_variable);
+			log_debug(cpu_log,"%c es un argumento",identificador_variable);
 
 			actual_stack->cant_argumentos++;
 			int cant_argumentos = actual_stack->cant_argumentos;
@@ -66,7 +66,7 @@ t_puntero definirVariable(t_nombre_variable identificador_variable) {
 			actual_stack->argumentos[cant_argumentos-1] = actual_pcb->fin_stack;
 
 			poslogica = pos_fisica_a_logica(actual_pcb->fin_stack);
-			log_info(log,
+			log_info(cpu_log,
 					"Se definio el argumento %c\n Posicion fisica: Pagina %d, offset %d\n Posicion logica: %d",
 					identificador_variable,
 					actual_pcb->fin_stack.pag,
@@ -93,7 +93,7 @@ t_puntero definirVariable(t_nombre_variable identificador_variable) {
 			exit(EXIT_FAILURE);
 		}
 		t_package* paqueteRespuesta = recibirPaquete(socketMemoria, NULL);
-		t_respuesta_almacenar_bytes* bufferRespuesta = deserializar_respuesta_almacenar_bytes(paqueteRespuesta.datos);
+		t_respuesta_almacenar_bytes* bufferRespuesta = deserializar_respuesta_almacenar_bytes(paqueteRespuesta->datos);
 
 		if (bufferRespuesta->codigo == OK_ALMACENAR){
 			puts("Pagina modificada con exito");
@@ -104,8 +104,8 @@ t_puntero definirVariable(t_nombre_variable identificador_variable) {
 
 		free(pedido);
 		free(buffer);
-		borraPaquete(paqueteRespuesta);
-		borraPaquete(bufferRespuesta);
+		borrarPaquete(paqueteRespuesta);
+		free(bufferRespuesta);
 
 		return poslogica;
 }
@@ -180,33 +180,42 @@ void leer(t_descriptor_archivo descriptor_archivo, t_puntero informacion, t_valo
 }
 
 FuncionesAnsisop* inicializar_primitivas() {
-	FuncionesAnsisop* funciones_ansisop = malloc(sizeof(*funciones_ansisop));
-	funciones_ansisop->funciones_comunes = (AnSISOP_funciones) {
-		.AnSISOP_definirVariable = definirVariable,
-		.AnSISOP_obtenerPosicionVariable = obtenerPosicionVariable,
-		.AnSISOP_dereferenciar =  dereferenciar,
-		.AnSISOP_asignar = asignar,
-		.AnSISOP_obtenerValorCompartida = obtenerValorCompartida,
-		.AnSISOP_asignarValorCompartida = asignarValorCompartida,
-		.AnSISOP_irAlLabel = irAlLabel,
-		.AnSISOP_llamarSinRetorno = llamarSinRetorno,
-		.AnSISOP_llamarConRetorno = llamarConRetorno,
-		.AnSISOP_finalizar = finalizar,
-		.AnSISOP_retornar = retornar
-	};
+	FuncionesAnsisop* funciones_ansisop = (FuncionesAnsisop*)malloc(sizeof(FuncionesAnsisop));
+	AnSISOP_funciones* funciones_comunes = (AnSISOP_funciones*)malloc(sizeof(AnSISOP_funciones));
+	AnSISOP_kernel* funciones_kernel = (AnSISOP_kernel*)malloc(sizeof(AnSISOP_kernel));
 
-	funciones_ansisop->funciones_kernel =(AnSISOP_kernel) {
-		.AnSISOP_wait = waitAnsisop,
-		.AnSISOP_signal = signalAnsisop,
-		.AnSISOP_reservar = reservar,
-		.AnSISOP_liberar = liberar,
-		.AnSISOP_abrir = abrir,
-		.AnSISOP_borrar = borrar,
-		.AnSISOP_cerrar = cerrar,
-		.AnSISOP_moverCursor = moverCursor,
-		.AnSISOP_escribir = escribir,
-		.AnSISOP_leer = leer
-	};
+	funciones_comunes->AnSISOP_definirVariable = &definirVariable;
+	funciones_comunes->AnSISOP_obtenerPosicionVariable = &obtenerPosicionVariable;
+	funciones_comunes->AnSISOP_dereferenciar =  &dereferenciar;
+	funciones_comunes->AnSISOP_asignar = &asignar;
+	funciones_comunes->AnSISOP_obtenerValorCompartida = &obtenerValorCompartida;
+	funciones_comunes->AnSISOP_asignarValorCompartida = &asignarValorCompartida;
+	funciones_comunes->AnSISOP_irAlLabel = &irAlLabel;
+	funciones_comunes->AnSISOP_llamarSinRetorno = &llamarSinRetorno;
+	funciones_comunes->AnSISOP_llamarConRetorno = &llamarConRetorno;
+	funciones_comunes->AnSISOP_finalizar = &finalizar;
+	funciones_comunes->AnSISOP_retornar = &retornar;
+
+
+	funciones_kernel->AnSISOP_wait = &waitAnsisop;
+	funciones_kernel->AnSISOP_signal = &signalAnsisop;
+	funciones_kernel->AnSISOP_reservar = &reservar;
+	funciones_kernel->AnSISOP_liberar = &liberar;
+	funciones_kernel->AnSISOP_abrir = &abrir;
+	funciones_kernel->AnSISOP_borrar = &borrar;
+	funciones_kernel->AnSISOP_cerrar = &cerrar;
+	funciones_kernel->AnSISOP_moverCursor = &moverCursor;
+	funciones_kernel->AnSISOP_escribir = &escribir;
+	funciones_kernel->AnSISOP_leer = &leer;
+
+	funciones_ansisop->funciones_comunes = funciones_comunes;
+	funciones_ansisop->funciones_kernel = funciones_kernel;
 
 	return funciones_ansisop;
  }
+
+void liberarFuncionesAnsisop(FuncionesAnsisop* funciones_ansisop) {
+	free(funciones_ansisop->funciones_comunes);
+	free(funciones_ansisop->funciones_kernel);
+	free(funciones_ansisop);
+}
