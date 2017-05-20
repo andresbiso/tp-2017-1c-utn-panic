@@ -17,6 +17,20 @@
 #include <commons/log.h>
 #include <commons/string.h>
 #include "inotify.h"
+#include <commons/collections/dictionary.h>
+#include <commons/collections/list.h>
+#include <parser/metadata_program.h>
+#include <pthread.h>
+#include <semaphore.h>
+#include <stdbool.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/types.h>
+#include <unistd.h>
+
+#include "estados.h"
+
 
 int PuertoConsola;
 int PuertoCpu;
@@ -90,5 +104,8 @@ void enviar_a_cpu();
 void cargarCPU(int32_t socket);
 void respuesta_inicializar_programa(int socket, int socketMemoria, char* codigo);
 bool almacenarBytes(t_pcb* pcb,int socketMemoria,char* codigo);
+void finalizarProgramaConsola(char*data,int socket);
+void finalizarProceso(void* pidArg);
+t_respuesta_finalizar_programa* finalizarProcesoMemoria(int32_t pid);
 
 #endif /* KERNEL_H_ */

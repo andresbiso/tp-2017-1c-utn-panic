@@ -8,11 +8,21 @@
 void esperarMensajePID(void*paramPid){
 	int32_t pid = (int32_t)paramPid;
 	sem_t* mutexPID;
-	mutexPID = (sem_t*)dictionary_get(semaforosPID,string_itoa(pid));
+	char* pidKey = string_itoa(pid);
+	mutexPID = (sem_t*)dictionary_get(semaforosPID,pidKey);
+	free(pidKey);
 
 	while(1){
 		sem_wait(mutexPID);
 		log_info(logConsola,"El PID:%d recibió un mensaje :%s",pid,avisoKernel->mensaje);
+
+		if(avisoKernel->terminoProceso){
+			log_info(logConsola,"Se finalizo el proceso, con el PID:%d",avisoKernel->idPrograma);
+			char* pidKey = string_itoa(pid);
+			dictionary_remove_and_destroy(semaforosPID, pidKey,free);
+			free(pidKey);
+			break;
+		}
 	}
 }
 
@@ -38,6 +48,7 @@ void esperarKernel(void* args){
 		else{
 			avisoKernel = deserializar_aviso_consola(paqueteKernel->datos);
 			sem_post((sem_t*)dictionary_get(semaforosPID,string_itoa(avisoKernel->idPrograma)));
+
 		}
 	}
 	dictionary_destroy(diccionario);
@@ -59,12 +70,12 @@ void init(int sizeArgs, char** path){
 
 	fseek(arch,0L, SEEK_END);            // me ubico en el final del archivo.
 	int tamanio= ftell(arch);
-	char* buffer=(char*)malloc(tamanio);
+	char* buffer=(char*)malloc(tamanio+1);
 
 	fseek(arch,0L,SEEK_SET); // me ubico al principio para empezar a leer
 	fread (buffer, sizeof(char), tamanio, arch);
 
-	buffer[tamanio-1]='\0';
+	buffer[tamanio]='\0';
 
 	empaquetarEnviarMensaje(socketKernel,"NUEVO_PROG",strlen(buffer),buffer);
 
@@ -79,6 +90,43 @@ void clear(int sizeArgs, char** args){
 	freeElementsArray(args,sizeArgs);
 }
 
+void end(int sizeArgs, char** path){
+	if(sizeArgs != 2){
+			printf("Numero de argumentos incorrectos, el end solo debe recibir el pid del proceso\n\r");
+			freeElementsArray(path,sizeArgs);
+			return;
+		}
+	char* pid= path[1];
+	if(!dictionary_has_key(semaforosPID,pid)){  //controla que el pid este en el diccionario
+		printf("ṔÍD no encontrado\n\r");
+		freeElementsArray(path,sizeArgs);
+		return;
+	}
+	empaquetarEnviarMensaje(socketKernel,"END_PROG",strlen(pid) ,pid);
+	freeElementsArray(path,sizeArgs);
+ }
+/*
+void cerrarConsola(int sizeArgs,char** args){
+	while (!dictionary_is_empty(semaforosPID)){
+		int32_t pid= 1;
+		if(dictionary_has_key(semaforosPID,string_itoa(pid))){
+			char* pid2 =string_itoa(pid);
+			empaquetarEnviarMensaje(socketKernel,"END_PROG",strlen(pid2) ,pid2);
+			if(string_itoa(avisoKernel->idPrograma)==pid2){//controla que el kernel tenga el mismo pid
+				dictionary_remove(semaforosPID, pid2);
+				log_info(logConsola,"Se finalizo el proceso, con el PID:%d",avisoKernel->idPrograma);
+			}else{
+				printf("No se logro finalizar el proceso");
+				return;
+			}
+			pid++;
+		};
+		pid++;
+	}
+
+	freeElementsArray(args,sizeArgs);
+}
+*/
 int main(int argc, char** argv) {
 	if (argc == 1) {
 		printf("Falta parametro: archivo de configuracion");
@@ -92,6 +140,8 @@ int main(int argc, char** argv) {
 	t_dictionary* commands = dictionary_create();
 	dictionary_put(commands,"init",&init);
 	dictionary_put(commands,"clear",&clear);
+	dictionary_put(commands,"end",&end);
+	//dictionary_put(commands,"shutdown",&cerrarConsola);
 
 	printf("IP_Kernel: %s\n", IpKernel);
 	printf("Puerto_Kernel: %d\n", PuertoKernel);

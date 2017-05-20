@@ -58,25 +58,29 @@ t_cache* getPaginaCache(int indice){
 }
 
 int32_t cantEntradasCachePID(int32_t pid){
-	int32_t cant=0;
-	int i;
-	for(i=0;i<entradasCache;i++){
-		t_cache* cache= getPaginaCache(i);
-		if(cache->pid==pid)
-			cant++;
+	bool matchPID(void* entrada){
+			return ((t_cache_admin*)entrada)->pid==pid;
 	}
-	return cant;
+	return list_count_satisfying(cacheEntradas,matchPID);
 }
 
 
-t_cache_admin* findMinorEntradas(){
+t_cache_admin* findMinorEntradas(){//Si hay alguna libre le doy esa sino busco la de menor entradas
+
+	bool isFreeCache(void*e1){
+		return ((t_cache_admin*)e1)->pid==-1;
+	}
+
+	t_cache_admin* posible = list_find(cacheEntradas,isFreeCache);
+
+	if(posible!=NULL)
+		return posible;
 
 	bool minorEntradas(void* e1,void* e2){
-		if(((t_cache_admin*)e1)->pid ==-1)
-			return true;
-		if(((t_cache_admin*)e2)->pid ==-1)
-			return false;
-		if(((t_cache_admin*)e1)->entradas <((t_cache_admin*)e2)->entradas)
+		double diff1 = difftime(time(0),((t_cache_admin*)e1)->tiempoEntrada);
+		double diff2 = difftime(time(0),((t_cache_admin*)e2)->tiempoEntrada);
+
+		if(diff1>diff2)
 			return true;
 		else
 			return false;
@@ -91,7 +95,7 @@ void clearEntradasCache(int32_t pid,int32_t nroPagina,int32_t pidReplace,int32_t
 
 	void clearEntradas(void* entrada){
 		if( (((t_cache_admin*)entrada)->pid == pid) && (nroPagina==-1 || (((t_cache_admin*)entrada)->nroPagina==nroPagina))){
-			((t_cache_admin*)entrada)->entradas=0;
+			((t_cache_admin*)entrada)->tiempoEntrada=time(0);
 			if(pidReplace != -1 && nroPaginaReplace != -1){
 				((t_cache_admin*)entrada)->pid=pidReplace;
 				((t_cache_admin*)entrada)->nroPagina=nroPaginaReplace;
@@ -196,7 +200,7 @@ void inicializarEntradasCache(){
 		t_cache_admin* admin = malloc(sizeof(t_cache_admin));
 		admin->pid=-1;
 		admin->nroPagina=0;
-		admin->entradas=0;
+		admin->tiempoEntrada=time(0);
 		list_add(cacheEntradas,admin);
 	}
 }
@@ -208,7 +212,7 @@ void addEntradaCache(int32_t pid, int32_t nroPagina){
 	}
 
 	t_cache_admin* entrada = (t_cache_admin*)list_find(cacheEntradas,findByPID);
-	entrada->entradas++;
+	entrada->tiempoEntrada=time(0);
 }
 
 //CACHE

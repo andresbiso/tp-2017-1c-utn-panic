@@ -63,6 +63,7 @@ typedef struct
 	char* mensaje;
 	int32_t tamanomensaje;
 	int32_t idPrograma;
+	int32_t terminoProceso;
 } __attribute__((__packed__)) t_aviso_consola;
 
 typedef enum{OK_INICIALIZAR=1,SIN_ESPACIO_INICIALIZAR=-1} codigo_respuesta_inicializar;
@@ -123,6 +124,9 @@ typedef struct
 	codigo_finalizar_programa codigo;
 } __attribute__((__packed__))t_respuesta_finalizar_programa;
 
+typedef enum {
+	FINALIZAR_BY_CONSOLE = -7, FINALIZAR_OK = 0
+} exit_codes;
 
 t_pcb_serializado* serializar_pcb(t_pcb* pcb);
 t_pcb* deserializar_pcb(char* pcbs);

@@ -19,6 +19,7 @@
 #include <panicommons/panicommons.h>
 #include <panicommons/serializacion.h>
 #include <math.h>
+#include <time.h>
 
 int puerto;
 int marcos;
@@ -37,7 +38,7 @@ pthread_mutex_t mutexMemoriaPrincipal;
 typedef struct{
 	int32_t pid;
 	int32_t nroPagina;
-	int32_t entradas;
+	time_t tiempoEntrada;
 }t_cache_admin;
 
 typedef struct{
