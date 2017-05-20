@@ -74,6 +74,8 @@ void inotifyWatch(void*args){
 void retornarPCB(char* data,int socket){//TODO detener planificacion, si la detenemos el hilo se bloquea aca =>Kernel no puede recibir + mensajes
 	t_pcb* pcb = deserializar_pcb(data);
 
+	log_info(logNucleo,"El socket cpu %d retorno el PID %d",socket,pcb->pid);
+
 	pthread_mutex_lock(&mutexKernel);
 	t_relacion* relacion = matchear_relacion_por_socketcpu(socket);
 	relacion->cpu->corriendo=false;
@@ -83,6 +85,7 @@ void retornarPCB(char* data,int socket){//TODO detener planificacion, si la dete
 	destruir_pcb(pcbOld);
 
 	if(pcb->exit_code<=0){//termino el programa
+		log_info(logNucleo,"Programa finalizado",socket,pcb->pid);
 		moverA_colaExit(pcb);
 		t_respuesta_finalizar_programa* respuesta = finalizarProcesoMemoria(pcb->pid);
 
@@ -104,7 +107,7 @@ t_respuesta_finalizar_programa* finalizarProcesoMemoria(int32_t pid){
 	pedido.pid = pid;
 
 	char* buffer = serializar_pedido_finalizar_programa(&pedido);
-	empaquetarEnviarMensaje(socketMemoria,"LOG_MESSAGE",sizeof(t_pedido_finalizar_programa),buffer);
+	empaquetarEnviarMensaje(socketMemoria,"FINZ_PROGM",sizeof(t_pedido_finalizar_programa),buffer);
 	free(buffer);
 
 	t_package* paquete = recibirPaquete(socketMemoria,NULL);
@@ -672,7 +675,7 @@ void enviar_a_cpu(){
 	}
 	log_info(logNucleo, "la CPU del socket %d esta libre y lista para ejecutar", cpu_libre->socket);
 
-	t_pcb *pcb_ready=sacarCualquieraDeNew();
+	t_pcb *pcb_ready=sacarCualquieraDeReady();
 	if(!pcb_ready){
 		return;
 	}
@@ -767,7 +770,7 @@ int main(int argc, char** argv) {
     	exit(EXIT_FAILURE);
     if(handshake(socketMemoria,"HKEME","HMEKE")){
     		puts("Se pudo realizar handshake");
-    		empaquetarEnviarMensaje(socketMemoria,"GET_MARCOS",sizeof("GET_MARCOS"),"GET_MARCOS");
+    		empaquetarEnviarMensaje(socketMemoria,"GET_MARCOS",strlen("GET_MARCOS\0"),"GET_MARCOS");
     		recibirTamanioPagina(socketMemoria);
     }
     else{

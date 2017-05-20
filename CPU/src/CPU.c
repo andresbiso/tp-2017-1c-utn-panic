@@ -2,9 +2,10 @@
 
 
 void recibirTamanioPagina(int socket){
-	empaquetarEnviarMensaje(socket,"GET_MARCOS",sizeof("GET_MARCOS"),"GET_MARCOS");
+	empaquetarEnviarMensaje(socket,"GET_MARCOS",strlen("GET_MARCOS\0"),"GET_MARCOS");
 	t_package* paquete = recibirPaquete(socket,NULL);
 	pagesize = atoi(paquete->datos);
+	log_info(cpu_log,"Tamaño de pagina de memoria %d",pagesize);
 }
 
 void waitKernel(int socketKernel,t_dictionary* diccionarioFunciones){
@@ -41,12 +42,12 @@ void ejecutarPrograma() {
 	int cicloActual = quantum;
 	while(instruccionActual < actual_pcb->cant_instrucciones && (fifo || cicloActual > 0)) {
 		pedido->pid = actual_pcb->pid;
-		pedido->pagina = actual_pcb->indice_codigo->pag;
-		pedido->offsetPagina = actual_pcb->indice_codigo->offset;
-		pedido->tamanio = actual_pcb->indice_codigo->size;
+		pedido->pagina = actual_pcb->indice_codigo[instruccionActual].pag;
+		pedido->offsetPagina = actual_pcb->indice_codigo[instruccionActual].offset;
+		pedido->tamanio = actual_pcb->indice_codigo[instruccionActual].size;
 		char* buffer =  serializar_pedido_solicitar_bytes(pedido);
 		int longitudMensaje = sizeof(t_pedido_solicitar_bytes);
-		if(empaquetarEnviarMensaje(socketMemoria, "SOLC_BYTES", longitudMensaje, buffer)) {
+		if(!empaquetarEnviarMensaje(socketMemoria, "SOLC_BYTES", longitudMensaje, buffer)) {
 			perror("Hubo un error procesando el paquete");
 			exit(EXIT_FAILURE);
 		}
@@ -58,6 +59,7 @@ void ejecutarPrograma() {
 		free(bufferRespuesta);
 		sleep(quantumSleep * 0.001);
 		cicloActual--;
+		instruccionActual++;
 	}
 	free(pedido);
 }
@@ -67,6 +69,9 @@ void ejecutarInstruccion(t_respuesta_solicitar_bytes* respuesta) {
 		perror("Hubo un error al solicitar la página");
 		exit(EXIT_FAILURE);
 	}
+	respuesta->data=realloc(respuesta->data,respuesta->tamanio+1);
+	respuesta->data[respuesta->tamanio]='\0';//Sino analizadorLinea rompe
+	log_info(cpu_log,"Analizando linea: %s",respuesta->data);
 	analizadorLinea(respuesta->data, funcionesParser->funciones_comunes, funcionesParser->funciones_kernel);
 }
 
@@ -125,14 +130,13 @@ int main(int argc, char** argv) {
 	printf("IP MEMORIA: %s\n",ipMemoria);
 
 	t_dictionary* diccionarioFunciones = dictionary_create();
-	dictionary_put(diccionarioFunciones,"KEY_PRINT",&mostrarMensaje);
 	dictionary_put(diccionarioFunciones,"ERROR_FUNC",&mostrarMensaje);
 	dictionary_put(diccionarioFunciones,"CORRER_PCB",&correrPCB);
 	dictionary_put(diccionarioFunciones,"NUEVO_QUANTUM",&modificarQuantum);
 	dictionary_put(diccionarioFunciones,"NUEVO_QUANTUM_SLEEP",&modificarQuantumSleep);
 	// ver comuncicaciones memoria-kernel
 
-	cpu_log = log_create("cpu.log","CPU",1,LOG_LEVEL_TRACE);
+	cpu_log = log_create("cpu.log","CPU",0,LOG_LEVEL_TRACE);
 
 	socketKernel = conectar(ipKernel,puertoKernel);
 	if(!handshake(socketKernel,"HCPKE","HKECP")){

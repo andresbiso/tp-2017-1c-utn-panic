@@ -30,7 +30,7 @@ int32_t tamanio_indice_stack(t_pcb* pcb){
 	return contador;
 }
 
-int32_t tamanio_pcb(t_pcb* pcb){
+u_int32_t tamanio_pcb(t_pcb* pcb){
 	return
 			sizeof(pcb->pid)+
 			sizeof(pcb->pc)+

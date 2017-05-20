@@ -158,7 +158,7 @@ t_package* recibirPaquete(int socket, void (*desconexion) (int)){
 			return paquete;
 	}
 
-	char* data = (char *)malloc(longitud);
+	char* data = (char *)malloc(longitud+1);
 
 	if(data == NULL)
 		return paquete;
