@@ -77,7 +77,10 @@ t_cache_admin* findMinorEntradas(){//Si hay alguna libre le doy esa sino busco l
 		return posible;
 
 	bool minorEntradas(void* e1,void* e2){
-		if(((t_cache_admin*)e1)->entradas <((t_cache_admin*)e2)->entradas)
+		double diff1 = difftime(time(0),((t_cache_admin*)e1)->tiempoEntrada);
+		double diff2 = difftime(time(0),((t_cache_admin*)e2)->tiempoEntrada);
+
+		if(diff1>diff2)
 			return true;
 		else
 			return false;
@@ -92,7 +95,7 @@ void clearEntradasCache(int32_t pid,int32_t nroPagina,int32_t pidReplace,int32_t
 
 	void clearEntradas(void* entrada){
 		if( (((t_cache_admin*)entrada)->pid == pid) && (nroPagina==-1 || (((t_cache_admin*)entrada)->nroPagina==nroPagina))){
-			((t_cache_admin*)entrada)->entradas=0;
+			((t_cache_admin*)entrada)->tiempoEntrada=time(0);
 			if(pidReplace != -1 && nroPaginaReplace != -1){
 				((t_cache_admin*)entrada)->pid=pidReplace;
 				((t_cache_admin*)entrada)->nroPagina=nroPaginaReplace;
@@ -197,7 +200,7 @@ void inicializarEntradasCache(){
 		t_cache_admin* admin = malloc(sizeof(t_cache_admin));
 		admin->pid=-1;
 		admin->nroPagina=0;
-		admin->entradas=0;
+		admin->tiempoEntrada=time(0);
 		list_add(cacheEntradas,admin);
 	}
 }
@@ -209,7 +212,7 @@ void addEntradaCache(int32_t pid, int32_t nroPagina){
 	}
 
 	t_cache_admin* entrada = (t_cache_admin*)list_find(cacheEntradas,findByPID);
-	entrada->entradas++;
+	entrada->tiempoEntrada=time(0);
 }
 
 //CACHE
