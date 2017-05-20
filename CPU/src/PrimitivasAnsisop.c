@@ -112,15 +112,100 @@ t_puntero definirVariable(t_nombre_variable identificador_variable) {
 }
 
 t_puntero obtenerPosicionVariable(t_nombre_variable identificador_variable) {
-	t_puntero a;
-	return a;
+	log_info(cpu_log,"Se solicita obtener la posición de la variable: %c", identificador_variable);
+
+	registro_indice_stack* stack_actual = &actual_pcb->indice_stack[actual_pcb->cant_entradas_indice_stack-1];
+
+	if(isalpha(identificador_variable)){//Las variables son letras
+		log_info(cpu_log,"Identificado %c como una variable",identificador_variable);
+		int i;
+		for(i=stack_actual->cant_variables-1;i>=0;i--){
+			if(stack_actual->variables[i].id == identificador_variable){
+				t_puntero poslogica = pos_fisica_a_logica(stack_actual->variables[i].posicionVar);
+				log_info(cpu_log,"La posicion logica de la variable %c es %d",identificador_variable,poslogica);
+				return poslogica;
+			}
+		}
+		log_info(cpu_log,"La variable %c no se pudo encontrar en el stack",identificador_variable);
+	}
+
+	if(isdigit(identificador_variable)){//Los argumentos son numeros
+		int numero_variable = identificador_variable;
+		log_info(cpu_log,"Identificado %c como un argumento",identificador_variable);
+
+		if(numero_variable >= stack_actual->cant_argumentos)
+			log_error(cpu_log,"Es %d es un argumento incorrecto, porque solo hay %d argumentos",numero_variable,stack_actual->cant_argumentos);
+
+		t_puntero poslogica = pos_fisica_a_logica(stack_actual->argumentos[numero_variable]);
+		log_info(cpu_log,"La posicion logica del argumento %d es %d",numero_variable,poslogica);
+		return poslogica;
+	}
+
+	log_error(cpu_log,"No se pudo encontrar la variable %c",identificador_variable);
+
+	return -1;
 }
 t_valor_variable dereferenciar(t_puntero direccion_variable) {
-	t_valor_variable a;
-	return a;
+
+	t_posMemoria posicionFisica = pos_logica_a_fisica(direccion_variable);
+
+	log_debug(cpu_log,"Se solicita dereferenciar la dirección\nLogica: %d\nFisica: pag %d, offset %d", direccion_variable, posicionFisica.pag, posicionFisica.offset);
+
+	t_pedido_solicitar_bytes pedido;
+	pedido.pid=actual_pcb->pid;
+	pedido.pagina=posicionFisica.pag;
+	pedido.offsetPagina=posicionFisica.offset;
+	pedido.tamanio=4;
+
+	char* buffer = serializar_pedido_solicitar_bytes(&pedido);
+	empaquetarEnviarMensaje(socketMemoria,"SOLC_BYTES",sizeof(t_pedido_solicitar_bytes),buffer);
+	free(buffer);
+
+	t_package* paquete = recibirPaquete(socketMemoria,NULL);
+
+	t_respuesta_solicitar_bytes* respuesta = deserializar_respuesta_solicitar_bytes(paquete->datos);
+	borrarPaquete(paquete);
+
+	t_valor_variable valor;
+	memcpy(&valor,respuesta->data,4);
+
+	free(respuesta->data);
+	free(respuesta);
+
+	log_info(cpu_log,"Valor dereferenciado = %d",valor);
+	return valor;
 }
 void asignar(t_puntero	direccion_variable,	t_valor_variable valor) {
+	if(stack_overflow)
+		return;
 
+	t_posMemoria posicionFisica = pos_logica_a_fisica(direccion_variable);
+
+	t_pedido_almacenar_bytes pedido;
+	pedido.pagina = posicionFisica.pag;
+	pedido.offsetPagina = posicionFisica.offset;
+	pedido.tamanio = posicionFisica.size;
+	pedido.data = malloc(posicionFisica.size);
+	memcpy(pedido.data,&valor,posicionFisica.size);
+
+	char *buffer = serializar_pedido_almacenar_bytes(&pedido);
+	empaquetarEnviarMensaje(socketMemoria,"ALMC_BYTES",(sizeof(int32_t)*3)+pedido.tamanio,buffer);
+	free(buffer);
+
+	log_info(cpu_log,"Se solicita asignar la dirección logica %d con el valor %d (posicion fisica: pag %d, offset %d)", direccion_variable,valor,posicionFisica.pag,posicionFisica.offset);
+
+	t_package *paquete = recibirPaquete(socketMemoria,NULL);
+
+	t_respuesta_almacenar_bytes* respuesta = deserializar_respuesta_almacenar_bytes(paquete->datos);
+
+	if(respuesta->codigo == OK_ALMACENAR){
+		log_info(cpu_log,"Pedido de asignacion correcto");
+	}else{//TODO Caso de error
+		log_error(cpu_log,"Pedido de asignacion incorrecto");
+	}
+
+	free(respuesta);
+	borrarPaquete(paquete);
 }
 t_valor_variable obtenerValorCompartida(t_nombre_compartida	variable) {
 	t_valor_variable a;

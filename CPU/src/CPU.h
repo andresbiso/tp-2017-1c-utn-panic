@@ -11,8 +11,8 @@
 #include "PrimitivasAnsisop.h"
 
 void waitKernel(int socketKernel,t_dictionary* diccionarioFunciones);
-void modificarQuantum(int nuevoQuantum);
-void modificarQuantumSleep(int nuevoQuantumSleep);
+void modificarQuantum(char*data, int socket);
+void modificarQuantumSleep(char*data, int socket);
 void nuevoPCB(char* pcb, int socket);
 void borrarPCB(t_pcb* package);
 void ejecutarPrograma();
