@@ -414,7 +414,7 @@ t_pcb* armar_nuevo_pcb(char* codigo){
 	nvopcb->fin_stack.offset=0;
 	nvopcb->fin_stack.size=4;
 
-	nvopcb->exit_code=0;
+	nvopcb->exit_code=1;
 
 	metadata_destruir(metadata);
 	return nvopcb;
