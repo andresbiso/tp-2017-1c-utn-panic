@@ -100,7 +100,7 @@ t_puntero definirVariable(t_nombre_variable identificador_variable) {
 		if (bufferRespuesta->codigo == OK_ALMACENAR){
 			log_info(cpu_log,"Exito al almacenar en el stack");
 		} else {
-			log_error("Hubo un error al modificar la pagina");
+			log_error(cpu_log,"Hubo un error al modificar la pagina");
 			error_en_ejecucion = 1;
 			actual_pcb->exit_code = -5;
 			return -1;
