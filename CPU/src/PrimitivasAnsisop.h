@@ -40,7 +40,7 @@ int socketMemoria;
 t_pcb* actual_pcb;
 FuncionesAnsisop* funcionesParser;
 
-int stack_overflow;
+int error_en_ejecucion;
 int pagesize;
 
 t_log* cpu_log;

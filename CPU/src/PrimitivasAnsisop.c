@@ -15,7 +15,7 @@ t_posMemoria pos_logica_a_fisica(t_puntero poslogica){
 // AnSISOP_funciones
 t_puntero definirVariable(t_nombre_variable identificador_variable) {
 
-		if(stack_overflow) {
+		if (error_en_ejecucion) {
 			return -1;
 		}
 
@@ -24,7 +24,7 @@ t_puntero definirVariable(t_nombre_variable identificador_variable) {
 		if(actual_pcb->fin_stack.pag == actual_pcb->cant_pags_totales){
 			log_warning(cpu_log,"Stack Overflow: Se ha intentado leer una pagina invalida");
 			puts("Stack Overflow: Se ha intentado leer una pagina invalida");
-			stack_overflow = true;
+			error_en_ejecucion = true;
 			return -1;
 		}
 
@@ -90,10 +90,7 @@ t_puntero definirVariable(t_nombre_variable identificador_variable) {
 		char* buffer =  serializar_pedido_almacenar_bytes(pedido);
 		// Tamanio de la estructura. Data 4 bytes = int32_t
 		int longitudMensaje = sizeof((sizeof(int32_t)*5));
-		if(empaquetarEnviarMensaje(socketMemoria, "ALMC_BYTES", longitudMensaje, buffer)) {
-			perror("Hubo un error procesando el paquete");
-			exit(EXIT_FAILURE);
-		}
+		empaquetarEnviarMensaje(socketMemoria, "ALMC_BYTES", longitudMensaje, buffer);
 		free(buffer);
 		free(pedido);
 
@@ -103,8 +100,10 @@ t_puntero definirVariable(t_nombre_variable identificador_variable) {
 		if (bufferRespuesta->codigo == OK_ALMACENAR){
 			log_info(cpu_log,"Exito al almacenar en el stack");
 		} else {
-			perror("Hubo un error al modificar la pagina");
-			exit(EXIT_FAILURE);
+			log_error("Hubo un error al modificar la pagina");
+			error_en_ejecucion = 1;
+			actual_pcb->exit_code = -5;
+			return -1;
 		}
 
 		borrarPaquete(paqueteRespuesta);
@@ -114,11 +113,16 @@ t_puntero definirVariable(t_nombre_variable identificador_variable) {
 }
 
 t_puntero obtenerPosicionVariable(t_nombre_variable identificador_variable) {
+
+	if (error_en_ejecucion) {
+		return -1;
+	}
+
 	log_info(cpu_log,"Se solicita obtener la posición de la variable: %c", identificador_variable);
 
 	registro_indice_stack* stack_actual = &actual_pcb->indice_stack[actual_pcb->cant_entradas_indice_stack-1];
 
-	if(isalpha(identificador_variable)){//Las variables son letras
+	if(isalpha(identificador_variable)){
 		log_info(cpu_log,"Identificado %c como una variable",identificador_variable);
 		int i;
 		for(i=stack_actual->cant_variables-1;i>=0;i--){
@@ -131,12 +135,16 @@ t_puntero obtenerPosicionVariable(t_nombre_variable identificador_variable) {
 		log_info(cpu_log,"La variable %c no se pudo encontrar en el stack",identificador_variable);
 	}
 
-	if(isdigit(identificador_variable)){//Los argumentos son numeros
+	if(isdigit(identificador_variable)){
 		int numero_variable = identificador_variable;
 		log_info(cpu_log,"Identificado %c como un argumento",identificador_variable);
 
-		if(numero_variable >= stack_actual->cant_argumentos)
+		if(numero_variable >= stack_actual->cant_argumentos) {
 			log_error(cpu_log,"Es %d es un argumento incorrecto, porque solo hay %d argumentos",numero_variable,stack_actual->cant_argumentos);
+			error_en_ejecucion = true;
+			actual_pcb->exit_code = -5;
+			return -1;
+		}
 
 		t_puntero poslogica = pos_fisica_a_logica(stack_actual->argumentos[numero_variable]);
 		log_info(cpu_log,"La posicion logica del argumento %d es %d",numero_variable,poslogica);
@@ -144,14 +152,24 @@ t_puntero obtenerPosicionVariable(t_nombre_variable identificador_variable) {
 	}
 
 	log_error(cpu_log,"No se pudo encontrar la variable %c",identificador_variable);
+	error_en_ejecucion = 1;
+	actual_pcb->exit_code = -5;
 
 	return -1;
 }
 t_valor_variable dereferenciar(t_puntero direccion_variable) {
 
+	if (error_en_ejecucion) {
+		return -1;
+	}
+
 	t_posMemoria posicionFisica = pos_logica_a_fisica(direccion_variable);
 
-	log_debug(cpu_log,"Se solicita dereferenciar la dirección\nLogica: %d\nFisica: pag %d, offset %d", direccion_variable, posicionFisica.pag, posicionFisica.offset);
+	log_debug(cpu_log,
+			"Se solicita dereferenciar la dirección\nLogica: %d\nFisica: pag %d, offset %d",
+			direccion_variable,
+			posicionFisica.pag,
+			posicionFisica.offset);
 
 	t_pedido_solicitar_bytes pedido;
 	pedido.pid=actual_pcb->pid;
@@ -178,7 +196,7 @@ t_valor_variable dereferenciar(t_puntero direccion_variable) {
 	return valor;
 }
 void asignar(t_puntero	direccion_variable,	t_valor_variable valor) {
-	if(stack_overflow)
+	if(error_en_ejecucion)
 		return;
 
 	t_posMemoria posicionFisica = pos_logica_a_fisica(direccion_variable);
@@ -194,7 +212,11 @@ void asignar(t_puntero	direccion_variable,	t_valor_variable valor) {
 	empaquetarEnviarMensaje(socketMemoria,"ALMC_BYTES",(sizeof(int32_t)*3)+pedido.tamanio,buffer);
 	free(buffer);
 
-	log_info(cpu_log,"Se solicita asignar la dirección logica %d con el valor %d (posicion fisica: pag %d, offset %d)", direccion_variable,valor,posicionFisica.pag,posicionFisica.offset);
+	log_info(cpu_log,
+			"Se solicita asignar la dirección logica %d con el valor %d (posicion fisica: pag %d, offset %d)",
+			direccion_variable,valor,
+			posicionFisica.pag,
+			posicionFisica.offset);
 
 	t_package *paquete = recibirPaquete(socketMemoria,NULL);
 
@@ -202,8 +224,11 @@ void asignar(t_puntero	direccion_variable,	t_valor_variable valor) {
 
 	if(respuesta->codigo == OK_ALMACENAR){
 		log_info(cpu_log,"Pedido de asignacion correcto");
-	}else{//TODO Caso de error
+	}else{
 		log_error(cpu_log,"Pedido de asignacion incorrecto");
+		error_en_ejecucion = 1;
+		actual_pcb->exit_code = -5;
+		return;
 	}
 
 	free(respuesta);
