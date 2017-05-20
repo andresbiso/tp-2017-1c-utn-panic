@@ -49,7 +49,7 @@ int32_t tamanio_pcb(t_pcb* pcb){
 }
 
 t_pcb_serializado* serializar_pcb(t_pcb* pcb){
-	t_pcb_serializado* pcb_serializado = malloc(sizeof(pcb_serializado));
+	t_pcb_serializado* pcb_serializado = malloc(sizeof(t_pcb_serializado));
 	pcb_serializado->tamanio = tamanio_pcb(pcb);
 	pcb_serializado->contenido_pcb = malloc(pcb_serializado->tamanio);
 
@@ -89,7 +89,7 @@ t_pcb_serializado* serializar_pcb(t_pcb* pcb){
 		offset+=agregar(pcb_serializado->contenido_pcb+offset,sizeof(pcb->indice_stack->pos_var_retorno),&pcb->indice_stack[i].pos_var_retorno);
 	}
 
-	offset+=agregar(pcb_serializado->contenido_pcb+offset,sizeof(pcb->exit_code),&pcb->exit_code);
+	agregar(pcb_serializado->contenido_pcb+offset,sizeof(pcb->exit_code),&pcb->exit_code);
 
 	return pcb_serializado;
 }

@@ -24,7 +24,7 @@ void modificarQuantumSleep(char*data, int socket) {
 	log_info(cpu_log, "QuantumSleep=%d", quantumSleep);
 }
 
-void nuevoPCB(char* pcb, int socket){
+void correrPCB(char* pcb, int socket){
 	actual_pcb = deserializar_pcb(pcb);
 	ejecutarPrograma();//TODO hay que chequear el tema del QUANTUM
 	destruir_pcb(actual_pcb);
@@ -119,7 +119,7 @@ int main(int argc, char** argv) {
 	t_dictionary* diccionarioFunciones = dictionary_create();
 	dictionary_put(diccionarioFunciones,"KEY_PRINT",&mostrarMensaje);
 	dictionary_put(diccionarioFunciones,"ERROR_FUNC",&mostrarMensaje);
-	dictionary_put(diccionarioFunciones,"NUEVO_PCB",&nuevoPCB);
+	dictionary_put(diccionarioFunciones,"CORRER_PCB",&correrPCB);
 	dictionary_put(diccionarioFunciones,"NUEVO_QUANTUM",&modificarQuantum);
 	dictionary_put(diccionarioFunciones,"NUEVO_QUANTUM_SLEEP",&modificarQuantumSleep);
 	// ver comuncicaciones memoria-kernel

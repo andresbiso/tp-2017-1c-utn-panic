@@ -303,6 +303,8 @@ t_pcb* armar_nuevo_pcb(char* codigo){
 	nvopcb->fin_stack.offset=0;
 	nvopcb->fin_stack.size=4;
 
+	nvopcb->exit_code=0;
+
 	metadata_destruir(metadata);
 	return nvopcb;
 }
@@ -603,6 +605,7 @@ void enviar_a_cpu(){
 	empaquetarEnviarMensaje(cpu_libre->socket,"CORRER_PCB",serializado->tamanio,serializado->contenido_pcb);
 	log_info(logNucleo,"Se envio un pcb a correr en la cpu %d",cpu_libre->socket);
 	free(serializado->contenido_pcb);
+	free(serializado);
 }
 
 void mostrarMensaje(char* mensaje,int socket){
