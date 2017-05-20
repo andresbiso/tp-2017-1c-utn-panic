@@ -26,14 +26,20 @@ void modificarQuantumSleep(char*data, int socket) {
 
 void correrPCB(char* pcb, int socket){
 	actual_pcb = deserializar_pcb(pcb);
-	ejecutarPrograma();//TODO hay que chequear el tema del QUANTUM
+	ejecutarPrograma();
+	t_pcb_serializado* paqueteSerializado = serializar_pcb(actual_pcb);
+	empaquetarEnviarMensaje(socketKernel, "RET_PCB", paqueteSerializado->tamanio, paqueteSerializado->contenido_pcb);
+	free(paqueteSerializado->contenido_pcb);
+	free(paqueteSerializado);
 	destruir_pcb(actual_pcb);
 }
 
 void ejecutarPrograma() {
 	t_pedido_solicitar_bytes* pedido = (t_pedido_solicitar_bytes*)malloc(sizeof (t_pedido_solicitar_bytes));
 	int instruccionActual = 0;
-	while(instruccionActual < actual_pcb->cant_instrucciones) {
+	int fifo = quantum == 0;
+	int cicloActual = quantum;
+	while(instruccionActual < actual_pcb->cant_instrucciones && (fifo || cicloActual > 0)) {
 		pedido->pid = actual_pcb->pid;
 		pedido->pagina = actual_pcb->indice_codigo->pag;
 		pedido->offsetPagina = actual_pcb->indice_codigo->offset;
@@ -50,6 +56,8 @@ void ejecutarPrograma() {
 		borrarPaquete(paqueteRespuesta);
 		free(bufferRespuesta->data);
 		free(bufferRespuesta);
+		sleep(quantumSleep * 0.001);
+		cicloActual--;
 	}
 	free(pedido);
 }
