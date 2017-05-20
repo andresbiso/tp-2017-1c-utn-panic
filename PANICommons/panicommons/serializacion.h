@@ -124,6 +124,9 @@ typedef struct
 	codigo_finalizar_programa codigo;
 } __attribute__((__packed__))t_respuesta_finalizar_programa;
 
+typedef enum {
+	FINALIZAR_BY_CONSOLE = -7, FINALIZAR_OK = 0
+} exit_codes;
 
 t_pcb_serializado* serializar_pcb(t_pcb* pcb);
 t_pcb* deserializar_pcb(char* pcbs);

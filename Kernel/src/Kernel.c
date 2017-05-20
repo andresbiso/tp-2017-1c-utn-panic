@@ -1,19 +1,5 @@
 #include "Kernel.h"
 
-#include <commons/collections/dictionary.h>
-#include <commons/collections/list.h>
-#include <parser/metadata_program.h>
-#include <pthread.h>
-#include <semaphore.h>
-#include <stdbool.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <sys/types.h>
-#include <unistd.h>
-
-#include "estados.h"
-
 typedef struct {
     int socketEscucha;
     void (*nuevaConexion) (int);
@@ -85,6 +71,49 @@ void inotifyWatch(void*args){
 
 //General
 
+void retornarPCB(char* data,int socket){//TODO detener planificacion, si la detenemos el hilo se bloquea aca =>Kernel no puede recibir + mensajes
+	t_pcb* pcb = deserializar_pcb(data);
+
+	pthread_mutex_lock(&mutexKernel);
+	t_relacion* relacion = matchear_relacion_por_socketcpu(socket);
+	relacion->cpu->corriendo=false;
+	relacion->programa->corriendo=false;
+
+	t_pcb* pcbOld = sacarDe_colaExec(pcb->pid);
+	destruir_pcb(pcbOld);
+
+	if(pcb->exit_code<=0){//termino el programa
+		moverA_colaExit(pcb);
+		t_respuesta_finalizar_programa* respuesta = finalizarProcesoMemoria(pcb->pid);
+
+		if(respuesta->codigo==OK_FINALIZAR){
+			char* message = string_from_format("Proceso finalizado con exitCode: %d\0",pcb->exit_code);
+			enviarMensajeConsola(message,"END_PRGM",pcb->pid,relacion->programa->socket,1);
+			free(message);
+		}
+	}else{
+		moverA_colaReady(pcb);
+	}
+	enviar_a_cpu();
+
+	pthread_mutex_unlock(&mutexKernel);
+}
+
+t_respuesta_finalizar_programa* finalizarProcesoMemoria(int32_t pid){
+	t_pedido_finalizar_programa pedido;
+	pedido.pid = pid;
+
+	char* buffer = serializar_pedido_finalizar_programa(&pedido);
+	empaquetarEnviarMensaje(socketMemoria,"LOG_MESSAGE",sizeof(t_pedido_finalizar_programa),buffer);
+	free(buffer);
+
+	t_package* paquete = recibirPaquete(socketMemoria,NULL);
+	t_respuesta_finalizar_programa* respuesta = deserializar_respuesta_finalizar_programa(paquete->datos);
+	borrarPaquete(paquete);
+
+	return respuesta;
+}
+
 void finalizarProceso(void* pidArg){//TODO falta contemplar el caso que este corriendo el pcb
 	int32_t* pid = (int32_t*)pidArg;
 
@@ -100,18 +129,8 @@ void finalizarProceso(void* pidArg){//TODO falta contemplar el caso que este cor
 		if(pcb!=NULL){
 			log_info(logNucleo,"Finalizando proceso con PID:%d, que estaba en READY",*pid);
 
-			t_pedido_finalizar_programa pedido;
-			pedido.pid = pcb->pid;
-
-			char* buffer = serializar_pedido_finalizar_programa(&pedido);
-			empaquetarEnviarMensaje(socketMemoria,"FINZ_PROGM",sizeof(t_pedido_finalizar_programa),buffer);
-			free(buffer);
-
-			t_package* paquete = recibirPaquete(socketMemoria,NULL);
-			t_respuesta_finalizar_programa* respuesta = deserializar_respuesta_finalizar_programa(paquete->datos);
-			borrarPaquete(paquete);
-
-			if(respuesta->codigo == OK_FINALIZAR)
+			t_respuesta_finalizar_programa* respuesta = finalizarProcesoMemoria(*pid);
+			if(respuesta->codigo==OK_FINALIZAR)
 				enviarMensajeConsola("Proceso finalizado abruptamente\0","LOG_MESSAGE",pcb->pid,consola->socket,1);
 			pcb->exit_code=FINALIZAR_BY_CONSOLE;
 			moverA_colaExit(pcb);
@@ -233,6 +252,7 @@ void consolaCreate(void*args){
 	t_dictionary* commands = dictionary_create();
 	dictionary_put(commands,"multiprog",&changeMultiprogramacion);
 	dictionary_put(commands,"showProcess",&showProcess);
+	dictionary_put(commands,"end",&end);
 	waitCommand(commands);
 	dictionary_destroy(commands);
 }
@@ -514,7 +534,9 @@ void respuesta_inicializar_programa(int socket, int socketMemoria, char* codigo)
 
 void nuevaConexionCPU(int sock){
 	cargarCPU(sock);
+	pthread_mutex_lock(&mutexKernel);
 	enviar_a_cpu();
+	pthread_mutex_unlock(&mutexKernel);
 }
 
 void cargarCPU(int32_t socket){
@@ -562,13 +584,6 @@ void elminar_consola_por_pid(int pid){
 void liberar_consola(t_relacion *rel){
 	rel->cpu->corriendo= false;
 	rel->programa->corriendo= false;
-
-	if(rel->programa->socket==-1){
-		log_warning(logNucleo,"Aprovecho para eliminar del sistema la consola cerrada del PID %d",rel->programa->pid);
-		moverA_colaExit(sacarDe_colaExec(rel->programa->pid));//FIXME Hacerlo con un hilo por si se bloquea la planificacion!!!
-		//enviar(FINALIZA_PROGRAMA,sizeof(int32_t),&(rel->programa->pid),socket_umc);
-		elminar_consola_por_pid(rel->programa->pid);
-	}
 }
 
 void liberar_una_relacion(t_pcb *pcb_devuelto){
@@ -655,13 +670,11 @@ void enviar_a_cpu(){
 	}
 	log_info(logNucleo, "la CPU del socket %d esta libre y lista para ejecutar", cpu_libre->socket);
 
-	t_pcb *pcb_ready;
-	pcb_ready = queue_pop(colaReady);
+	t_pcb *pcb_ready=sacarCualquieraDeNew();
 	if(!pcb_ready){
 		return;
 	}
-	log_info(logEstados, "El PCB con el pid %d salio de la cola Ready y esta listo"
-			" para ser enviado al CPU del socket %d", pcb_ready->pid, cpu_libre->socket);
+	log_info(logEstados, "El PCB con el pid %d salio de la cola Ready y esta listo para ser enviado al CPU del socket %d", pcb_ready->pid, cpu_libre->socket);
 	log_info(logNucleo, "Se levanto el pcb con id %d", pcb_ready->pid);
 
 	bool matchPID(void *programa) {
@@ -689,6 +702,7 @@ void enviar_a_cpu(){
 	empaquetarEnviarMensaje(cpu_libre->socket,"CORRER_PCB",serializado->tamanio,serializado->contenido_pcb);
 	log_info(logNucleo,"Se envio un pcb a correr en la cpu %d",cpu_libre->socket);
 	free(serializado->contenido_pcb);
+	free(serializado);
 }
 
 void mostrarMensaje(char* mensaje,int socket){
@@ -713,7 +727,7 @@ int main(int argc, char** argv) {
     dictionary_put(diccionarioFunciones,"ERROR_FUNC",&mostrarMensaje);
     dictionary_put(diccionarioFunciones,"NUEVO_PROG",&nuevoPrograma);
     dictionary_put(diccionarioFunciones,"END_PROG",&finalizarProgramaConsola);
-
+    dictionary_put(diccionarioFunciones,"RET_PCB",&retornarPCB);
 
     t_dictionary* diccionarioHandshakes = dictionary_create();
     dictionary_put(diccionarioHandshakes,"HCPKE","HKECP");

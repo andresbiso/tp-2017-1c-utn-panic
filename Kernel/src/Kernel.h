@@ -17,6 +17,20 @@
 #include <commons/log.h>
 #include <commons/string.h>
 #include "inotify.h"
+#include <commons/collections/dictionary.h>
+#include <commons/collections/list.h>
+#include <parser/metadata_program.h>
+#include <pthread.h>
+#include <semaphore.h>
+#include <stdbool.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/types.h>
+#include <unistd.h>
+
+#include "estados.h"
+
 
 int PuertoConsola;
 int PuertoCpu;
@@ -40,10 +54,6 @@ t_dictionary *variablesCompartidas;
 typedef enum {
 	FIFO = 0, RR = 1
 } modo_planificacion;
-
-typedef enum {
-	FINALIZAR_BY_CONSOLE = -7, FINALIZAR_OK = 0
-} exit_codes;
 
 typedef struct{
 	int socket;
@@ -96,5 +106,6 @@ void respuesta_inicializar_programa(int socket, int socketMemoria, char* codigo)
 bool almacenarBytes(t_pcb* pcb,int socketMemoria,char* codigo);
 void finalizarProgramaConsola(char*data,int socket);
 void finalizarProceso(void* pidArg);
+t_respuesta_finalizar_programa* finalizarProcesoMemoria(int32_t pid);
 
 #endif /* KERNEL_H_ */

@@ -16,6 +16,7 @@
 #include <unistd.h>
 #include <panicommons/serializacion.h>
 #include <semaphore.h>
+#include <pthread.h>
 
 t_queue *colaNew;
 t_queue *colaReady;
@@ -44,6 +45,7 @@ t_pcb *sacarDe_colaNew(uint32_t pid);
 t_pcb *sacarDe_colaReady(uint32_t pid);
 t_pcb *sacarDe_colaExec(uint32_t pid);
 t_pcb *sacarDe_colaBlocked(uint32_t pid);
+t_pcb* sacarCualquieraDeNew();
 
 void bloquear_pcb(t_pcb* pid);
 void desbloquear_pcb(t_pcb* pcb);
