@@ -38,16 +38,26 @@ sem_t grado;
 //consola
 
 void enviarMensajeConsola(char*mensaje,char*key,int32_t pid,int32_t socket,int32_t terminoProceso){
-	t_aviso_consola aviso_nuevo_proceso;
-	aviso_nuevo_proceso.mensaje = mensaje;
-	aviso_nuevo_proceso.tamanomensaje = strlen(aviso_nuevo_proceso.mensaje);
-	aviso_nuevo_proceso.idPrograma = pid;
-	aviso_nuevo_proceso.terminoProceso = terminoProceso;
+	t_aviso_consola aviso_consola;
+	aviso_consola.mensaje = mensaje;
+	aviso_consola.tamanomensaje = strlen(aviso_consola.mensaje);
+	aviso_consola.idPrograma = pid;
+	aviso_consola.terminoProceso = terminoProceso;
 
-	char *pedido_serializado = serializar_aviso_consola(&aviso_nuevo_proceso);
+	char *pedido_serializado = serializar_aviso_consola(&aviso_consola);
 
-	empaquetarEnviarMensaje(socket,key,aviso_nuevo_proceso.tamanomensaje+(sizeof(int32_t)*2),pedido_serializado);
+	empaquetarEnviarMensaje(socket,key,aviso_consola.tamanomensaje+(sizeof(int32_t)*3),pedido_serializado);
 	free(pedido_serializado);
+}
+
+void finalizarProgramaConsola(char*data,int socket){
+	int32_t* pid = malloc(sizeof(int32_t));
+	*pid=atoi(data);
+
+	log_info(logNucleo,"Consola pide terminar el proceso con el PID:%d",pid);
+
+	pthread_t hilo;//Se hace con un hilo por si se pausa la planificacion
+	pthread_create(&hilo,NULL,(void*)&finalizarProceso,pid);
 }
 
 //consola
@@ -73,7 +83,73 @@ void inotifyWatch(void*args){
 
 //inotify
 
-//consola
+//General
+
+void finalizarProceso(void* pidArg){//TODO falta contemplar el caso que este corriendo el pcb
+	int32_t* pid = (int32_t*)pidArg;
+
+	log_info(logNucleo,"A punto de finalizar el proceso con el PID:%d",*pid);
+
+	t_consola* consola = matchear_consola_por_pid(*pid);
+
+	if(consola->corriendo==false){
+		//Puede estar bloqueado o en ready
+		t_pcb* pcb;
+
+		pcb = sacarDe_colaReady(*pid);
+		if(pcb!=NULL){
+			log_info(logNucleo,"Finalizando proceso con PID:%d, que estaba en READY",*pid);
+
+			t_pedido_finalizar_programa pedido;
+			pedido.pid = pcb->pid;
+
+			char* buffer = serializar_pedido_finalizar_programa(&pedido);
+			empaquetarEnviarMensaje(socketMemoria,"FINZ_PROGM",sizeof(t_pedido_finalizar_programa),buffer);
+			free(buffer);
+
+			t_package* paquete = recibirPaquete(socketMemoria,NULL);
+			t_respuesta_finalizar_programa* respuesta = deserializar_respuesta_finalizar_programa(paquete->datos);
+			borrarPaquete(paquete);
+
+			if(respuesta->codigo == OK_FINALIZAR)
+				enviarMensajeConsola("Proceso finalizado abruptamente\0","LOG_MESSAGE",pcb->pid,consola->socket,1);
+			pcb->exit_code=FINALIZAR_BY_CONSOLE;
+			moverA_colaExit(pcb);
+
+			free(respuesta);
+		}
+
+	}//TODO else
+	free(pid);
+}
+
+//General
+
+//consola Kernel
+
+void end(int size, char** functionAndParams){
+	if(size != 2){
+		printf("El comando end debe recibir el PID\n\r");
+		freeElementsArray(functionAndParams,size);
+		return;
+	}
+
+	int32_t* pid = malloc(sizeof(int32_t));
+	*pid=atoi(functionAndParams[1]);
+
+	t_consola* consola = matchear_consola_por_pid(*pid);
+
+	if(consola==NULL){
+		printf("PID no encontrado\n\r");
+		freeElementsArray(functionAndParams,size);
+		return;
+	}
+
+	pthread_t hilo;//Se hace con un hilo por si se pausa la planificacion
+	pthread_create(&hilo,NULL,(void*)&finalizarProceso,pid);
+
+	freeElementsArray(functionAndParams,size);
+}
 
 void changeMultiprogramacion(int size, char** functionAndParams){
 	if(size != 2){
@@ -236,11 +312,13 @@ void programa(void* arg){
 
 	nuevo_pcb = armar_nuevo_pcb(params->codigo);
 
-	enviarMensajeConsola("Nuevo Proceso creado \0","NEW_PID",nuevo_pcb->pid,socket,false);
+	cargar_programa(socket,nuevo_pcb->pid);
+
+	enviarMensajeConsola("Nuevo Proceso creado\0","NEW_PID",nuevo_pcb->pid,socket,0);
 
 	sem_getvalue(&grado,&gradoActual);
 	if(gradoActual <= 0){
-		enviarMensajeConsola("Espera por Multiprogramacion\0","LOG_MESSAGE",nuevo_pcb->pid,socket,false);
+		enviarMensajeConsola("Espera por Multiprogramacion\0","LOG_MESSAGE",nuevo_pcb->pid,socket,0);
 	}
 
 	moverA_colaNew(nuevo_pcb);
@@ -346,7 +424,7 @@ bool almacenarBytes(t_pcb* pcb,int socketMemoria,char* data){
 		pedido.pagina = i;
 
 		for(j=nextInstruction;j<pcb->cant_instrucciones;j++){
-			if(pcb->indice_codigo[j].pag ==i  && ((j+1>pcb->cant_instrucciones)|| pcb->indice_codigo[j+1].pag !=i)){
+			if(pcb->indice_codigo[j].pag ==i  && ((j+1>=(pcb->cant_instrucciones))|| pcb->indice_codigo[j+1].pag !=i)){
 				pedido.tamanio=pcb->indice_codigo[j].size+pcb->indice_codigo[j].offset;
 				nextInstruction=j+1;
 				break;
@@ -398,8 +476,6 @@ void respuesta_inicializar_programa(int socket, int socketMemoria, char* codigo)
 
 	pthread_mutex_lock(&mutexKernel);
 
-	cargar_programa(socket,respuesta->idPrograma);
-
 	t_pcb* pcb_respuesta = sacarDe_colaNew(respuesta->idPrograma);
 	switch (respuesta->codigoRespuesta) {
 		case OK_INICIALIZAR:
@@ -409,20 +485,11 @@ void respuesta_inicializar_programa(int socket, int socketMemoria, char* codigo)
 				log_debug(logNucleo, "Movi a la cola Ready el PCB con PID: %d",respuesta->idPrograma);
 
 				log_info(logNucleo,"Se envia mensaje a la consola del socket %d que pudo poner en Ready su PCB", socket);
-				t_aviso_consola aviso_ok;
-				aviso_ok.mensaje = "Proceso inicializado\0";
-				aviso_ok.tamanomensaje = strlen(aviso_ok.mensaje);
-				aviso_ok.idPrograma = respuesta->idPrograma;
-
-				char* pedido_ok = serializar_aviso_consola(&aviso_ok);
-
-				empaquetarEnviarMensaje(socket,"LOG_MESSAGE",aviso_ok.tamanomensaje+(sizeof(int32_t)*2),pedido_ok);
-				free(pedido_ok);
+				enviarMensajeConsola("Proceso inicializado\0","LOG_MESSAGE",respuesta->idPrograma,socket,0);
 
 				log_info(logNucleo,"Se envia a CPU el PCB inicializado");
 				enviar_a_cpu();
-			}
-			else{
+			}else{
 				moverA_colaExit(pcb_respuesta);
 				log_debug(logNucleo, "Movi a la cola Exit el PCB con PID: %d",respuesta->idPrograma);
 			}
@@ -433,18 +500,11 @@ void respuesta_inicializar_programa(int socket, int socketMemoria, char* codigo)
 			log_debug(logNucleo, "Movi a la cola Exit el PCB con PID: %d",respuesta->idPrograma);
 
 			log_info(logNucleo,"Se envia mensaje a la consola del socket %d que no se pudo poner en Ready su PCB", socket);
-			t_aviso_consola aviso_no_ok;
-			aviso_no_ok.mensaje = "Sin espacio en Memoria\0";
-			aviso_no_ok.tamanomensaje = strlen(aviso_no_ok.mensaje);
-			aviso_no_ok.idPrograma = respuesta->idPrograma;
 
-			char* pedido_no_ok = serializar_aviso_consola(&aviso_no_ok);
-
-			empaquetarEnviarMensaje(socket,"LOG_MESSAGE",aviso_no_ok.tamanomensaje+(sizeof(int32_t)*2),pedido_no_ok);
-			free(pedido_no_ok);
+			enviarMensajeConsola("Sin espacio en Memoria\0","LOG_MESSAGE",respuesta->idPrograma,socket,0);
 			break;
 		default:
-			log_warning(logNucleo,"LLego un codigo de operacion invalido");
+			log_warning(logNucleo,"Llego un codigo de operacion invalido");
 			break;
 	}
 
@@ -505,7 +565,7 @@ void liberar_consola(t_relacion *rel){
 
 	if(rel->programa->socket==-1){
 		log_warning(logNucleo,"Aprovecho para eliminar del sistema la consola cerrada del PID %d",rel->programa->pid);
-		moverA_colaExit(sacarDe_colaExec(rel->programa->pid));
+		moverA_colaExit(sacarDe_colaExec(rel->programa->pid));//FIXME Hacerlo con un hilo por si se bloquea la planificacion!!!
 		//enviar(FINALIZA_PROGRAMA,sizeof(int32_t),&(rel->programa->pid),socket_umc);
 		elminar_consola_por_pid(rel->programa->pid);
 	}
@@ -652,6 +712,8 @@ int main(int argc, char** argv) {
     t_dictionary* diccionarioFunciones = dictionary_create();
     dictionary_put(diccionarioFunciones,"ERROR_FUNC",&mostrarMensaje);
     dictionary_put(diccionarioFunciones,"NUEVO_PROG",&nuevoPrograma);
+    dictionary_put(diccionarioFunciones,"END_PROG",&finalizarProgramaConsola);
+
 
     t_dictionary* diccionarioHandshakes = dictionary_create();
     dictionary_put(diccionarioHandshakes,"HCPKE","HKECP");

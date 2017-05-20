@@ -187,13 +187,13 @@ char* serializar_aviso_consola(t_aviso_consola *pedido){
 	char *respuesta = malloc((sizeof(int32_t)*3)+pedido->tamanomensaje);
 
 	int offset = 0;
-	memcpy(respuesta,&(pedido->tamanomensaje),sizeof(pedido->tamanomensaje));
+	memcpy(respuesta,&(pedido->terminoProceso),sizeof(int32_t));
+	offset += sizeof(pedido->terminoProceso);
+	memcpy(respuesta+offset,&(pedido->idPrograma),sizeof(int32_t));
+	offset += sizeof(pedido->idPrograma);
+	memcpy(respuesta+offset,&(pedido->tamanomensaje),sizeof(int32_t));
 	offset += sizeof(pedido->tamanomensaje);
 	memcpy(respuesta+offset,pedido->mensaje,pedido->tamanomensaje);
-	offset += pedido->tamanomensaje;
-	memcpy(respuesta+offset,&(pedido->idPrograma),sizeof(int32_t));
-	offset += pedido->idPrograma;
-	memcpy(respuesta+offset,&(pedido->terminoProceso),sizeof(int32_t));
 
 	return respuesta;
 }
@@ -203,15 +203,15 @@ t_aviso_consola* deserializar_aviso_consola(char *pedido_serializado){
 
 	int offset = 0;
 
-	memcpy(&(respuesta->tamanomensaje),(void*)pedido_serializado,sizeof(respuesta->tamanomensaje));
+	memcpy(&respuesta->terminoProceso,(void*)pedido_serializado,sizeof(int32_t));
+	offset += sizeof(respuesta->terminoProceso);
+	memcpy(&respuesta->idPrograma,(void*)pedido_serializado+offset,sizeof(int32_t));
+	offset += sizeof(respuesta->idPrograma);
+	memcpy(&(respuesta->tamanomensaje),(void*)pedido_serializado+offset,sizeof(respuesta->tamanomensaje));
 	offset += sizeof(respuesta->tamanomensaje);
 	respuesta->mensaje=malloc(respuesta->tamanomensaje+1);
 	memcpy(respuesta->mensaje,(void*)pedido_serializado+offset,respuesta->tamanomensaje);
 	respuesta->mensaje[respuesta->tamanomensaje]='\0';
-	offset += respuesta->tamanomensaje;
-	memcpy(&respuesta->idPrograma,(void*)pedido_serializado+offset,sizeof(int32_t));
-	offset += respuesta->idPrograma;
-	memcpy(&respuesta->terminoProceso,(void*)pedido_serializado+offset,sizeof(int32_t));
 
 	return respuesta;
 }

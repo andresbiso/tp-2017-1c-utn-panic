@@ -41,6 +41,10 @@ typedef enum {
 	FIFO = 0, RR = 1
 } modo_planificacion;
 
+typedef enum {
+	FINALIZAR_BY_CONSOLE = -7, FINALIZAR_OK = 0
+} exit_codes;
+
 typedef struct{
 	int socket;
 	bool corriendo;
@@ -90,5 +94,7 @@ void enviar_a_cpu();
 void cargarCPU(int32_t socket);
 void respuesta_inicializar_programa(int socket, int socketMemoria, char* codigo);
 bool almacenarBytes(t_pcb* pcb,int socketMemoria,char* codigo);
+void finalizarProgramaConsola(char*data,int socket);
+void finalizarProceso(void* pidArg);
 
 #endif /* KERNEL_H_ */
