@@ -107,6 +107,13 @@ typedef enum{OK_ALMACENAR=1,PAGINA_ALM_NOT_FOUND=-1,PAGINA_ALM_OVERFLOW=-2} codi
 
 typedef struct
 {
+	char* ruta;
+	int32_t offset;
+	int32_t tamanio;
+} __attribute__((__packed__)) t_pedido_datos_fs;
+
+typedef struct
+{
 	int32_t pid;
 	codigo_almacenar_bytes codigo;
 } __attribute__((__packed__))t_respuesta_almacenar_bytes;
