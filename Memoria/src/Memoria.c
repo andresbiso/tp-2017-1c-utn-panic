@@ -134,6 +134,10 @@ void findAndReplaceInCache(int32_t oldPID, int32_t oldNroPagina, int32_t pid, in
 			}else
 				memset(bloqueCache+offset,0,marcoSize);
 			offset+=marcoSize;
+		}else{
+			offset+=sizeof(int32_t);
+			offset+=sizeof(int32_t);
+			offset+=marcoSize;
 		}
 		freeCache(cache);
 	}
@@ -636,7 +640,7 @@ void solicitarBytes(char* data,int socket){
 	t_cache* cache = findInCache(pedido->pid,pedido->pagina);
 
 	if(cache!=NULL){
-		log_info(logFile,"Pagina encontrada en cache PID:%d Pagina:%d",pedido->pid,pedido->pagina);
+		log_info(logFile,"Pagina encontrada en cache PID:%d PAG:%d",pedido->pid,pedido->pagina);
 
 		if(marcoSize -(pedido->offsetPagina+pedido->tamanio) <0){
 			respuesta->codigo=PAGINA_SOLICITAR_OVERFLOW;
@@ -645,14 +649,13 @@ void solicitarBytes(char* data,int socket){
 			log_info(logFile,"Overflow al solicitar bytes PID:%d PAG:%d OFFSET:%d TAMANIO:%d",pedido->pid,pedido->pagina,pedido->offsetPagina,pedido->tamanio);
 		}else{
 			addEntradaCache(pedido->pid,pedido->pagina);
-
 			respuesta->codigo=OK_SOLICITAR;
 			respuesta->tamanio=pedido->tamanio;
 			respuesta->data = malloc(pedido->tamanio);
 			memcpy(respuesta->data,cache->contenido+pedido->offsetPagina,pedido->tamanio);
-			freeCache(cache);
 			log_info(logFile,"Exito al solicitar bytes PID:%d PAG:%d OFFSET:%d TAMANIO:%d",pedido->pid,pedido->pagina,pedido->offsetPagina,pedido->tamanio);
 		}
+		freeCache(cache);
 
 		pthread_mutex_unlock(&mutexCache);
 
