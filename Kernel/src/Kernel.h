@@ -95,7 +95,7 @@ void liberar_una_relacion(t_pcb *pcb_devuelto);
 void liberar_una_relacion_porsocket_cpu(int socketcpu);
 void liberar_consola(t_relacion *rel);
 t_consola* matchear_consola_por_pid(int pid);
-t_relacion* matchear_relacion_por_socketcpu(int socket);
+t_relacion* matchear_relacion_por_socketcpu_pid(int socket,int32_t pid);
 void elminar_consola_por_socket(int socket);
 void elminar_consola_por_pid(int pid);
 bool esta_libre(void * unaCpu);

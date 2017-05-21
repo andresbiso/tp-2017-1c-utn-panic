@@ -22,12 +22,14 @@ int handshake(int socket, char * keyEnviada, char * keyEsperada){
 	return 0;
 }
 
-void realizarHandshake(int socket, char* keyRecibida,t_dictionary* diccionarioHandshakes){
+void realizarHandshake(int socket, char* keyRecibida,t_dictionary* diccionarioHandshakes,void (*afterHandshake)(int)){
 	void* returnValue = dictionary_get(diccionarioHandshakes,keyRecibida);
 
-	if(returnValue != NULL)
+	if(returnValue != NULL){
 		empaquetarEnviarMensaje(socket,(char*)returnValue,strlen((char*)returnValue),(char*)returnValue);
-	else
+		if(afterHandshake != NULL)
+			afterHandshake(socket);
+	}else
 		empaquetarEnviarMensaje(socket,"HD_NOT",6,"HD_NOT");
 
 }
@@ -166,7 +168,7 @@ t_package* recibirPaquete(int socket, void (*desconexion) (int)){
 	recibidos=0;
 
 	while(recibidos<(longitud-sizeof(uint32_t))){
-		ssize_t recibido = recv(socket, data + recibidos, longitud - recibidos, 0);
+		ssize_t recibido = recv(socket, data + recibidos, (longitud-sizeof(uint32_t)) - recibidos, MSG_WAITALL);
 		if(recibido <= 0){
 			if(recibido == -1)
 				perror("Error al recibir datos");
@@ -202,7 +204,7 @@ void recibirMensajesThread(void* paramsServidor){
 	while(1){
 		t_package* paquete = recibirPaquete(threadSocket->socket,threadSocket->desconexion);
 		int error = strcmp(paquete->key,"ERROR_FUNC")==0;
-		procesarPaquete(paquete,threadSocket->socket,threadSocket->funciones,threadSocket->handshakes);
+		procesarPaquete(paquete,threadSocket->socket,threadSocket->funciones,threadSocket->handshakes,NULL);//Hay que ver si memoria precisa el ultimo parametro
 		if(error){
 			if(threadSocket->desconexion != NULL)
 				threadSocket->desconexion(threadSocket->socket);
@@ -231,7 +233,7 @@ void correrServidorThreads(int socket, void (*nuevaConexion)(int), void (*descon
 
 }
 
-void procesarPaquete(t_package* paquete,int socket,t_dictionary* diccionarioFunciones, t_dictionary* diccionarioHandshakes){
+void procesarPaquete(t_package* paquete,int socket,t_dictionary* diccionarioFunciones, t_dictionary* diccionarioHandshakes,void (*afterHandshake)(int)){
 	if(strcmp(paquete->key,"HANDSHAKE") != 0){
 		void* funcion;
 		funcion = dictionary_get(diccionarioFunciones,paquete->key);
@@ -241,12 +243,12 @@ void procesarPaquete(t_package* paquete,int socket,t_dictionary* diccionarioFunc
 			perror("Key de funcion no encontrada");
 		}
 	}else{
-		realizarHandshake(socket,paquete->datos,diccionarioHandshakes);
+		realizarHandshake(socket,paquete->datos,diccionarioHandshakes,afterHandshake);
 	}
 	borrarPaquete(paquete);
 }
 
-int correrServidorMultiConexion(int socket, void (*nuevaConexion)(int),void (*desconexion)(int),t_dictionary* diccionarioFunciones, t_dictionary* diccionarioHandshakes){
+int correrServidorMultiConexion(int socket, void (*nuevaConexion)(int),void (*desconexion)(int),void (*afterHandshakes)(int),t_dictionary* diccionarioFunciones, t_dictionary* diccionarioHandshakes){
 	fd_set master;   // conjunto maestro de descriptores de fichero
 	fd_set read_fds; // conjunto temporal de descriptores de fichero para select()
 	int fdmax;        // número máximo de descriptores de fichero
@@ -275,7 +277,7 @@ int correrServidorMultiConexion(int socket, void (*nuevaConexion)(int),void (*de
 					char c;
 					if(recv(i,&c,sizeof(c),MSG_PEEK)>0){//Mira el primer byte y lo vuelve a dejar
 						t_package* paquete = recibirPaquete(i,desconexion);
-						procesarPaquete(paquete,i,diccionarioFunciones,diccionarioHandshakes);
+						procesarPaquete(paquete,i,diccionarioFunciones,diccionarioHandshakes,afterHandshakes);
 					}else{
 						FD_CLR(i, &master);
 						close(i);

@@ -11,7 +11,7 @@ void recibirTamanioPagina(int socket){
 void waitKernel(int socketKernel,t_dictionary* diccionarioFunciones){
 	while(1){
 		t_package* paquete = recibirPaquete(socketKernel,NULL);
-		procesarPaquete(paquete, socketKernel, diccionarioFunciones, NULL);
+		procesarPaquete(paquete, socketKernel, diccionarioFunciones, NULL,NULL);
 	 }
 }
 
@@ -27,9 +27,11 @@ void modificarQuantumSleep(char*data, int socket) {
 
 void correrPCB(char* pcb, int socket){
 	actual_pcb = deserializar_pcb(pcb);
+	log_info(cpu_log,"Recibí PCB del PID:%d",actual_pcb->pid);
 	ejecutarPrograma();
 	t_pcb_serializado* paqueteSerializado = serializar_pcb(actual_pcb);
 	empaquetarEnviarMensaje(socketKernel, "RET_PCB", paqueteSerializado->tamanio, paqueteSerializado->contenido_pcb);
+	log_info(cpu_log,"Finaliza procesamiento PCB del PID:%d",actual_pcb->pid);
 	free(paqueteSerializado->contenido_pcb);
 	free(paqueteSerializado);
 	destruir_pcb(actual_pcb);
@@ -60,7 +62,11 @@ void ejecutarPrograma() {
 		sleep(quantumSleep * 0.001);
 		cicloActual--;
 		instruccionActual++;
+		if(error_en_ejecucion)
+			break;
 	}
+	if(!error_en_ejecucion)
+		actual_pcb->exit_code=FINALIZAR_OK;
 	free(pedido);
 }
 
@@ -138,12 +144,6 @@ int main(int argc, char** argv) {
 
 	cpu_log = log_create("cpu.log","CPU",0,LOG_LEVEL_TRACE);
 
-	socketKernel = conectar(ipKernel,puertoKernel);
-	if(!handshake(socketKernel,"HCPKE","HKECP")){
-		log_error(cpu_log,"No se pudo realizar la conexion con el kernel");
-		exit(EXIT_FAILURE);
-	}
-
 	socketMemoria = conectar(ipMemoria,puertoMemoria);
 	if(!handshake(socketMemoria,"HCPME","HMECP")){
 		log_error(cpu_log,"No se pudo realizar la conexion con la memoria");
@@ -151,6 +151,12 @@ int main(int argc, char** argv) {
 	}
 
     recibirTamanioPagina(socketMemoria);
+
+	socketKernel = conectar(ipKernel,puertoKernel);
+	if(!handshake(socketKernel,"HCPKE","HKECP")){
+		log_error(cpu_log,"No se pudo realizar la conexion con el kernel");
+		exit(EXIT_FAILURE);
+	}
 
 	funcionesParser = inicializar_primitivas();
 	waitKernel(socketKernel, diccionarioFunciones);

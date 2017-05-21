@@ -42,7 +42,7 @@ int main(int argc, char** argv) {
 	dictionary_put(diccionarioFunc,"KEY_PRINT",&mostrarMensaje);
 
 	int sock= crearHostMultiConexion(puerto);
-	correrServidorMultiConexion(sock,NULL,NULL,diccionarioFunc,diccionarioHands);
+	correrServidorMultiConexion(sock,NULL,NULL,NULL,diccionarioFunc,diccionarioHands);
 
 	dictionary_destroy(diccionarioFunc);
 	dictionary_destroy(diccionarioHands);
