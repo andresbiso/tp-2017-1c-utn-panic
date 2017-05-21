@@ -129,11 +129,12 @@ void findAndReplaceInCache(int32_t oldPID, int32_t oldNroPagina, int32_t pid, in
 			offset+=sizeof(int32_t);
 			if(contenido != NULL){
 				memcpy(bloqueCache+offset,contenido,marcoSize);
+				log_info(logFile,"Se reemplaza la cache PID:%d PAG:%d por PID:%d PAG:%d",oldPID,oldNroPagina,pid,nroPagina);
 				break;
 			}else
 				memset(bloqueCache+offset,0,marcoSize);
+			offset+=marcoSize;
 		}
-		offset+=(sizeof(int32_t)*2)+marcoSize;
 		freeCache(cache);
 	}
 }
@@ -153,7 +154,7 @@ void replaceEntradaCache(int32_t oldPid,int32_t oldNroPag,int32_t newPID, int32_
 
 void cacheMiss(int32_t pid, int32_t nroPagina,char* contenido){
 
-	log_info(logFile,"Se produjo un cache miss de la pagina:%d del PID:%d ",nroPagina,pid);
+	log_info(logFile,"Se produjo un cache miss PID:%d PAG:%d ",pid,nroPagina);
 
 	int32_t cantActuales = cantEntradasCachePID(pid);
 
@@ -161,7 +162,7 @@ void cacheMiss(int32_t pid, int32_t nroPagina,char* contenido){
 
 	if (cantActuales < cacheXproc) {// Si tiene menos entradas que las permitidas por proceso en cache
 		t_cache_admin* menorEntradas = findMinorEntradas();
-		log_info(logFile,"Se selecciona como victima de la pagina:%d del PID:%d ",menorEntradas->nroPagina,menorEntradas->pid);
+		log_info(logFile,"Se selecciona como victima PID:%d PAG:%d ",menorEntradas->pid,menorEntradas->nroPagina);
 		findAndReplaceInCache(menorEntradas->pid,menorEntradas->nroPagina,pid,nroPagina,contenido);
 		replaceEntradaCache(menorEntradas->pid,menorEntradas->nroPagina,pid,nroPagina);
 	}
