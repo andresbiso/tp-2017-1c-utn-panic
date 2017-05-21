@@ -39,14 +39,13 @@ void correrPCB(char* pcb, int socket){
 
 void ejecutarPrograma() {
 	t_pedido_solicitar_bytes* pedido = (t_pedido_solicitar_bytes*)malloc(sizeof (t_pedido_solicitar_bytes));
-	int instruccionActual = 0;
 	int fifo = quantum == 0;
 	int cicloActual = quantum;
-	while(instruccionActual < actual_pcb->cant_instrucciones && (fifo || cicloActual > 0)) {
+	while(actual_pcb->pc < actual_pcb->cant_instrucciones && (fifo || cicloActual > 0)) {
 		pedido->pid = actual_pcb->pid;
-		pedido->pagina = actual_pcb->indice_codigo[instruccionActual].pag;
-		pedido->offsetPagina = actual_pcb->indice_codigo[instruccionActual].offset;
-		pedido->tamanio = actual_pcb->indice_codigo[instruccionActual].size;
+		pedido->pagina = actual_pcb->indice_codigo[actual_pcb->pc].pag;
+		pedido->offsetPagina = actual_pcb->indice_codigo[actual_pcb->pc].offset;
+		pedido->tamanio = actual_pcb->indice_codigo[actual_pcb->pc].size;
 		char* buffer =  serializar_pedido_solicitar_bytes(pedido);
 		int longitudMensaje = sizeof(t_pedido_solicitar_bytes);
 		if(!empaquetarEnviarMensaje(socketMemoria, "SOLC_BYTES", longitudMensaje, buffer)) {
@@ -61,11 +60,12 @@ void ejecutarPrograma() {
 		free(bufferRespuesta);
 		sleep(quantumSleep * 0.001);
 		cicloActual--;
-		instruccionActual++;
+		actual_pcb->pc++;
 		if(error_en_ejecucion)
 			break;
 	}
-	if(!error_en_ejecucion)
+	//Finalizo ok si no hubo un error en la ejecucion y es fifo (ejecuta todas las rafagas) o es RR y llega hasta la ultima instruccion
+	if(!error_en_ejecucion && (fifo || actual_pcb->pc==actual_pcb->cant_instrucciones) )
 		actual_pcb->exit_code=FINALIZAR_OK;
 	free(pedido);
 }
