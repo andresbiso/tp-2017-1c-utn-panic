@@ -13,6 +13,7 @@
 #include <panicommons/panisocket.h>
 #include <panicommons/serializacion.h>
 #include <commons/config.h>
+#include <commons/bitarray.h>
 
 //#define foreach(item, array) \
 //    for(int keep = 1, \
@@ -22,6 +23,16 @@
 //        keep = !keep, count++) \
 //      for(item = (array) + count; keep; keep = !keep)
 
+
+char* concat(const char *s1, const char *s2)
+{
+    char *result = malloc(strlen(s1)+strlen(s2)+1);//+1 for the zero-terminator
+    //in real code you would check for errors in malloc here
+    strcpy(result, s1);
+    strcat(result, s2);
+    return result;
+}
+
 typedef struct
 {
 	int32_t tamanio;
@@ -29,13 +40,15 @@ typedef struct
 } t_metadata_archivo;
 
 int puerto;
-char * punto_montaje;
+char *punto_montaje;
 char* rutaBloques;
+int tamanioBloques;
+int cantidadBloques;
 
-void mostrarMensaje(char* mensajes,int socket);
-int validarArchivo(char* ruta);
-void crearArchivo(char* ruta);
-void borrarArchivo(char* ruta);
-void leerDatosArchivo(t_pedido_datos_fs datosFs);
+void mostrarMensaje(char* mensajes, int socket);
+int validarArchivo(char* ruta, int socket);
+void crearArchivo(char* ruta, int socket);
+void borrarArchivo(char* ruta, int socket);
+void leerDatosArchivo(t_pedido_datos_fs datosFs, int socket);
 
 #endif /* FILESYSTEM_H_ */

@@ -1,8 +1,4 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <panicommons/panisocket.h>
 #include "FileSystem.h"
-#include <commons/config.h>
 
 void error(char** args)
 {
@@ -25,25 +21,32 @@ t_config* cargarConfiguracion(char* nombreDelArchivo){
 	 }
 	if (config_has_property(configFile,"PUNTO_MONTAJE")){
 		punto_montaje= config_get_string_value(configFile,"PUNTO_MONTAJE");
-		rutaBloques= strcat(punto_montaje, "bloques/");
 	}else {
 		perror("La key PUNTO_MONTAJE no existe");
 		exit(EXIT_FAILURE);
 	}
 	return configFile;
 }
-int validarArchivo(char* ruta)
+int validarArchivo(char* ruta, int socket)
 {
 	return access(ruta, F_OK );
 }
-void crearArchivo(char* ruta)
+void crearArchivo(char* ruta, int socket)
 {
-	FILE * file = fopen(ruta,"a");
-	fclose(file);
+	FILE *fp;
+	fp=fopen("test.bin", "wb");
+	char hola[10]="ABCDEFGHIJ";
+	fwrite(hola, sizeof(hola[0]), sizeof(hola)/sizeof(hola[0]), fp);
+
+	//int bloqueVacio = obtenerBloqueVacio();
+//	strcat(ruta, "asd.txt");
+//	FILE * file = fopen(ruta,"a");
+//	fprintf(file, "TAMANIO=");
+//	fclose(file);
 
 	//TODO: asignar 1 bloque de datos.
 }
-void borrarArchivo(char* ruta)
+void borrarArchivo(char* ruta, int socket)
 {
 	remove(ruta);
 
@@ -53,10 +56,13 @@ void leerBloque(int bloque)
 {
 	char* ruta = strcat(rutaBloques, bloque);
 	FILE* file = fopen(ruta, "rb");
+
+	fclose(file);
 }
-void leerDatosArchivo(t_pedido_datos_fs datosFs)
+void leerDatosArchivo(t_pedido_datos_fs datosFs, int socket)
 {
-	t_metadata_archivo metadataArchivo = leerArchivo(datosFs.ruta);
+	t_metadata_archivo metadataArchivo;
+	leerMetadataArchivo(datosFs.ruta, &metadataArchivo);
 	int i = 0;
 	while (metadataArchivo.bloques[i] >= 0 && metadataArchivo.bloques[i] != NULL)
 	{
@@ -64,24 +70,37 @@ void leerDatosArchivo(t_pedido_datos_fs datosFs)
 		i++;
 	}
 }
-t_metadata_archivo leerArchivo(char* ruta)
+void leerMetadataArchivo(char* ruta, t_metadata_archivo metadataArchivo)
 {
-	t_metadata_archivo archivoMetadata;
-	char* k;
 	FILE* archivo = fopen(ruta, "rb");
 
-
 	fclose(archivo);
-	return archivoMetadata;
 }
+void crearBitMap()
+{
+	char* bitarray;
+	size_t size;
+	t_bitarray* bitmap = bitarray_create_with_mode(bitarray, size, LSB_FIRST);
+}
+void leerArchivoMetadataFS()
+{
+	FILE* metadata = fopen("mnt/SADICA_FS/Metadata/Metadata.bin", "rb");
 
 
+
+	fclose(metadata);
+}
+void cargarConfiguracionAdicional()
+{
+	rutaBloques= concat(punto_montaje, "bloques/");
+	leerArchivoMetadataFS();
+}
 int main(int argc, char** argv)
 {
-	t_metadata_archivo archivo = leerArchivo("/mnt/SADICA_FS/archivos/alumnosSIGA.bin");
 	t_config* configFile = cargarConfiguracion(argv[1]);
 	printf("PUERTO: %d\n",puerto);
 	printf("PUNTO_MONTAJE: %s\n",punto_montaje);
+	cargarConfiguracionAdicional();
 
 	t_dictionary* diccionarioFunc= dictionary_create();
 	t_dictionary* diccionarioHands= dictionary_create();
