@@ -7,7 +7,7 @@
 void error(char** args){
 	printf("%s",args[0]);
 }
-void mostrarMensaje(char* mensajes){
+void mostrarMensaje(char* mensajes,int socket){
  	printf("Mensaje recibido: %s \n",mensajes);
 }
 t_config* cargarConfiguracion(char* nombreDelArchivo){
@@ -33,15 +33,20 @@ int main(int argc, char** argv) {
 	t_config* configFile = cargarConfiguracion(argv[1]);
 	printf("PUERTO: %d\n",puerto);
 	printf("PUNTO_MONTAJE: %s\n",punto_montaje);
+
 	t_dictionary* diccionarioFunc= dictionary_create();
 	t_dictionary* diccionarioHands= dictionary_create();
+
 	dictionary_put(diccionarioHands,"HKEFS","HFSKE");
 	dictionary_put(diccionarioFunc,"ERROR_FUNC",&error);
 	dictionary_put(diccionarioFunc,"KEY_PRINT",&mostrarMensaje);
+
 	int sock= crearHostMultiConexion(puerto);
-	correrServidorMultiConexion(sock,NULL,NULL,diccionarioFunc,diccionarioHands);
+	correrServidorMultiConexion(sock,NULL,NULL,NULL,diccionarioFunc,diccionarioHands);
+
 	dictionary_destroy(diccionarioFunc);
 	dictionary_destroy(diccionarioHands);
 	config_destroy(configFile);
+
 	return EXIT_SUCCESS;
 }

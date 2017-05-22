@@ -1,13 +1,87 @@
-#include <stdio.h>
-#include <stdlib.h>
-
-#include <panicommons/panisocket.h>
-#include <commons/config.h>
-#include <commons/log.h>
-
 #include "CPU.h"
 
-void mostrarMensaje(char* mensaje){
+
+void recibirTamanioPagina(int socket){
+	empaquetarEnviarMensaje(socket,"GET_MARCOS",strlen("GET_MARCOS\0"),"GET_MARCOS");
+	t_package* paquete = recibirPaquete(socket,NULL);
+	pagesize = atoi(paquete->datos);
+	log_info(cpu_log,"Tamaño de pagina de memoria %d",pagesize);
+}
+
+void waitKernel(int socketKernel,t_dictionary* diccionarioFunciones){
+	while(1){
+		t_package* paquete = recibirPaquete(socketKernel,NULL);
+		procesarPaquete(paquete, socketKernel, diccionarioFunciones, NULL,NULL);
+	 }
+}
+
+void modificarQuantum(char*data, int socket) {
+	quantum = atoi(data);
+	log_info(cpu_log, "Quantum=%d", quantum);
+}
+
+void modificarQuantumSleep(char*data, int socket) {
+	quantumSleep = atoi(data);
+	log_info(cpu_log, "QuantumSleep=%d", quantumSleep);
+}
+
+void correrPCB(char* pcb, int socket){
+	actual_pcb = deserializar_pcb(pcb);
+	log_info(cpu_log,"Recibí PCB del PID:%d",actual_pcb->pid);
+	ejecutarPrograma();
+	t_pcb_serializado* paqueteSerializado = serializar_pcb(actual_pcb);
+	empaquetarEnviarMensaje(socketKernel, "RET_PCB", paqueteSerializado->tamanio, paqueteSerializado->contenido_pcb);
+	log_info(cpu_log,"Finaliza procesamiento PCB del PID:%d",actual_pcb->pid);
+	free(paqueteSerializado->contenido_pcb);
+	free(paqueteSerializado);
+	destruir_pcb(actual_pcb);
+}
+
+void ejecutarPrograma() {
+	t_pedido_solicitar_bytes* pedido = (t_pedido_solicitar_bytes*)malloc(sizeof (t_pedido_solicitar_bytes));
+	int fifo = quantum == 0;
+	int cicloActual = quantum;
+	while(actual_pcb->pc < actual_pcb->cant_instrucciones && (fifo || cicloActual > 0)) {
+		pedido->pid = actual_pcb->pid;
+		pedido->pagina = actual_pcb->indice_codigo[actual_pcb->pc].pag;
+		pedido->offsetPagina = actual_pcb->indice_codigo[actual_pcb->pc].offset;
+		pedido->tamanio = actual_pcb->indice_codigo[actual_pcb->pc].size;
+		char* buffer =  serializar_pedido_solicitar_bytes(pedido);
+		int longitudMensaje = sizeof(t_pedido_solicitar_bytes);
+		if(!empaquetarEnviarMensaje(socketMemoria, "SOLC_BYTES", longitudMensaje, buffer)) {
+			perror("Hubo un error procesando el paquete");
+			exit(EXIT_FAILURE);
+		}
+		t_package* paqueteRespuesta = recibirPaquete(socketMemoria, NULL);
+		t_respuesta_solicitar_bytes* bufferRespuesta = deserializar_respuesta_solicitar_bytes(paqueteRespuesta->datos);
+		ejecutarInstruccion(bufferRespuesta);
+		borrarPaquete(paqueteRespuesta);
+		free(bufferRespuesta->data);
+		free(bufferRespuesta);
+		sleep(quantumSleep * 0.001);
+		cicloActual--;
+		actual_pcb->pc++;
+		if(error_en_ejecucion)
+			break;
+	}
+	//Finalizo ok si no hubo un error en la ejecucion y es fifo (ejecuta todas las rafagas) o es RR y llega hasta la ultima instruccion
+	if(!error_en_ejecucion && (fifo || actual_pcb->pc==actual_pcb->cant_instrucciones) )
+		actual_pcb->exit_code=FINALIZAR_OK;
+	free(pedido);
+}
+
+void ejecutarInstruccion(t_respuesta_solicitar_bytes* respuesta) {
+	if (respuesta->codigo != OK_SOLICITAR) {
+		perror("Hubo un error al solicitar la página");
+		exit(EXIT_FAILURE);
+	}
+	respuesta->data=realloc(respuesta->data,respuesta->tamanio+1);
+	respuesta->data[respuesta->tamanio]='\0';//Sino analizadorLinea rompe
+	log_info(cpu_log,"Analizando linea: %s",respuesta->data);
+	analizadorLinea(respuesta->data, funcionesParser->funciones_comunes, funcionesParser->funciones_kernel);
+}
+
+void mostrarMensaje(char* mensaje, int socket){
 	printf("Mensaje recibido: %s \n",mensaje);
 }
 
@@ -49,24 +123,6 @@ t_config* cargarConfiguracion(char * nombreArchivo){
 }
 
 
-void waitKernel(int socketKernel,t_dictionary* diccionarioFunciones){
-	while(1){
-		t_package* paquete = recibirPaquete(socketKernel,NULL);
-		void* funcion;
-		funcion = dictionary_get(diccionarioFunciones,paquete->key);
-		if(funcion != NULL){
-			correrFuncion(funcion,paquete->datos);
-		}else{
-			perror("Key de funcion no encontrada");
-		}
-		if(strcmp(paquete->key,"ERROR_FUNC")==0){
-			borrarPaquete(paquete);
-			break;
-		}
-		borrarPaquete(paquete);
-	}
-}
-
 int main(int argc, char** argv) {
 	if (argc == 1) {
 		printf("Falta parametro: archivo de configuracion");
@@ -80,28 +136,39 @@ int main(int argc, char** argv) {
 	printf("IP MEMORIA: %s\n",ipMemoria);
 
 	t_dictionary* diccionarioFunciones = dictionary_create();
-	dictionary_put(diccionarioFunciones,"KEY_PRINT",&mostrarMensaje);
 	dictionary_put(diccionarioFunciones,"ERROR_FUNC",&mostrarMensaje);
+	dictionary_put(diccionarioFunciones,"CORRER_PCB",&correrPCB);
+	dictionary_put(diccionarioFunciones,"NUEVO_QUANTUM",&modificarQuantum);
+	dictionary_put(diccionarioFunciones,"NUEVO_QUANTUM_SLEEP",&modificarQuantumSleep);
+	// ver comuncicaciones memoria-kernel
 
-	t_log* log = log_create("cpu.log","CPU",0,LOG_LEVEL_TRACE);
+	cpu_log = log_create("cpu.log","CPU",0,LOG_LEVEL_TRACE);
 
-	int socketKernel = conectar(ipKernel,puertoKernel);
-	if(!handshake(socketKernel,"HCPKE","HKECP")){
-		log_error(log,"No se pudo realizar la conexion con el kernel");
-		exit(EXIT_FAILURE);
-	}
-
-	int socketMemoria = conectar(ipMemoria,puertoMemoria);
+	socketMemoria = conectar(ipMemoria,puertoMemoria);
 	if(!handshake(socketMemoria,"HCPME","HMECP")){
-		log_error(log,"No se pudo realizar la conexion con la memoria");
+		log_error(cpu_log,"No se pudo realizar la conexion con la memoria");
 		exit(EXIT_FAILURE);
 	}
 
-	waitKernel(socketKernel,diccionarioFunciones);
+    recibirTamanioPagina(socketMemoria);
 
+	socketKernel = conectar(ipKernel,puertoKernel);
+	if(!handshake(socketKernel,"HCPKE","HKECP")){
+		log_error(cpu_log,"No se pudo realizar la conexion con el kernel");
+		exit(EXIT_FAILURE);
+	}
+
+	funcionesParser = inicializar_primitivas();
+	waitKernel(socketKernel, diccionarioFunciones);
+
+	liberarFuncionesAnsisop(funcionesParser);
 	dictionary_destroy(diccionarioFunciones);
 	config_destroy(configFile);
-	log_destroy(log);
+	log_destroy(cpu_log);
 
 	return EXIT_SUCCESS;
 }
+
+
+
+

@@ -8,8 +8,7 @@
 
 
 int handshake(int socket, char * keyEnviada, char * keyEsperada){
-	//TODO loguear handshake
-	empaquetarEnviarMensaje(socket,"HANDSHAKE",1,keyEnviada);
+	empaquetarEnviarMensaje(socket,"HANDSHAKE",strlen(keyEnviada),keyEnviada);
 
 	t_package* package;
 	package = recibirPaquete(socket,NULL);
@@ -23,30 +22,33 @@ int handshake(int socket, char * keyEnviada, char * keyEsperada){
 	return 0;
 }
 
-void realizarHandshake(int socket, char* keyRecibida,t_dictionary* diccionarioHandshakes){
-	//TODO loguear envio de handshake
+void realizarHandshake(int socket, char* keyRecibida,t_dictionary* diccionarioHandshakes,void (*afterHandshake)(int)){
 	void* returnValue = dictionary_get(diccionarioHandshakes,keyRecibida);
 
-	if(returnValue != NULL)
-		empaquetarEnviarMensaje(socket,(char*)returnValue,1,(char*)returnValue);
-	else
-		empaquetarEnviarMensaje(socket,"HD_NOT",1,"HD_NOT");
+	if(returnValue != NULL){
+		empaquetarEnviarMensaje(socket,(char*)returnValue,strlen((char*)returnValue),(char*)returnValue);
+		if(afterHandshake != NULL)
+			afterHandshake(socket);
+	}else
+		empaquetarEnviarMensaje(socket,"HD_NOT",6,"HD_NOT");
 
 }
 
 uint32_t tamanioPaquete(t_package paquete){
-	return paquete.longitud+sizeof(uint32_t);
+	return paquete.longitudDatos+strlen(paquete.key)+1+sizeof(uint32_t);//+1 poque suma el separador
 }
 
 char*empaquetar(t_package* paquete){
-	char* paqueteSalida =  (char*)malloc(sizeof(uint32_t)+paquete->longitud);
+	uint32_t tamPaquete = tamanioPaquete(*paquete);
+	char* paqueteSalida =  (char*)malloc(tamPaquete);
 	if(paqueteSalida){
-		memcpy(paqueteSalida, &paquete->longitud, sizeof(uint32_t));
+		memcpy(paqueteSalida, &tamPaquete, sizeof(uint32_t));
 		char* keyArguments = string_new();
 		string_append(&keyArguments,paquete->key);
 		string_append(&keyArguments,";");
-		string_append(&keyArguments,paquete->datos);
-		memcpy(paqueteSalida+sizeof(uint32_t),keyArguments,paquete->longitud);
+		memcpy(paqueteSalida+sizeof(uint32_t),keyArguments,strlen(keyArguments));
+		int offset=sizeof(uint32_t)+strlen(keyArguments);
+		memcpy(paqueteSalida+offset,paquete->datos,paquete->longitudDatos);
 		free(keyArguments);
 	}
 	return paqueteSalida;
@@ -72,29 +74,19 @@ int enviarMensaje(int socket, char * mensaje,uint32_t tamanioPaquete){
 }
 
 
-int empaquetarEnviarMensaje(int socketServidor, char* key, int cantParams, ...){
+int empaquetarEnviarMensaje(int socketServidor, char* key,int longitudDatos, char* data){
 
-	va_list arguments;
-	int i;
-	char* argumento;
-	va_start(arguments, cantParams);
+	char * cuerpo = malloc(strlen(key)+2+longitudDatos);//1 de separador 1 de /0
+	memcpy(cuerpo,key,strlen(key));
+	memcpy(cuerpo+strlen(key),";",1);
 
-	char * cuerpo = string_new();
+	int longKey=strlen(key)+1;
+	memcpy(cuerpo+longKey,(void*)data,longitudDatos);
 
-	string_append(&cuerpo, key);
-	string_append(&cuerpo, ";");
-
-	for (i = 0; i < cantParams; i++){
-		argumento = va_arg(arguments, char*);
-		string_append(&cuerpo, argumento);
-		if(i<(cantParams-1))
-			string_append(&cuerpo, ",");
-	}
-
-	va_end(arguments);
+	cuerpo[longKey+longitudDatos]='\0';
 
 	t_package *paquete = malloc(sizeof(t_package));
-	*paquete = crearPaquete(cuerpo,strlen(cuerpo));
+	*paquete = crearPaquete(cuerpo,longitudDatos+longKey);//(cantParams-1) para sumar el separador
 
 	free(cuerpo);
 
@@ -131,9 +123,12 @@ int aceptarClienteMultiConexion(int socket,fd_set* fds, int* fdmax) {
 t_package crearPaquete(char*datos,uint32_t longitud){
 	t_package paquete;
 	char ** keyDatos = string_split(datos, ";");
-	paquete.datos=keyDatos[1];
 	paquete.key=keyDatos[0];
-	paquete.longitud=longitud;
+	paquete.longitudDatos=abs(longitud-(strlen(paquete.key)+1));//A la longitud se le resta la key ya que la incluye
+	paquete.datos = malloc(paquete.longitudDatos+1);
+	memcpy(paquete.datos,datos+strlen(paquete.key)+1,paquete.longitudDatos);
+	paquete.datos[paquete.longitudDatos]='\0';
+	free(keyDatos[1]);
 	free(keyDatos);
 	return paquete;
 }
@@ -142,7 +137,7 @@ t_package crearPaqueteDeError(){
 	t_package paquete;
 	paquete.datos="Error";
 	paquete.key="ERROR_FUNC";
-	paquete.longitud=5;
+	paquete.longitudDatos=5;
 	return paquete;
 }
 
@@ -172,8 +167,8 @@ t_package* recibirPaquete(int socket, void (*desconexion) (int)){
 
 	recibidos=0;
 
-	while(recibidos<longitud){
-		ssize_t recibido = recv(socket, data + recibidos, longitud - recibidos, 0);
+	while(recibidos<(longitud-sizeof(uint32_t))){
+		ssize_t recibido = recv(socket, data + recibidos, (longitud-sizeof(uint32_t)) - recibidos, MSG_WAITALL);
 		if(recibido <= 0){
 			if(recibido == -1)
 				perror("Error al recibir datos");
@@ -184,19 +179,14 @@ t_package* recibirPaquete(int socket, void (*desconexion) (int)){
 		recibidos+=recibido;
 	}
 	data[recibidos] = '\0';
-	*paquete = crearPaquete(data,longitud);
+	*paquete = crearPaquete(data,(longitud-sizeof(int32_t)));// (sizeof(int32_t)-1) se le resta el tamanio de la longitud y 1 por el separador
 	free(data);
 	return paquete;
 }
 
 
-void correrFuncion(void* funcion(),char* datos){
-
-	if(string_contains(datos,",")){
-		char** parametros = string_split(datos,",");
-		funcion(parametros);
-	}else
-		funcion(datos);
+void correrFuncion(void* (*funcion)(),char* datos, int socket){
+	funcion(datos,socket);
 }
 
 void borrarPaquete(t_package* package){
@@ -209,7 +199,56 @@ void borrarPaquete(t_package* package){
 	free(package);
 }
 
-int correrServidorMultiConexion(int socket, void (*nuevaConexion)(int),void (*desconexion)(int),t_dictionary* diccionarioFunciones, t_dictionary* diccionarioHandshakes){
+void recibirMensajesThread(void* paramsServidor){
+	t_threadSocket* threadSocket = paramsServidor;
+	while(1){
+		t_package* paquete = recibirPaquete(threadSocket->socket,threadSocket->desconexion);
+		int error = strcmp(paquete->key,"ERROR_FUNC")==0;
+		procesarPaquete(paquete,threadSocket->socket,threadSocket->funciones,threadSocket->handshakes,NULL);//Hay que ver si memoria precisa el ultimo parametro
+		if(error){
+			if(threadSocket->desconexion != NULL)
+				threadSocket->desconexion(threadSocket->socket);
+			close(threadSocket->socket);
+			break;
+		}
+	}
+	free(threadSocket);
+}
+
+void correrServidorThreads(int socket, void (*nuevaConexion)(int), void (*desconexion)(int),t_dictionary* diccionarioFunciones, t_dictionary* diccionarioHandshakes){
+	while(1){
+			int cliente = aceptarCliente(socket);
+			if(cliente != -1 && nuevaConexion != NULL)
+				nuevaConexion(cliente);
+
+			t_threadSocket* threadSocket = malloc(sizeof(t_threadSocket));
+			threadSocket->socket=cliente;
+			threadSocket->desconexion=desconexion;
+			threadSocket->handshakes=diccionarioHandshakes;
+			threadSocket->funciones=diccionarioFunciones;
+
+			pthread_t hiloMensajes;
+			pthread_create(&hiloMensajes,NULL,(void *) recibirMensajesThread, threadSocket);
+	}
+
+}
+
+void procesarPaquete(t_package* paquete,int socket,t_dictionary* diccionarioFunciones, t_dictionary* diccionarioHandshakes,void (*afterHandshake)(int)){
+	if(strcmp(paquete->key,"HANDSHAKE") != 0){
+		void* funcion;
+		funcion = dictionary_get(diccionarioFunciones,paquete->key);
+		if(funcion != NULL){
+			correrFuncion(funcion,paquete->datos,socket);
+		}else{
+			perror("Key de funcion no encontrada");
+		}
+	}else{
+		realizarHandshake(socket,paquete->datos,diccionarioHandshakes,afterHandshake);
+	}
+	borrarPaquete(paquete);
+}
+
+int correrServidorMultiConexion(int socket, void (*nuevaConexion)(int),void (*desconexion)(int),void (*afterHandshakes)(int),t_dictionary* diccionarioFunciones, t_dictionary* diccionarioHandshakes){
 	fd_set master;   // conjunto maestro de descriptores de fichero
 	fd_set read_fds; // conjunto temporal de descriptores de fichero para select()
 	int fdmax;        // número máximo de descriptores de fichero
@@ -238,18 +277,7 @@ int correrServidorMultiConexion(int socket, void (*nuevaConexion)(int),void (*de
 					char c;
 					if(recv(i,&c,sizeof(c),MSG_PEEK)>0){//Mira el primer byte y lo vuelve a dejar
 						t_package* paquete = recibirPaquete(i,desconexion);
-						if(strcmp(paquete->key,"HANDSHAKE") != 0){
-							void* funcion;
-							funcion = dictionary_get(diccionarioFunciones,paquete->key);
-							if(funcion != NULL){
-								correrFuncion(funcion,paquete->datos);
-							}else{
-								perror("Key de funcion no encontrada");
-							}
-						}else{
-							realizarHandshake(i,paquete->datos,diccionarioHandshakes);
-						}
-						borrarPaquete(paquete);
+						procesarPaquete(paquete,i,diccionarioFunciones,diccionarioHandshakes,afterHandshakes);
 					}else{
 						FD_CLR(i, &master);
 						close(i);
@@ -316,7 +344,7 @@ int conectar(char*direccion,int puerto){
 
 	if (connect(socketCliente, (void*) &direccionServidor, sizeof(direccionServidor)) != 0) {
 		perror("No se pudo conectar\n");
-		return 1;
+		return -1;
 	}
 
 	return socketCliente;
