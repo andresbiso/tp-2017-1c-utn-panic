@@ -124,6 +124,12 @@ typedef struct
 	codigo_finalizar_programa codigo;
 } __attribute__((__packed__))t_respuesta_finalizar_programa;
 
+/*typedef struct
+{
+	int32_t pid;
+	codigo_finalizar_programa codigo;
+} __attribute__((__packed__))t_pedido_variable_compartida;*/
+
 typedef enum {
 	FINALIZAR_BY_CONSOLE = -7, FINALIZAR_OK = 0
 } exit_codes;
@@ -157,6 +163,10 @@ t_respuesta_finalizar_programa* deserializar_respuesta_finalizar_programa(char *
 char* serializar_respuesta_finalizar_programa(t_respuesta_finalizar_programa *respuesta);
 
 //Memoria
+
+//Kernel
+//t_pedido_variable_compartida* deserializar_pedido_variable_compartida(char* pedido_serializado);
+//char* serializar_pedido_variable_compartida(t_pedido_variable_compartida* pedido_serializado);
 
 void destruir_pcb (t_pcb *pcbADestruir);
 

@@ -196,8 +196,9 @@ t_valor_variable dereferenciar(t_puntero direccion_variable) {
 	return valor;
 }
 void asignar(t_puntero	direccion_variable,	t_valor_variable valor) {
-	if(error_en_ejecucion)
+	if (error_en_ejecucion) {
 		return;
+	}
 
 	t_posMemoria posicionFisica = pos_logica_a_fisica(direccion_variable);
 
@@ -235,6 +236,10 @@ void asignar(t_puntero	direccion_variable,	t_valor_variable valor) {
 	borrarPaquete(paquete);
 }
 t_valor_variable obtenerValorCompartida(t_nombre_compartida	variable) {
+	if (error_en_ejecucion) {
+		return -1;
+	}
+	//empaquetarEnviarMensaje(socketMemoria,"OBT_COMP",,);
 	t_valor_variable a;
 	return a;
 }
