@@ -44,7 +44,7 @@ void esperarKernel(void* args){
 	while(1){
 		t_package* paqueteKernel = recibirPaquete(socketKernel,NULL);
 		if(strcmp(paqueteKernel->key,"NEW_PID")==0)
-			procesarPaquete(paqueteKernel,socketKernel,diccionario,NULL);
+			procesarPaquete(paqueteKernel,socketKernel,diccionario,NULL,NULL);
 		else{
 			avisoKernel = deserializar_aviso_consola(paqueteKernel->datos);
 			sem_post((sem_t*)dictionary_get(semaforosPID,string_itoa(avisoKernel->idPrograma)));

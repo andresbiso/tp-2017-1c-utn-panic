@@ -104,11 +104,11 @@ void moverA_colaReady(t_pcb *pcb)
 	log_debug(logEstados, "El PCB: %d paso a la cola Ready",pcb->pid);
 }
 
-t_pcb* sacarCualquieraDeNew(){
+t_pcb* sacarCualquieraDeReady(){
 	t_pcb*pcb = NULL;
-	pthread_mutex_lock(&colaNewMutex);
-	pcb = queue_pop(colaNew);
-	pthread_mutex_unlock(&colaNewMutex);
+	pthread_mutex_lock(&colaReadyMutex);
+	pcb = queue_pop(colaReady);
+	pthread_mutex_unlock(&colaReadyMutex);
 
 	return pcb;
 }

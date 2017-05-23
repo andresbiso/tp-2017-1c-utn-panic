@@ -4,6 +4,7 @@ typedef struct {
     int socketEscucha;
     void (*nuevaConexion) (int);
     void (*desconexion) (int);
+    void (*afterHandshake) (int);
     t_dictionary* funciones;
     t_dictionary* handshakes;
 }threadParams;
@@ -74,8 +75,10 @@ void inotifyWatch(void*args){
 void retornarPCB(char* data,int socket){//TODO detener planificacion, si la detenemos el hilo se bloquea aca =>Kernel no puede recibir + mensajes
 	t_pcb* pcb = deserializar_pcb(data);
 
+	log_info(logNucleo,"El socket cpu %d retorno el PID %d",socket,pcb->pid);
+
 	pthread_mutex_lock(&mutexKernel);
-	t_relacion* relacion = matchear_relacion_por_socketcpu(socket);
+	t_relacion* relacion = matchear_relacion_por_socketcpu_pid(socket,pcb->pid);
 	relacion->cpu->corriendo=false;
 	relacion->programa->corriendo=false;
 
@@ -83,6 +86,7 @@ void retornarPCB(char* data,int socket){//TODO detener planificacion, si la dete
 	destruir_pcb(pcbOld);
 
 	if(pcb->exit_code<=0){//termino el programa
+		log_info(logNucleo,"Programa finalizado",socket,pcb->pid);
 		moverA_colaExit(pcb);
 		t_respuesta_finalizar_programa* respuesta = finalizarProcesoMemoria(pcb->pid);
 
@@ -104,7 +108,7 @@ t_respuesta_finalizar_programa* finalizarProcesoMemoria(int32_t pid){
 	pedido.pid = pid;
 
 	char* buffer = serializar_pedido_finalizar_programa(&pedido);
-	empaquetarEnviarMensaje(socketMemoria,"LOG_MESSAGE",sizeof(t_pedido_finalizar_programa),buffer);
+	empaquetarEnviarMensaje(socketMemoria,"FINZ_PROGM",sizeof(t_pedido_finalizar_programa),buffer);
 	free(buffer);
 
 	t_package* paquete = recibirPaquete(socketMemoria,NULL);
@@ -332,7 +336,7 @@ void programa(void* arg){
 
 	nuevo_pcb = armar_nuevo_pcb(params->codigo);
 
-	cargar_programa(socket,nuevo_pcb->pid);
+	cargar_programa(socket,nuevo_pcb->pid);//TODO Revisar concurrencia!!!
 
 	enviarMensajeConsola("Nuevo Proceso creado\0","NEW_PID",nuevo_pcb->pid,socket,0);
 
@@ -411,7 +415,7 @@ t_pcb* armar_nuevo_pcb(char* codigo){
 	nvopcb->fin_stack.offset=0;
 	nvopcb->fin_stack.size=4;
 
-	nvopcb->exit_code=0;
+	nvopcb->exit_code=1;
 
 	metadata_destruir(metadata);
 	return nvopcb;
@@ -634,10 +638,10 @@ t_consola* matchear_consola_por_pid(int pid){
 	return programa_terminado;
 }
 
-t_relacion* matchear_relacion_por_socketcpu(int socket){
+t_relacion* matchear_relacion_por_socketcpu_pid(int socket,int32_t pid){
 
 	bool matchsocketcpurelacion(void *relacion) {
-						return ((t_relacion*)relacion)->cpu->socket == socket;
+						return ((t_relacion*)relacion)->cpu->socket == socket && ((t_relacion*)relacion)->programa->pid==pid;
 					}
 
 	return list_find(lista_relacion, matchsocketcpurelacion);
@@ -672,7 +676,7 @@ void enviar_a_cpu(){
 	}
 	log_info(logNucleo, "la CPU del socket %d esta libre y lista para ejecutar", cpu_libre->socket);
 
-	t_pcb *pcb_ready=sacarCualquieraDeNew();
+	t_pcb *pcb_ready=sacarCualquieraDeReady();
 	if(!pcb_ready){
 		return;
 	}
@@ -694,8 +698,8 @@ void enviar_a_cpu(){
 
 	char* quantum = string_itoa(Quantum);
 	char* quantumsleep = string_itoa(QuantumSleep);
-	empaquetarEnviarMensaje(cpu_libre->socket,"NUEVO_QUANTUM",strlen(quantum),quantum);
 	empaquetarEnviarMensaje(cpu_libre->socket,"NUEVO_QUANTUM_SLEEP",strlen(quantumsleep),quantumsleep);
+	empaquetarEnviarMensaje(cpu_libre->socket,"NUEVO_QUANTUM",strlen(quantum),quantum);
 	free(quantum);
 	free(quantumsleep);
 
@@ -713,7 +717,7 @@ void mostrarMensaje(char* mensaje,int socket){
 
 void correrServidor(void* arg){
 	threadParams* params = arg;
-	correrServidorMultiConexion(params->socketEscucha,params->nuevaConexion,params->desconexion,params->funciones,params->handshakes);
+	correrServidorMultiConexion(params->socketEscucha,params->nuevaConexion,params->desconexion,params->afterHandshake,params->funciones,params->handshakes);
 }
 
 int main(int argc, char** argv) {
@@ -744,13 +748,15 @@ int main(int argc, char** argv) {
     parametrosConsola.desconexion = NULL;
     parametrosConsola.handshakes = diccionarioHandshakes;
     parametrosConsola.funciones = diccionarioFunciones;
+    parametrosConsola.afterHandshake = NULL;
 
     threadParams parametrosCpu;
     parametrosCpu.socketEscucha = socketCPU;
-    parametrosCpu.nuevaConexion = &nuevaConexionCPU;
+    parametrosCpu.nuevaConexion = NULL;
     parametrosCpu.desconexion = NULL;
     parametrosCpu.handshakes = diccionarioHandshakes;
     parametrosCpu.funciones = diccionarioFunciones;
+    parametrosCpu.afterHandshake = &nuevaConexionCPU;
 
     crear_semaforos();
     cargar_varCompartidas();
@@ -767,7 +773,7 @@ int main(int argc, char** argv) {
     	exit(EXIT_FAILURE);
     if(handshake(socketMemoria,"HKEME","HMEKE")){
     		puts("Se pudo realizar handshake");
-    		empaquetarEnviarMensaje(socketMemoria,"GET_MARCOS",sizeof("GET_MARCOS"),"GET_MARCOS");
+    		empaquetarEnviarMensaje(socketMemoria,"GET_MARCOS",strlen("GET_MARCOS\0"),"GET_MARCOS");
     		recibirTamanioPagina(socketMemoria);
     }
     else{

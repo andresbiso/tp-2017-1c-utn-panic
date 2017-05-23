@@ -33,6 +33,9 @@ t_puntero definirVariable(t_nombre_variable identificador_variable) {
 
 		int poslogica;
 
+		t_pedido_almacenar_bytes* pedido = (t_pedido_almacenar_bytes*)malloc(sizeof (t_pedido_almacenar_bytes));
+		pedido->pid = actual_pcb->pid;
+
 		if(isalpha(identificador_variable)) {
 			log_debug(cpu_log,"%c es una variable",identificador_variable);
 
@@ -74,6 +77,9 @@ t_puntero definirVariable(t_nombre_variable identificador_variable) {
 					poslogica);
 		}
 
+		pedido->pagina = actual_pcb->fin_stack.pag;
+		pedido->offsetPagina = actual_pcb->fin_stack.offset;
+
 		actual_pcb->fin_stack.offset += 4;
 
 		if(actual_pcb->fin_stack.offset >= pagesize){
@@ -81,16 +87,13 @@ t_puntero definirVariable(t_nombre_variable identificador_variable) {
 			actual_pcb->fin_stack.pag++;
 		}
 
-		t_pedido_almacenar_bytes* pedido = (t_pedido_almacenar_bytes*)malloc(sizeof (t_pedido_almacenar_bytes));
-		pedido->pid = actual_pcb->pid;
-		pedido->pagina = actual_pcb->indice_codigo->pag;
-		pedido->offsetPagina = actual_pcb->indice_codigo->offset;
-		pedido->tamanio = actual_pcb->indice_codigo->size;
-		pedido->data = "\000";
+		pedido->tamanio = 4;
+		pedido->data = malloc(sizeof(int32_t));
+		memset(pedido->data,0,sizeof(int32_t));
 		char* buffer =  serializar_pedido_almacenar_bytes(pedido);
+		free(pedido->data);
 		// Tamanio de la estructura. Data 4 bytes = int32_t
-		int longitudMensaje = sizeof((sizeof(int32_t)*5));
-		empaquetarEnviarMensaje(socketMemoria, "ALMC_BYTES", longitudMensaje, buffer);
+		empaquetarEnviarMensaje(socketMemoria, "ALMC_BYTES", (sizeof(int32_t)*4)+pedido->tamanio, buffer);
 		free(buffer);
 		free(pedido);
 
@@ -203,6 +206,7 @@ void asignar(t_puntero	direccion_variable,	t_valor_variable valor) {
 	t_posMemoria posicionFisica = pos_logica_a_fisica(direccion_variable);
 
 	t_pedido_almacenar_bytes pedido;
+	pedido.pid=actual_pcb->pid;
 	pedido.pagina = posicionFisica.pag;
 	pedido.offsetPagina = posicionFisica.offset;
 	pedido.tamanio = posicionFisica.size;
@@ -210,8 +214,9 @@ void asignar(t_puntero	direccion_variable,	t_valor_variable valor) {
 	memcpy(pedido.data,&valor,posicionFisica.size);
 
 	char *buffer = serializar_pedido_almacenar_bytes(&pedido);
-	empaquetarEnviarMensaje(socketMemoria,"ALMC_BYTES",(sizeof(int32_t)*3)+pedido.tamanio,buffer);
+	empaquetarEnviarMensaje(socketMemoria,"ALMC_BYTES",(sizeof(int32_t)*4)+pedido.tamanio,buffer);
 	free(buffer);
+	free(pedido.data);
 
 	log_info(cpu_log,
 			"Se solicita asignar la dirección logica %d con el valor %d (posicion fisica: pag %d, offset %d)",

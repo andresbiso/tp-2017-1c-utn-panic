@@ -129,19 +129,36 @@ void findAndReplaceInCache(int32_t oldPID, int32_t oldNroPagina, int32_t pid, in
 			offset+=sizeof(int32_t);
 			if(contenido != NULL){
 				memcpy(bloqueCache+offset,contenido,marcoSize);
+				log_info(logFile,"Se reemplaza la cache PID:%d PAG:%d por PID:%d PAG:%d",oldPID,oldNroPagina,pid,nroPagina);
 				break;
 			}else
 				memset(bloqueCache+offset,0,marcoSize);
+			offset+=marcoSize;
+		}else{
+			offset+=sizeof(int32_t);
+			offset+=sizeof(int32_t);
+			offset+=marcoSize;
 		}
-		offset+=(sizeof(int32_t)*2)+marcoSize;
 		freeCache(cache);
 	}
 }
 
+void replaceEntradaCache(int32_t oldPid,int32_t oldNroPag,int32_t newPID, int32_t newNroPag){
+
+	bool match(void* e){
+		return (((t_cache_admin*)e)->pid == oldPid) && (((t_cache_admin*)e)->nroPagina==oldNroPag);
+	}
+
+	t_cache_admin* cacheEntrada = list_find(cacheEntradas,match);
+
+	cacheEntrada->pid=newPID;
+	cacheEntrada->nroPagina=newNroPag;
+	cacheEntrada->tiempoEntrada=time(0);
+}
 
 void cacheMiss(int32_t pid, int32_t nroPagina,char* contenido){
 
-	log_info(logFile,"Se produjo un cache miss de la pagina:%d del PID:%d ",nroPagina,pid);
+	log_info(logFile,"Se produjo un cache miss PID:%d PAG:%d ",pid,nroPagina);
 
 	int32_t cantActuales = cantEntradasCachePID(pid);
 
@@ -149,9 +166,9 @@ void cacheMiss(int32_t pid, int32_t nroPagina,char* contenido){
 
 	if (cantActuales < cacheXproc) {// Si tiene menos entradas que las permitidas por proceso en cache
 		t_cache_admin* menorEntradas = findMinorEntradas();
-		log_info(logFile,"Se selecciona como victima de la pagina:%d del PID:%d ",menorEntradas->nroPagina,menorEntradas->pid);
-		clearEntradasCache(menorEntradas->pid,menorEntradas->nroPagina,pid,nroPagina);
+		log_info(logFile,"Se selecciona como victima PID:%d PAG:%d ",menorEntradas->pid,menorEntradas->nroPagina);
 		findAndReplaceInCache(menorEntradas->pid,menorEntradas->nroPagina,pid,nroPagina,contenido);
+		replaceEntradaCache(menorEntradas->pid,menorEntradas->nroPagina,pid,nroPagina);
 	}
 
 }
@@ -623,9 +640,7 @@ void solicitarBytes(char* data,int socket){
 	t_cache* cache = findInCache(pedido->pid,pedido->pagina);
 
 	if(cache!=NULL){
-		log_info(logFile,"Pagina encontrada en cache PID:%d Pagina:%d",pedido->pid,pedido->pagina);
-
-		char* dataRecuperada=NULL;
+		log_info(logFile,"Pagina encontrada en cache PID:%d PAG:%d",pedido->pid,pedido->pagina);
 
 		if(marcoSize -(pedido->offsetPagina+pedido->tamanio) <0){
 			respuesta->codigo=PAGINA_SOLICITAR_OVERFLOW;
@@ -634,25 +649,23 @@ void solicitarBytes(char* data,int socket){
 			log_info(logFile,"Overflow al solicitar bytes PID:%d PAG:%d OFFSET:%d TAMANIO:%d",pedido->pid,pedido->pagina,pedido->offsetPagina,pedido->tamanio);
 		}else{
 			addEntradaCache(pedido->pid,pedido->pagina);
-
 			respuesta->codigo=OK_SOLICITAR;
 			respuesta->tamanio=pedido->tamanio;
-			dataRecuperada = malloc(pedido->tamanio);
-			memcpy(dataRecuperada,cache->contenido+pedido->offsetPagina,pedido->tamanio);
-			freeCache(cache);
-			respuesta->data=dataRecuperada;
+			respuesta->data = malloc(pedido->tamanio);
+			memcpy(respuesta->data,cache->contenido+pedido->offsetPagina,pedido->tamanio);
 			log_info(logFile,"Exito al solicitar bytes PID:%d PAG:%d OFFSET:%d TAMANIO:%d",pedido->pid,pedido->pagina,pedido->offsetPagina,pedido->tamanio);
 		}
+		freeCache(cache);
 
 		pthread_mutex_unlock(&mutexCache);
 
 		char* buffer = serializar_respuesta_solicitar_bytes(respuesta);
 		empaquetarEnviarMensaje(socket,"RTA_SL_BYTES",sizeof(int32_t)*3+sizeof(codigo_solicitar_bytes)+respuesta->tamanio,buffer);
 		free(buffer);
+		if(respuesta->codigo == OK_SOLICITAR)
+			free(respuesta->data);
 		free(respuesta);
 		free(pedido);
-		if(dataRecuperada != NULL)
-			free(dataRecuperada);
 
 		return;
 	}
@@ -661,8 +674,6 @@ void solicitarBytes(char* data,int socket){
 	pthread_mutex_lock(&mutexMemoriaPrincipal);
 
 	t_pagina* pag = encontrarPagina(pedido->pid,pedido->pagina);
-	char* dataRecuperada = NULL;
-
 	if (pag==NULL){
 		respuesta->codigo=PAGINA_SOL_NOT_FOUND;
 		respuesta->tamanio=5;
@@ -681,11 +692,10 @@ void solicitarBytes(char* data,int socket){
 		}else{
 			respuesta->codigo=OK_SOLICITAR;
 			respuesta->tamanio=pedido->tamanio;
-			dataRecuperada = malloc(pedido->tamanio);
-			memcpy(dataRecuperada,bloqueMemoria+offsetTotal,pedido->tamanio);
+			respuesta->data = malloc(pedido->tamanio);
+			memcpy(respuesta->data,bloqueMemoria+offsetTotal,pedido->tamanio);
 			cacheMiss(pedido->pid,pedido->pagina,bloqueMemoria+(offsetEstrucAdmin+(marcoSize*(pag->indice))));
 
-			respuesta->data=dataRecuperada;
 			log_info(logFile,"Exito al solicitar bytes PID:%d PAG:%d OFFSET:%d TAMANIO:%d",pedido->pid,pedido->pagina,pedido->offsetPagina,pedido->tamanio);
 		}
 	}
@@ -695,11 +705,11 @@ void solicitarBytes(char* data,int socket){
 	char* buffer = serializar_respuesta_solicitar_bytes(respuesta);
 	empaquetarEnviarMensaje(socket,"RTA_SL_BYTES",sizeof(int32_t)*3+sizeof(codigo_solicitar_bytes)+respuesta->tamanio,buffer);
 
-	if(dataRecuperada!=NULL)
-		free(dataRecuperada);
 	if(pag!=NULL)
 		free(pag);
 	free(buffer);
+	if(respuesta->codigo == OK_SOLICITAR)
+		free(respuesta->data);
 	free(respuesta);
 	free(pedido);
 
