@@ -36,14 +36,22 @@ char* concat(const char *s1, const char *s2)
 typedef struct
 {
 	int32_t tamanio;
-	char** bloques;
+	char* bloques;
 } t_metadata_archivo;
+
+typedef struct
+{
+	int32_t tamanioBloque;
+	int32_t cantidadBloques;
+	char* magicNumber;
+} t_metadata_fs;
 
 int puerto;
 char *punto_montaje;
 char* rutaBloques;
-int tamanioBloques;
-int cantidadBloques;
+char* rutaArchivos;
+char* rutaBitmap;
+t_metadata_fs metadataFS;
 
 void mostrarMensaje(char* mensajes, int socket);
 int validarArchivo(char* ruta, int socket);

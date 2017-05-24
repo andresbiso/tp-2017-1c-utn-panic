@@ -31,20 +31,21 @@ int validarArchivo(char* ruta, int socket)
 {
 	return access(ruta, F_OK );
 }
-void crearArchivo(char* ruta, int socket)
+void crearArchivo(char* nombre, int socket)
 {
-	FILE *fp;
-	fp=fopen("test.bin", "wb");
-	char hola[10]="ABCDEFGHIJ";
-	fwrite(hola, sizeof(hola[0]), sizeof(hola)/sizeof(hola[0]), fp);
+	int bloqueVacio = obtenerBloqueVacio();
+	t_metadata_archivo nuevoArchivo;
+	nuevoArchivo.bloques = malloc(sizeof(int)*10);
+	nuevoArchivo.bloques[0] = bloqueVacio;
+	nuevoArchivo.tamanio = metadataFS.tamanioBloque;
 
-	//int bloqueVacio = obtenerBloqueVacio();
-//	strcat(ruta, "asd.txt");
-//	FILE * file = fopen(ruta,"a");
-//	fprintf(file, "TAMANIO=");
-//	fclose(file);
+	char* ruta = concat(rutaArchivos, nombre);
 
-	//TODO: asignar 1 bloque de datos.
+	FILE* archivo = fopen(ruta, "wb");
+	fwrite(&nuevoArchivo, sizeof(t_metadata_archivo),1, archivo);
+	fclose(archivo);
+	free(nuevoArchivo.bloques);
+	marcarBloqueOcupado(bloqueVacio);
 }
 void borrarArchivo(char* ruta, int socket)
 {
@@ -70,11 +71,15 @@ void leerDatosArchivo(t_pedido_datos_fs datosFs, int socket)
 		i++;
 	}
 }
-void leerMetadataArchivo(char* ruta, t_metadata_archivo metadataArchivo)
+void leerMetadataArchivo(char* nombre)
 {
+	t_metadata_archivo archivoLeido;
+	archivoLeido.bloques = malloc(sizeof(int)*10);
+	char* ruta = concat(rutaArchivos, nombre);
 	FILE* archivo = fopen(ruta, "rb");
-
+	fread(&archivoLeido, sizeof(t_metadata_archivo), 1, archivo);
 	fclose(archivo);
+	free(archivoLeido.bloques);
 }
 void crearBitMap()
 {
@@ -84,22 +89,40 @@ void crearBitMap()
 }
 void leerArchivoMetadataFS()
 {
-	FILE* metadata = fopen("mnt/SADICA_FS/Metadata/Metadata.bin", "rb");
-
-
-
-	fclose(metadata);
+	FILE* archivo = fopen("mnt/SADICA_FS/Metadata/Metadata.bin", "rb");
+	fread(&metadataFS, sizeof(t_metadata_fs), 1, archivo);
+	fclose(archivo);
 }
 void cargarConfiguracionAdicional()
 {
-	rutaBloques= concat(punto_montaje, "bloques/");
+	rutaBloques = concat(punto_montaje, "Bloques/");
+	rutaArchivos = concat(punto_montaje, "Archivos/");
+	rutaBitmap = concat(punto_montaje, "Metadata/Bitmap.bin");
 	leerArchivoMetadataFS();
+}
+int obtenerBloqueVacio()
+{
+	return 1234;
+}
+void marcarBloqueOcupado(int bloque)
+{
+	t_bitarray bitmap;
+	bitmap.bitarray = malloc(sizeof(int)* metadataFS.cantidadBloques);
+	FILE * archivoBitmap = fopen(rutaBitmap, "rb");
+	fread(&bitmap, sizeof(t_bitarray), 1, archivoBitmap);
+	fclose(archivoBitmap);
+	bitmap.bitarray[bloque] = 1;
+	archivoBitmap = fopen(rutaBitmap, "wb");
+	fwrite(&bitmap, sizeof(t_bitarray), 1, archivoBitmap);
+	fclose(archivoBitmap);
+	free(bitmap.bitarray);
 }
 int main(int argc, char** argv)
 {
 	t_config* configFile = cargarConfiguracion(argv[1]);
 	printf("PUERTO: %d\n",puerto);
 	printf("PUNTO_MONTAJE: %s\n",punto_montaje);
+
 	cargarConfiguracionAdicional();
 
 	t_dictionary* diccionarioFunc= dictionary_create();
