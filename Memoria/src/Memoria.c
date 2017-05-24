@@ -1,5 +1,12 @@
 #include "Memoria.h"
 
+#include <commons/collections/dictionary.h>
+#include <commons/string.h>
+#include <stdbool.h>
+#include <string.h>
+#include <sys/types.h>
+#include <unistd.h>
+
 void mostrarMensaje(char* mensaje,int socket){
 	printf("Error: %s \n",mensaje);
 }
@@ -64,6 +71,29 @@ int32_t cantEntradasCachePID(int32_t pid){
 	return list_count_satisfying(cacheEntradas,matchPID);
 }
 
+t_cache_admin* findMinorEntradasByPID(int32_t pid){
+
+	bool matchPID(void*e1){
+			return ((t_cache_admin*)e1)->pid==pid;
+	}
+
+	time_t actualTime = time(0);
+
+	bool minorEntradas(void* e1,void* e2){
+		double diff1 = difftime(actualTime,((t_cache_admin*)e1)->tiempoEntrada);
+		double diff2 = difftime(actualTime,((t_cache_admin*)e2)->tiempoEntrada);
+
+		if(diff1>diff2)
+			return true;
+		else
+			return false;
+	}
+
+	t_list* entradasProceso = list_filter(cacheEntradas,matchPID);
+	list_sort(entradasProceso,minorEntradas);
+
+	return list_get(entradasProceso,0);
+}
 
 t_cache_admin* findMinorEntradas(){//Si hay alguna libre le doy esa sino busco la de menor entradas
 
@@ -76,9 +106,11 @@ t_cache_admin* findMinorEntradas(){//Si hay alguna libre le doy esa sino busco l
 	if(posible!=NULL)
 		return posible;
 
+	time_t actualTime = time(0);
+
 	bool minorEntradas(void* e1,void* e2){
-		double diff1 = difftime(time(0),((t_cache_admin*)e1)->tiempoEntrada);
-		double diff2 = difftime(time(0),((t_cache_admin*)e2)->tiempoEntrada);
+		double diff1 = difftime(actualTime,((t_cache_admin*)e1)->tiempoEntrada);
+		double diff2 = difftime(actualTime,((t_cache_admin*)e2)->tiempoEntrada);
 
 		if(diff1>diff2)
 			return true;
@@ -164,12 +196,19 @@ void cacheMiss(int32_t pid, int32_t nroPagina,char* contenido){
 
 	log_info(logFile,"El PID:%d tiene %d entradas en cache y el maximo es %d ",pid,cantActuales,cacheXproc);
 
-	if (cantActuales < cacheXproc) {// Si tiene menos entradas que las permitidas por proceso en cache
-		t_cache_admin* menorEntradas = findMinorEntradas();
-		log_info(logFile,"Se selecciona como victima PID:%d PAG:%d ",menorEntradas->pid,menorEntradas->nroPagina);
-		findAndReplaceInCache(menorEntradas->pid,menorEntradas->nroPagina,pid,nroPagina,contenido);
-		replaceEntradaCache(menorEntradas->pid,menorEntradas->nroPagina,pid,nroPagina);
+	t_cache_admin* menorEntradas=NULL;
+
+	if (cantActuales < cacheXproc){// Si tiene menos entradas que las permitidas por proceso en cache
+		log_info(logFile,"Se realiza reemplazo de cache global para el PID:%d",pid);
+		menorEntradas = findMinorEntradas();
+	}else{
+		log_info(logFile,"Se realiza reemplazo de cache local para el PID:%d",pid);
+		menorEntradas = findMinorEntradasByPID(pid);
 	}
+
+	log_info(logFile,"Se selecciona como victima PID:%d PAG:%d ",menorEntradas->pid,menorEntradas->nroPagina);
+	findAndReplaceInCache(menorEntradas->pid,menorEntradas->nroPagina,pid,nroPagina,contenido);
+	replaceEntradaCache(menorEntradas->pid,menorEntradas->nroPagina,pid,nroPagina);
 
 }
 
