@@ -21,8 +21,11 @@ void esperarMensajePID(void*paramPid){
 			char* pidKey = string_itoa(pid);
 			dictionary_remove_and_destroy(semaforosPID, pidKey,free);
 			free(pidKey);
+			sem_post(&avisoProcesado);
 			break;
 		}
+
+		sem_post(&avisoProcesado);
 	}
 }
 
@@ -48,8 +51,11 @@ void esperarKernel(void* args){
 		else{
 			avisoKernel = deserializar_aviso_consola(paqueteKernel->datos);
 			sem_post((sem_t*)dictionary_get(semaforosPID,string_itoa(avisoKernel->idPrograma)));
-
+			borrarPaquete(paqueteKernel);
 		}
+		sem_wait(&avisoProcesado);
+		free(avisoKernel);
+
 	}
 	dictionary_destroy(diccionario);
 }
@@ -134,6 +140,8 @@ int main(int argc, char** argv) {
 	}
 	t_config* configFile = cargarConfiguracion(argv[1]);
 	logConsola = log_create("Consola.log","Consola",false,LOG_LEVEL_TRACE);
+
+	sem_init(&avisoProcesado,0,0);
 
 	semaforosPID = dictionary_create();
 

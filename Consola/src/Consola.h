@@ -18,6 +18,7 @@ char* IpKernel;
 int PuertoKernel;
 int socketKernel;
 pthread_mutex_t mutexLog;
+sem_t avisoProcesado;
 t_log* logConsola;
 t_dictionary*semaforosPID;
 t_aviso_consola* avisoKernel;
