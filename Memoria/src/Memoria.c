@@ -71,11 +71,7 @@ int32_t cantEntradasCachePID(int32_t pid){
 	return list_count_satisfying(cacheEntradas,matchPID);
 }
 
-t_cache_admin* findMinorEntradasByPID(int32_t pid){
-
-	bool matchPID(void*e1){
-			return ((t_cache_admin*)e1)->pid==pid;
-	}
+t_cache_admin* getCacheMinorEntradas(t_list* lista){
 
 	time_t actualTime = time(0);
 
@@ -89,10 +85,14 @@ t_cache_admin* findMinorEntradasByPID(int32_t pid){
 			return false;
 	}
 
-	t_list* entradasProceso = list_filter(cacheEntradas,matchPID);
-	list_sort(entradasProceso,minorEntradas);
+	if(lista==NULL){
+		list_sort(cacheEntradas,minorEntradas);
+		return list_get(cacheEntradas,0);
+	}else{
+		list_sort(lista,minorEntradas);
+		return list_get(lista,0);
+	}
 
-	return list_get(entradasProceso,0);
 }
 
 t_cache_admin* findMinorEntradas(){//Si hay alguna libre le doy esa sino busco la de menor entradas
@@ -106,21 +106,7 @@ t_cache_admin* findMinorEntradas(){//Si hay alguna libre le doy esa sino busco l
 	if(posible!=NULL)
 		return posible;
 
-	time_t actualTime = time(0);
-
-	bool minorEntradas(void* e1,void* e2){
-		double diff1 = difftime(actualTime,((t_cache_admin*)e1)->tiempoEntrada);
-		double diff2 = difftime(actualTime,((t_cache_admin*)e2)->tiempoEntrada);
-
-		if(diff1>diff2)
-			return true;
-		else
-			return false;
-	}
-
-	list_sort(cacheEntradas,minorEntradas);
-
-	return list_get(cacheEntradas,0);
+	return getCacheMinorEntradas(NULL);
 }
 
 void clearEntradasCache(int32_t pid,int32_t nroPagina,int32_t pidReplace,int32_t nroPaginaReplace){
@@ -161,7 +147,9 @@ void findAndReplaceInCache(int32_t oldPID, int32_t oldNroPagina, int32_t pid, in
 			offset+=sizeof(int32_t);
 			if(contenido != NULL){
 				memcpy(bloqueCache+offset,contenido,marcoSize);
+				pthread_mutex_lock(&mutexLogFile);
 				log_info(logFile,"Se reemplaza la cache PID:%d PAG:%d por PID:%d PAG:%d",oldPID,oldNroPagina,pid,nroPagina);
+				pthread_mutex_unlock(&mutexLogFile);
 				break;
 			}else
 				memset(bloqueCache+offset,0,marcoSize);
@@ -190,25 +178,46 @@ void replaceEntradaCache(int32_t oldPid,int32_t oldNroPag,int32_t newPID, int32_
 
 void cacheMiss(int32_t pid, int32_t nroPagina,char* contenido){
 
+	pthread_mutex_lock(&mutexLogFile);
 	log_info(logFile,"Se produjo un cache miss PID:%d PAG:%d ",pid,nroPagina);
+	pthread_mutex_unlock(&mutexLogFile);
 
 	int32_t cantActuales = cantEntradasCachePID(pid);
 
+	pthread_mutex_lock(&mutexLogFile);
 	log_info(logFile,"El PID:%d tiene %d entradas en cache y el maximo es %d ",pid,cantActuales,cacheXproc);
+	pthread_mutex_unlock(&mutexLogFile);
 
 	t_cache_admin* menorEntradas=NULL;
 
+	t_list* lista = NULL;
+
 	if (cantActuales < cacheXproc){// Si tiene menos entradas que las permitidas por proceso en cache
+		pthread_mutex_lock(&mutexLogFile);
 		log_info(logFile,"Se realiza reemplazo de cache global para el PID:%d",pid);
+		pthread_mutex_unlock(&mutexLogFile);
 		menorEntradas = findMinorEntradas();
 	}else{
+		pthread_mutex_lock(&mutexLogFile);
 		log_info(logFile,"Se realiza reemplazo de cache local para el PID:%d",pid);
-		menorEntradas = findMinorEntradasByPID(pid);
+		pthread_mutex_unlock(&mutexLogFile);
+
+		bool matchPID(void*e1){
+				return ((t_cache_admin*)e1)->pid==pid;
+		}
+
+		lista = list_filter(cacheEntradas,matchPID);
+		menorEntradas = getCacheMinorEntradas(lista);
 	}
 
+	pthread_mutex_lock(&mutexLogFile);
 	log_info(logFile,"Se selecciona como victima PID:%d PAG:%d ",menorEntradas->pid,menorEntradas->nroPagina);
+	pthread_mutex_unlock(&mutexLogFile);
 	findAndReplaceInCache(menorEntradas->pid,menorEntradas->nroPagina,pid,nroPagina,contenido);
 	replaceEntradaCache(menorEntradas->pid,menorEntradas->nroPagina,pid,nroPagina);
+
+	if(lista!=NULL)
+		list_clean_and_destroy_elements(lista,free);
 
 }
 
@@ -644,7 +653,9 @@ void iniciarPrograma(char* data,int socket){
 	int hayEspacio;
 	t_pedido_inicializar* pedido = deserializar_pedido_inicializar(data);
 
+	pthread_mutex_lock(&mutexLogFile);
 	log_info(logFile,"Pedido de inicio de programa PID:%d PAGS:%d",pedido->idPrograma,pedido->pagRequeridas);
+	pthread_mutex_unlock(&mutexLogFile);
 
 	hayEspacio=asignarPaginasPID(pedido->idPrograma,pedido->pagRequeridas,false);
 
@@ -653,9 +664,13 @@ void iniciarPrograma(char* data,int socket){
 
 	if(hayEspacio){
 		respuesta->codigoRespuesta= OK_INICIALIZAR;
+		pthread_mutex_lock(&mutexLogFile);
 		log_info(logFile,"Pedido de inicio de programa exitoso PID:%d PAGS:%d",pedido->idPrograma,pedido->pagRequeridas);
+		pthread_mutex_unlock(&mutexLogFile);
 	}else{
+		pthread_mutex_lock(&mutexLogFile);
 		log_info(logFile,"Pedido de inicio de programa sin espacio PID:%d PAGS:%d",pedido->idPrograma,pedido->pagRequeridas);
+		pthread_mutex_unlock(&mutexLogFile);
 		respuesta->codigoRespuesta= SIN_ESPACIO_INICIALIZAR;
 	}
 	char* buffer = serializar_respuesta_inicializar(respuesta);
@@ -673,26 +688,34 @@ void solicitarBytes(char* data,int socket){
 	respuesta->pid=pedido->pid;
 	respuesta->pagina=pedido->pagina;
 
+	pthread_mutex_lock(&mutexLogFile);
 	log_info(logFile,"Solicitud de bytes PID:%d PAG:%d OFFSET:%d TAMANIO:%d",pedido->pid,pedido->pagina,pedido->offsetPagina,pedido->tamanio);
+	pthread_mutex_unlock(&mutexLogFile);
 
 	pthread_mutex_lock(&mutexCache);
 	t_cache* cache = findInCache(pedido->pid,pedido->pagina);
 
 	if(cache!=NULL){
+		pthread_mutex_lock(&mutexLogFile);
 		log_info(logFile,"Pagina encontrada en cache PID:%d PAG:%d",pedido->pid,pedido->pagina);
+		pthread_mutex_unlock(&mutexLogFile);
 
 		if(marcoSize -(pedido->offsetPagina+pedido->tamanio) <0){
 			respuesta->codigo=PAGINA_SOLICITAR_OVERFLOW;
 			respuesta->tamanio=5;
 			respuesta->data="ERROR";
+			pthread_mutex_lock(&mutexLogFile);
 			log_info(logFile,"Overflow al solicitar bytes PID:%d PAG:%d OFFSET:%d TAMANIO:%d",pedido->pid,pedido->pagina,pedido->offsetPagina,pedido->tamanio);
+			pthread_mutex_unlock(&mutexLogFile);
 		}else{
 			addEntradaCache(pedido->pid,pedido->pagina);
 			respuesta->codigo=OK_SOLICITAR;
 			respuesta->tamanio=pedido->tamanio;
 			respuesta->data = malloc(pedido->tamanio);
 			memcpy(respuesta->data,cache->contenido+pedido->offsetPagina,pedido->tamanio);
+			pthread_mutex_lock(&mutexLogFile);
 			log_info(logFile,"Exito al solicitar bytes PID:%d PAG:%d OFFSET:%d TAMANIO:%d",pedido->pid,pedido->pagina,pedido->offsetPagina,pedido->tamanio);
+			pthread_mutex_unlock(&mutexLogFile);
 		}
 		freeCache(cache);
 
@@ -717,7 +740,9 @@ void solicitarBytes(char* data,int socket){
 		respuesta->codigo=PAGINA_SOL_NOT_FOUND;
 		respuesta->tamanio=5;
 		respuesta->data="ERROR";
+		pthread_mutex_lock(&mutexLogFile);
 		log_info(logFile,"Pagina no encontrada PID:%d PAG:%d",pedido->pid,pedido->pagina);
+		pthread_mutex_unlock(&mutexLogFile);
 	}else{
 		int32_t offsetEstrucAdmin=cantPaginasAdms()*TAM_ELM_TABLA_INV;
 		int32_t offsetHastaData= (marcoSize*(pag->indice))+pedido->offsetPagina;
@@ -727,7 +752,9 @@ void solicitarBytes(char* data,int socket){
 			respuesta->codigo=PAGINA_SOLICITAR_OVERFLOW;
 			respuesta->tamanio=5;
 			respuesta->data="ERROR";
+			pthread_mutex_lock(&mutexLogFile);
 			log_info(logFile,"Overflow al solicitar bytes PID:%d PAG:%d OFFSET:%d TAMANIO:%d",pedido->pid,pedido->pagina,pedido->offsetPagina,pedido->tamanio);
+			pthread_mutex_unlock(&mutexLogFile);
 		}else{
 			respuesta->codigo=OK_SOLICITAR;
 			respuesta->tamanio=pedido->tamanio;
@@ -735,7 +762,9 @@ void solicitarBytes(char* data,int socket){
 			memcpy(respuesta->data,bloqueMemoria+offsetTotal,pedido->tamanio);
 			cacheMiss(pedido->pid,pedido->pagina,bloqueMemoria+(offsetEstrucAdmin+(marcoSize*(pag->indice))));
 
+			pthread_mutex_lock(&mutexLogFile);
 			log_info(logFile,"Exito al solicitar bytes PID:%d PAG:%d OFFSET:%d TAMANIO:%d",pedido->pid,pedido->pagina,pedido->offsetPagina,pedido->tamanio);
+			pthread_mutex_unlock(&mutexLogFile);
 		}
 	}
 
@@ -757,7 +786,9 @@ void solicitarBytes(char* data,int socket){
 void almacenarBytes(char* data,int socket){
 	t_pedido_almacenar_bytes* pedido = deserializar_pedido_almacenar_bytes(data);
 
+	pthread_mutex_lock(&mutexLogFile);
 	log_info(logFile,"Solicitud de almacenamiento bytes PID:%d PAG:%d OFFSET:%d TAMANIO:%d",pedido->pid,pedido->pagina,pedido->offsetPagina,pedido->tamanio);
+	pthread_mutex_unlock(&mutexLogFile);
 
 	t_respuesta_almacenar_bytes* respuesta = malloc(sizeof(t_respuesta_almacenar_bytes));
 	respuesta->pid=pedido->pid;
@@ -776,7 +807,9 @@ void almacenarBytes(char* data,int socket){
 	t_pagina* pag = encontrarPagina(pedido->pid,pedido->pagina);
 	if(pag==NULL){
 		respuesta->codigo=PAGINA_ALM_NOT_FOUND;
+		pthread_mutex_lock(&mutexLogFile);
 		log_info(logFile,"Pagina no encontrada PID:%d PAG:%d",pedido->pid,pedido->pagina);
+		pthread_mutex_unlock(&mutexLogFile);
 	}else{
 		int32_t offsetEstrucAdmin=cantPaginasAdms()*TAM_ELM_TABLA_INV;
 		int32_t offsetHastaData= (marcoSize*(pag->indice))+pedido->offsetPagina;
@@ -784,15 +817,21 @@ void almacenarBytes(char* data,int socket){
 
 		if(marcoSize-(pedido->offsetPagina + pedido->tamanio) < 0){
 			respuesta->codigo=PAGINA_ALM_OVERFLOW;
+			pthread_mutex_lock(&mutexLogFile);
 			log_info(logFile,"Overflow al escribir en pagina PID:%d PAG:%d TAMANIO:%d OFFSET:%d",pedido->pid,pedido->pagina,pedido->tamanio,pedido->offsetPagina);
+			pthread_mutex_unlock(&mutexLogFile);
 		}else{
 			memcpy(bloqueMemoria+offsetTotal,pedido->data,pedido->tamanio);
 			if(cache!=NULL){
+				pthread_mutex_lock(&mutexLogFile);
 				log_info(logFile,"Se actualiza la pagina de cache del PID:%d NRO:%d",cache->pid,cache->nroPagina);
+				pthread_mutex_unlock(&mutexLogFile);
 				memcpy(cache->contenido+pedido->offsetPagina,pedido->data,pedido->tamanio);
 				freeCache(cache);
 			}
+			pthread_mutex_lock(&mutexLogFile);
 			log_info(logFile,"Pedido correcto escribir en pagina PID:%d PAG:%d TAMANIO:%d OFFSET:%d",pedido->pid,pedido->pagina,pedido->tamanio,pedido->offsetPagina);
+			pthread_mutex_unlock(&mutexLogFile);
 			respuesta->codigo=OK_ALMACENAR;
 		}
 	}
@@ -818,7 +857,9 @@ void asignarPaginas(char* data,int socket){
 	t_pedido_inicializar* pedido = malloc(sizeof(t_pedido_inicializar));
 	pedido = deserializar_pedido_inicializar(data);
 
+	pthread_mutex_lock(&mutexLogFile);
 	log_info(logFile,"Pedido de paginas de programa PID:%d PAGS:%d",pedido->idPrograma,pedido->pagRequeridas);
+	pthread_mutex_unlock(&mutexLogFile);
 
 	hayEspacio=asignarPaginasPID(pedido->idPrograma,pedido->pagRequeridas,false);
 
@@ -827,10 +868,14 @@ void asignarPaginas(char* data,int socket){
 
 	if(hayEspacio){
 		respuesta->codigoRespuesta= OK_INICIALIZAR;
+		pthread_mutex_lock(&mutexLogFile);
 		log_info(logFile,"Pedido de paginas de programa exitoso PID:%d PAGS:%d",pedido->idPrograma,pedido->pagRequeridas);
+		pthread_mutex_unlock(&mutexLogFile);
 	}else{
 		respuesta->codigoRespuesta= SIN_ESPACIO_INICIALIZAR;
+		pthread_mutex_lock(&mutexLogFile);
 		log_info(logFile,"Pedido de paginas de programa sin espacio PID:%d PAGS:%d",pedido->idPrograma,pedido->pagRequeridas);
+		pthread_mutex_unlock(&mutexLogFile);
 	}
 
 	char* buffer = serializar_respuesta_inicializar(respuesta);
@@ -855,7 +900,9 @@ void finalizarPrograma(char* data,int socket){
 
 	pthread_mutex_unlock(&mutexCache);
 
+	pthread_mutex_lock(&mutexLogFile);
 	log_info(logFile,"Pedido para finalizar programa PID:%d",pedido->pid);
+	pthread_mutex_unlock(&mutexLogFile);
 
 	int i;
 	sleep(retardoMemoria/1000);
@@ -966,6 +1013,7 @@ int main(int argc, char** argv) {
 
 	pthread_mutex_init(&mutexCache,NULL);
 	pthread_mutex_init(&mutexMemoriaPrincipal,NULL);
+	pthread_mutex_init(&mutexLogFile,NULL);
 
 	pthread_t threadConsola;
 	pthread_create(&threadConsola,NULL,(void *)correrConsola,NULL);

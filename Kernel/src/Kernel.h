@@ -82,7 +82,9 @@ t_log *logNucleo;
 
 int ultimoPID;
 pthread_mutex_t	mutexPID = PTHREAD_MUTEX_INITIALIZER;
-pthread_mutex_t mutexKernel = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t mutexMemoria = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t mutexCPUConectadas = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t mutexProgramasActuales = PTHREAD_MUTEX_INITIALIZER;
 
 t_config* cargarConfiguracion(char* archivo);
 void cargar_varCompartidas();
