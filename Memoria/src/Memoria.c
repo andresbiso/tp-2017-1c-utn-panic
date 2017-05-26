@@ -150,6 +150,7 @@ void findAndReplaceInCache(int32_t oldPID, int32_t oldNroPagina, int32_t pid, in
 				pthread_mutex_lock(&mutexLogFile);
 				log_info(logFile,"Se reemplaza la cache PID:%d PAG:%d por PID:%d PAG:%d",oldPID,oldNroPagina,pid,nroPagina);
 				pthread_mutex_unlock(&mutexLogFile);
+				freeCache(cache);
 				break;
 			}else
 				memset(bloqueCache+offset,0,marcoSize);
@@ -225,8 +226,10 @@ t_cache* findInCache(int32_t pid,int32_t nroPagina){
 	int i;
 	for(i=0;i<entradasCache;i++){
 		t_cache* cache= getPaginaCache(i);
-		if(cache->pid==pid && cache->nroPagina==nroPagina)
+		if(cache->pid==pid && cache->nroPagina==nroPagina){
 			return cache;
+		}
+		freeCache(cache);
 	}
 	return NULL;
 }
@@ -247,7 +250,7 @@ void inicializarCache(){
 	int i;
 	int offset=0;
 	for(i=0;i<entradasCache;i++){
-		t_cache* cache=malloc(sizeof(t_cache));//porque va sin contenido
+		t_cache* cache=malloc(sizeof(t_cache));
 		*cache = crearCache(-1,0,NULL);
 		memcpy(bloqueCache+offset,&cache->pid,sizeof(int32_t));
 		offset+=sizeof(int32_t);
@@ -255,6 +258,7 @@ void inicializarCache(){
 		offset+=sizeof(int32_t);
 		memset(bloqueCache+offset,0,marcoSize);
 		offset+=marcoSize;
+		free(cache);
 	}
 }
 
@@ -437,8 +441,32 @@ void dumpCache(int size, char** functionAndParams){
 		freeElementsArray(functionAndParams,size);
 		return;
 	}
-	//TODO
-	printf("Do dump cache\n\r");
+	showInScreenAndLog("---------------------------------------------------------------------------------------------------");
+	showInScreenAndLog("| #PID | #PAG |					CONTENIDO						|");
+	showInScreenAndLog("---------------------------------------------------------------------------------------------------");
+
+	int i;
+
+	pthread_mutex_lock(&mutexCache);
+	for(i=0;i<entradasCache;i++){
+		t_cache* pag = getPaginaCache(i);
+
+		char* message = string_from_format("|  %d  |   %d  |",pag->pid,pag->nroPagina);
+
+		log_info(logDumpFile,message);
+		printf("%s",message);
+
+		fwrite(pag->contenido,marcoSize,1,stdout);
+		log_info(logDumpFile,pag->contenido);
+
+		printf("\r\n");
+		showInScreenAndLog("-----------------------------------------------------------------------------------------------");
+
+		free(pag);
+		free(message);
+	}
+	pthread_mutex_unlock(&mutexCache);
+
 
 	freeElementsArray(functionAndParams,size);
 }
@@ -748,6 +776,10 @@ void solicitarBytes(char* data,int socket){
 		int32_t offsetHastaData= (marcoSize*(pag->indice))+pedido->offsetPagina;
 		int32_t offsetTotal = offsetEstrucAdmin+offsetHastaData;
 
+		pthread_mutex_lock(&mutexLogFile);
+		log_info(logFile,"Solicitud de bytes para MARCO:%d OFFSET:%d TAMANIO:%d",pag->indice,pedido->offsetPagina,pedido->tamanio);
+		pthread_mutex_unlock(&mutexLogFile);
+
 		if(marcoSize -(pedido->offsetPagina+pedido->tamanio) <0){
 			respuesta->codigo=PAGINA_SOLICITAR_OVERFLOW;
 			respuesta->tamanio=5;
@@ -815,11 +847,17 @@ void almacenarBytes(char* data,int socket){
 		int32_t offsetHastaData= (marcoSize*(pag->indice))+pedido->offsetPagina;
 		int32_t offsetTotal = offsetEstrucAdmin+offsetHastaData;
 
+		pthread_mutex_lock(&mutexLogFile);
+		log_info(logFile,"Solicitud de almacenamiento bytes para MARCO:%d OFFSET:%d TAMANIO:%d",pag->indice,pedido->offsetPagina,pedido->tamanio);
+		pthread_mutex_unlock(&mutexLogFile);
+
 		if(marcoSize-(pedido->offsetPagina + pedido->tamanio) < 0){
 			respuesta->codigo=PAGINA_ALM_OVERFLOW;
 			pthread_mutex_lock(&mutexLogFile);
 			log_info(logFile,"Overflow al escribir en pagina PID:%d PAG:%d TAMANIO:%d OFFSET:%d",pedido->pid,pedido->pagina,pedido->tamanio,pedido->offsetPagina);
 			pthread_mutex_unlock(&mutexLogFile);
+			if(cache!=NULL)
+				freeCache(cache);
 		}else{
 			memcpy(bloqueMemoria+offsetTotal,pedido->data,pedido->tamanio);
 			if(cache!=NULL){

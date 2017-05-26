@@ -93,8 +93,12 @@ void retornarPCB(char* data,int socket){//TODO detener planificacion, si la dete
 	pthread_mutex_unlock(&mutexLogNucleo);
 
 	t_relacion* relacion = matchear_relacion_por_socketcpu_pid(socket,pcb->pid);
+	pthread_mutex_lock(&mutexCPUConectadas);
 	relacion->cpu->corriendo=false;
+	pthread_mutex_unlock(&mutexCPUConectadas);
+	pthread_mutex_lock(&mutexProgramasActuales);
 	relacion->programa->corriendo=false;
+	pthread_mutex_unlock(&mutexProgramasActuales);
 
 	t_pcb* pcbOld = sacarDe_colaExec(pcb->pid);
 	destruir_pcb(pcbOld);
@@ -656,37 +660,6 @@ void elminar_consola_por_pid(int pid){
 	pthread_mutex_lock(&mutexProgramasActuales);
 	list_remove_and_destroy_by_condition(lista_programas_actuales,matchconsola,free);
 	pthread_mutex_unlock(&mutexProgramasActuales);
-}
-
-void liberar_consola(t_relacion *rel){
-	rel->cpu->corriendo= false;
-	rel->programa->corriendo= false;
-}
-
-void liberar_una_relacion(t_pcb *pcb_devuelto){
-
-	bool matchPID(void *relacion) {
-		return ((t_relacion*)relacion)->programa->pid == pcb_devuelto->pid;
-	}
-
-	t_relacion *rel = list_remove_by_condition(lista_relacion,matchPID);
-
-	liberar_consola(rel);
-
-	free(rel);
-}
-
-void liberar_una_relacion_porsocket_cpu(int socketcpu){
-
-	bool matchsocketcpu(void *relacion) {
-		return ((t_relacion*)relacion)->cpu->socket == socketcpu;
-	}
-
-	t_relacion *rel = list_remove_by_condition(lista_relacion,matchsocketcpu);
-
-	liberar_consola(rel);
-
-	free(rel);
 }
 
 void eliminar_cpu_por_socket(int socketcpu){
