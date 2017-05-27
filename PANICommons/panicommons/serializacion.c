@@ -455,14 +455,14 @@ t_pedido_variable_compartida* deserializar_pedido_variable_compartida(char* pedi
 }
 
 char* serializar_pedido_variable_compartida(t_pedido_variable_compartida* pedido) {
-	char *buffer = malloc(sizeof(t_pedido_finalizar_programa));
+	char *buffer = malloc(sizeof(int32_t)*2+pedido->tamanio);
 
 	int offset=0;
 	memcpy(buffer,&(pedido->pid),sizeof(pedido->pid));
 	offset+=sizeof(pedido->pid);
 	memcpy(buffer+offset,&(pedido->tamanio),sizeof(pedido->tamanio));
 	offset+=sizeof(pedido->tamanio);
-	memcpy(buffer+offset,&(pedido->nombre_variable_compartida),strlen(pedido->nombre_variable_compartida));
+	memcpy(buffer+offset,&(pedido->nombre_variable_compartida),pedido->tamanio);
 
 	return buffer;
 }
