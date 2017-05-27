@@ -54,6 +54,7 @@ void esperarKernel(void* args){
 			borrarPaquete(paqueteKernel);
 		}
 		sem_wait(&avisoProcesado);
+		free(avisoKernel->mensaje);
 		free(avisoKernel);
 
 	}

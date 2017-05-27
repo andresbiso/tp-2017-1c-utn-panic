@@ -1,5 +1,7 @@
 #include "Kernel.h"
 
+#include <stdint.h>
+
 typedef struct {
     int socketEscucha;
     void (*nuevaConexion) (int);
@@ -86,7 +88,7 @@ t_package* recibirPaqueteMemoria(){
 	return paquete;
 }
 
-void retornarPCB(char* data,int socket){//TODO detener planificacion, si la detenemos el hilo se bloquea aca =>Kernel no puede recibir + mensajes
+void retornarPCB(char* data,int socket){//TODO detener planificacion, si la detenemos el hilo se bloquea aca => Kernel no puede recibir + mensajes
 	t_pcb* pcb = deserializar_pcb(data);
 
 	pthread_mutex_lock(&mutexLogNucleo);
@@ -169,6 +171,29 @@ void finalizarProceso(void* pidArg){//TODO falta contemplar el caso que este cor
 
 	}//TODO else
 	free(pid);
+}
+
+void printMessage(char* data, int socket){
+	t_aviso_consola* aviso = deserializar_aviso_consola(data);
+
+	pthread_mutex_lock(&mutexLogNucleo);
+	log_info(logNucleo,"Se recibio un MENSAJE:%s para el PID:%d de la CONSOLA:%d",aviso->mensaje,aviso->idPrograma,socket);
+	pthread_mutex_unlock(&mutexLogNucleo);
+
+	t_consola* consola =matchear_consola_por_pid(aviso->idPrograma);
+
+	if(consola !=NULL){
+		char*buffer = serializar_aviso_consola(aviso);
+		empaquetarEnviarMensaje(consola->socket,"LOG_MESSAGE",aviso->tamanomensaje+(sizeof(int32_t)*4),buffer);
+		free(buffer);
+	}else{
+		pthread_mutex_lock(&mutexLogNucleo);
+		log_warning(logNucleo,"No se encontró la consola para el PID:%d",aviso->idPrograma);
+		pthread_mutex_unlock(&mutexLogNucleo);
+	}
+
+	free(aviso->mensaje);
+	free(aviso);
 }
 
 //General
@@ -804,6 +829,7 @@ int main(int argc, char** argv) {
     dictionary_put(diccionarioFunciones,"NUEVO_PROG",&nuevoPrograma);
     dictionary_put(diccionarioFunciones,"END_PROG",&finalizarProgramaConsola);
     dictionary_put(diccionarioFunciones,"RET_PCB",&retornarPCB);
+    dictionary_put(diccionarioFunciones,"PRINT_MESSAGE",&printMessage);
 
     t_dictionary* diccionarioHandshakes = dictionary_create();
     dictionary_put(diccionarioHandshakes,"HCPKE","HKECP");
