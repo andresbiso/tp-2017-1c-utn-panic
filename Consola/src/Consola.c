@@ -16,6 +16,9 @@ void esperarMensajePID(void*paramPid){
 		sem_wait(mutexPID);
 		log_info(logConsola,"El PID:%d recibió un mensaje :%s",pid,avisoKernel->mensaje);
 
+		if(avisoKernel->mostrarPorPantalla)
+			printf("%s\n\r",avisoKernel->mensaje);
+
 		if(avisoKernel->terminoProceso){
 			log_info(logConsola,"Se finalizo el proceso, con el PID:%d",avisoKernel->idPrograma);
 			char* pidKey = string_itoa(pid);

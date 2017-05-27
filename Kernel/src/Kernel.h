@@ -29,7 +29,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-#include "CapaMemoria.h"
+#include "estados.h"
 
 int PuertoConsola;
 int PuertoCpu;
@@ -46,6 +46,11 @@ char** SemIds;
 char** SemInit;
 char** SharedVars;
 int StackSize;
+
+t_log *logNucleo;
+
+t_dictionary *semaforos;
+t_dictionary *variablesCompartidas;
 
 typedef enum {
 	FIFO = 0, RR = 1
@@ -73,8 +78,6 @@ typedef struct{
 }t_relacion;
 
 modo_planificacion Modo;
-
-t_log *logNucleo;
 
 int ultimoPID;
 pthread_mutex_t	mutexPID = PTHREAD_MUTEX_INITIALIZER;
