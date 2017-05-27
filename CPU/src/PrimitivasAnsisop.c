@@ -245,17 +245,35 @@ t_valor_variable obtenerValorCompartida(t_nombre_compartida	variable) {
 		return -1;
 	}
 
+	t_pedido_variable_compartida pedido;
+	pedido.pid=actual_pcb->pid;
+	pedido.tamanio=strlen(variable);
+	pedido.nombre_variable_compartida=malloc(strlen(variable));
+	memcpy(pedido.nombre_variable_compartida,&variable,strlen(variable));
 
+	char *buffer = serializar_pedido_variable_compartida(&pedido);
+	empaquetarEnviarMensaje(socketKernel,"ALMC_BYTES",(sizeof(int32_t)*2)+pedido.tamanio,buffer);
+	free(buffer);
+	free(pedido.nombre_variable_compartida);
 
+	log_info(cpu_log,
+			"Se solicita valor variable compartida %s",
+			variable);
 
+	t_package *paquete = recibirPaquete(socketKernel,NULL);
 
-	//deserializar_respuesta_variable_compartida();
-	//primero serializo
-	//empaquetarEnviarMensaje(socketMemoria,"OBT_COMP",,);
-	//serializar_pedido_variable_compartida();
-	//deserializo respuesta
-	t_valor_variable a;
-	return a;
+	t_respuesta_variable_compartida* respuesta = deserializar_respuesta_variable_compartida(paquete->datos);
+
+	if(respuesta->codigo == OK_VARIABLE){
+		log_info(cpu_log,"Pedido de variable correcto");
+	}else{
+		log_error(cpu_log,"Pedido de variable incorrecto");
+		error_en_ejecucion = 1;
+		actual_pcb->exit_code = -5;
+		return -1;
+	}
+
+	return respuesta->valor_variable_compartida;
 }
 t_valor_variable asignarValorCompartida(t_nombre_compartida	variable, t_valor_variable valor) {
 	t_valor_variable a;
