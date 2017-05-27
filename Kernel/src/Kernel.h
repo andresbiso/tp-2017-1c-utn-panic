@@ -32,6 +32,8 @@ int StackSize;
 
 t_dictionary *semaforos;
 
+t_list* listForFinish;
+
 typedef enum {
 	FIFO = 0, RR = 1
 } modo_planificacion;
@@ -64,6 +66,7 @@ pthread_mutex_t	mutexPID = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t mutexMemoria = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t mutexCPUConectadas = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t mutexProgramasActuales = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t mutexListForFinish = PTHREAD_MUTEX_INITIALIZER;
 
 t_config* cargarConfiguracion(char* archivo);
 void cargar_varCompartidas();

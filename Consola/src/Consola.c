@@ -108,7 +108,7 @@ void end(int sizeArgs, char** path){
 		}
 	char* pid= path[1];
 	if(!dictionary_has_key(semaforosPID,pid)){  //controla que el pid este en el diccionario
-		printf("ṔÍD no encontrado\n\r");
+		printf("PID no encontrado\n\r");
 		freeElementsArray(path,sizeArgs);
 		return;
 	}

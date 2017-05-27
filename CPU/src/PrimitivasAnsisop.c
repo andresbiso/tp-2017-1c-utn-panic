@@ -249,7 +249,7 @@ t_valor_variable obtenerValorCompartida(t_nombre_compartida	variable) {
 	pedido.pid=actual_pcb->pid;
 	pedido.tamanio=strlen(variable);
 	pedido.nombre_variable_compartida=malloc(strlen(variable));
-	memcpy(pedido.nombre_variable_compartida,&variable,strlen(variable));
+	memcpy(pedido.nombre_variable_compartida,variable,strlen(variable));
 
 	char *buffer = serializar_pedido_variable_compartida(&pedido);
 	empaquetarEnviarMensaje(socketKernel,"GET_VAR_COMP",(sizeof(int32_t)*2)+pedido.tamanio,buffer);

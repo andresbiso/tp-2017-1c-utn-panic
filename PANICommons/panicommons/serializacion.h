@@ -141,7 +141,7 @@ typedef struct
 } __attribute__((__packed__))t_respuesta_variable_compartida;
 
 typedef enum {
-	FINALIZAR_BY_CONSOLE = -7, FINALIZAR_OK = 0
+	FINALIZAR_SIN_RECURSOS=-1, FINALIZAR_EXEPCION_MEMORIA=-5, FINALIZAR_BY_CONSOLE = -7, FINALIZAR_OK = 0
 } exit_codes;
 
 t_pcb_serializado* serializar_pcb(t_pcb* pcb);
