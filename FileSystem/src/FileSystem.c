@@ -47,15 +47,23 @@ void crearArchivo(char* nombre, int socket)
 	free(nuevoArchivo.bloques);
 	marcarBloqueOcupado(bloqueVacio);
 }
-void borrarArchivo(char* ruta, int socket)
+void borrarArchivo(char* nombre, int socket)
 {
+	char* ruta = concat(rutaArchivos, nombre);
+	FILE* archivo = fopen(ruta, "rb");
+	t_metadata_archivo archivoABorrar;
+	fread(&archivoABorrar, sizeof(t_metadata_archivo), 1, archivo);
+	int i = 0;
+	while(archivoABorrar.bloques[i]>= 0 && archivoABorrar.bloques[i] != NULL)
+	{
+		marcarBloqueDesocupado(archivoABorrar.bloques[i]);
+		i++;
+	}
 	remove(ruta);
-
-	//TODO: marcar bloques libres dentro del bitmap.
 }
 void leerBloque(int bloque)
 {
-	char* ruta = strcat(rutaBloques, bloque);
+	char* ruta = concat(rutaBloques, bloque);
 	FILE* file = fopen(ruta, "rb");
 
 	fclose(file);
@@ -86,10 +94,12 @@ void crearBitMap()
 	char* bitarray;
 	size_t size;
 	t_bitarray* bitmap = bitarray_create_with_mode(bitarray, size, LSB_FIRST);
+	guardarArchivoBitmap(&bitmap);
 }
 void leerArchivoMetadataFS()
 {
-	FILE* archivo = fopen("mnt/SADICA_FS/Metadata/Metadata.bin", "rb");
+	char* ruta = concat(punto_montaje, "Metadata/Metadata.bin");
+	FILE* archivo = fopen(ruta, "rb");
 	fread(&metadataFS, sizeof(t_metadata_fs), 1, archivo);
 	fclose(archivo);
 }
@@ -102,20 +112,46 @@ void cargarConfiguracionAdicional()
 }
 int obtenerBloqueVacio()
 {
-	return 1234;
+	t_bitarray bitmap;
+	bitmap.bitarray = malloc(sizeof(int)* metadataFS.cantidadBloques);
+	leerArchivoBitmap(&bitmap);
+	int i = 0;
+	while(bitarray_test_bit(&bitmap, i))
+	{
+		i++;
+	};
+	free(bitmap.bitarray);
+	return i;
 }
 void marcarBloqueOcupado(int bloque)
 {
 	t_bitarray bitmap;
 	bitmap.bitarray = malloc(sizeof(int)* metadataFS.cantidadBloques);
-	FILE * archivoBitmap = fopen(rutaBitmap, "rb");
+	leerArchivoBitmap(&bitmap);
+	bitarray_set_bit(&bitmap, bloque);
+	guardarArchivoBitmap(&bitmap);
+	free(bitmap.bitarray);
+}
+void marcarBloqueDesocupado(int bloque)
+{
+	t_bitarray bitmap;
+	bitmap.bitarray = malloc(sizeof(int)* metadataFS.cantidadBloques);
+	leerArchivoBitmap(&bitmap);
+	bitarray_clean_bit(&bitmap, bloque);
+	guardarArchivoBitmap(&bitmap);
+	free(bitmap.bitarray);
+}
+void leerArchivoBitmap(t_bitarray bitmap)
+{
+	FILE* archivoBitmap = fopen(rutaBitmap, "rb");
 	fread(&bitmap, sizeof(t_bitarray), 1, archivoBitmap);
 	fclose(archivoBitmap);
-	bitmap.bitarray[bloque] = 1;
-	archivoBitmap = fopen(rutaBitmap, "wb");
+}
+void guardarArchivoBitmap(t_bitarray bitmap)
+{
+	FILE* archivoBitmap = fopen(rutaBitmap, "wb");
 	fwrite(&bitmap, sizeof(t_bitarray), 1, archivoBitmap);
 	fclose(archivoBitmap);
-	free(bitmap.bitarray);
 }
 int main(int argc, char** argv)
 {
@@ -124,6 +160,7 @@ int main(int argc, char** argv)
 	printf("PUNTO_MONTAJE: %s\n",punto_montaje);
 
 	cargarConfiguracionAdicional();
+	crearArchivo("prueba2.bin", 1);
 
 	t_dictionary* diccionarioFunc= dictionary_create();
 	t_dictionary* diccionarioHands= dictionary_create();
