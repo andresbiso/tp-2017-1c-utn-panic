@@ -64,6 +64,7 @@ typedef struct
 	int32_t tamanomensaje;
 	int32_t idPrograma;
 	int32_t terminoProceso;
+	int32_t mostrarPorPantalla;
 } __attribute__((__packed__)) t_aviso_consola;
 
 typedef enum{OK_INICIALIZAR=1,SIN_ESPACIO_INICIALIZAR=-1} codigo_respuesta_inicializar;

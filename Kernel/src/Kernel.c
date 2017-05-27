@@ -24,16 +24,17 @@ sem_t grado;
 
 //consola
 
-void enviarMensajeConsola(char*mensaje,char*key,int32_t pid,int32_t socket,int32_t terminoProceso){
+void enviarMensajeConsola(char*mensaje,char*key,int32_t pid,int32_t socket,int32_t terminoProceso,int32_t mostrarPorPantalla){
 	t_aviso_consola aviso_consola;
 	aviso_consola.mensaje = mensaje;
 	aviso_consola.tamanomensaje = strlen(aviso_consola.mensaje);
 	aviso_consola.idPrograma = pid;
 	aviso_consola.terminoProceso = terminoProceso;
+	aviso_consola.mostrarPorPantalla = mostrarPorPantalla;
 
 	char *pedido_serializado = serializar_aviso_consola(&aviso_consola);
 
-	empaquetarEnviarMensaje(socket,key,aviso_consola.tamanomensaje+(sizeof(int32_t)*3),pedido_serializado);
+	empaquetarEnviarMensaje(socket,key,aviso_consola.tamanomensaje+(sizeof(int32_t)*4),pedido_serializado);
 	free(pedido_serializado);
 }
 
@@ -113,7 +114,7 @@ void retornarPCB(char* data,int socket){//TODO detener planificacion, si la dete
 
 		if(respuesta->codigo==OK_FINALIZAR){
 			char* message = string_from_format("Proceso finalizado con exitCode: %d\0",pcb->exit_code);
-			enviarMensajeConsola(message,"END_PRGM",pcb->pid,relacion->programa->socket,1);
+			enviarMensajeConsola(message,"END_PRGM",pcb->pid,relacion->programa->socket,1,0);
 			free(message);
 		}
 	}else{
@@ -159,7 +160,7 @@ void finalizarProceso(void* pidArg){//TODO falta contemplar el caso que este cor
 
 			t_respuesta_finalizar_programa* respuesta = finalizarProcesoMemoria(*pid);
 			if(respuesta->codigo==OK_FINALIZAR)
-				enviarMensajeConsola("Proceso finalizado abruptamente\0","LOG_MESSAGE",pcb->pid,consola->socket,1);
+				enviarMensajeConsola("Proceso finalizado abruptamente\0","LOG_MESSAGE",pcb->pid,consola->socket,1,0);
 			pcb->exit_code=FINALIZAR_BY_CONSOLE;
 			moverA_colaExit(pcb);
 
@@ -382,11 +383,11 @@ void programa(void* arg){
 
 	cargar_programa(socket,nuevo_pcb->pid);
 
-	enviarMensajeConsola("Nuevo Proceso creado\0","NEW_PID",nuevo_pcb->pid,socket,0);
+	enviarMensajeConsola("Nuevo Proceso creado\0","NEW_PID",nuevo_pcb->pid,socket,0,0);
 
 	sem_getvalue(&grado,&gradoActual);
 	if(gradoActual <= 0){
-		enviarMensajeConsola("Espera por Multiprogramacion\0","LOG_MESSAGE",nuevo_pcb->pid,socket,0);
+		enviarMensajeConsola("Espera por Multiprogramacion\0","LOG_MESSAGE",nuevo_pcb->pid,socket,0,0);
 	}
 
 	moverA_colaNew(nuevo_pcb);
@@ -569,7 +570,7 @@ void respuesta_inicializar_programa(int socket, int socketMemoria, char* codigo)
 				log_debug(logNucleo, "Movi a la cola Ready el PCB con PID: %d",respuesta->idPrograma);
 
 				log_info(logNucleo,"Se envia mensaje a la consola del socket %d que pudo poner en Ready su PCB", socket);
-				enviarMensajeConsola("Proceso inicializado\0","LOG_MESSAGE",respuesta->idPrograma,socket,0);
+				enviarMensajeConsola("Proceso inicializado\0","LOG_MESSAGE",respuesta->idPrograma,socket,0,0);
 
 				log_info(logNucleo,"Se envia a CPU el PCB inicializado");
 				pthread_mutex_unlock(&mutexLogNucleo);
@@ -590,7 +591,7 @@ void respuesta_inicializar_programa(int socket, int socketMemoria, char* codigo)
 			log_info(logNucleo,"Se envia mensaje a la consola del socket %d que no se pudo poner en Ready su PCB", socket);
 			pthread_mutex_unlock(&mutexLogNucleo);
 
-			enviarMensajeConsola("Sin espacio en Memoria\0","LOG_MESSAGE",respuesta->idPrograma,socket,0);
+			enviarMensajeConsola("Sin espacio en Memoria\0","LOG_MESSAGE",respuesta->idPrograma,socket,0,0);
 			break;
 		default:
 			pthread_mutex_lock(&mutexLogNucleo);
