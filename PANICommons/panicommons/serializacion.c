@@ -184,7 +184,7 @@ char* serializar_pedido_inicializar(t_pedido_inicializar *pedido){
 }
 
 char* serializar_aviso_consola(t_aviso_consola *pedido){
-	char *respuesta = malloc((sizeof(int32_t)*4)+pedido->tamanomensaje);
+	char *respuesta = malloc((sizeof(int32_t)*4)+pedido->tamaniomensaje);
 
 	int offset = 0;
 	memcpy(respuesta,&(pedido->terminoProceso),sizeof(int32_t));
@@ -193,9 +193,9 @@ char* serializar_aviso_consola(t_aviso_consola *pedido){
 	offset += sizeof(pedido->mostrarPorPantalla);
 	memcpy(respuesta+offset,&(pedido->idPrograma),sizeof(int32_t));
 	offset += sizeof(pedido->idPrograma);
-	memcpy(respuesta+offset,&(pedido->tamanomensaje),sizeof(int32_t));
-	offset += sizeof(pedido->tamanomensaje);
-	memcpy(respuesta+offset,pedido->mensaje,pedido->tamanomensaje);
+	memcpy(respuesta+offset,&(pedido->tamaniomensaje),sizeof(int32_t));
+	offset += sizeof(pedido->tamaniomensaje);
+	memcpy(respuesta+offset,pedido->mensaje,pedido->tamaniomensaje);
 
 	return respuesta;
 }
@@ -211,11 +211,11 @@ t_aviso_consola* deserializar_aviso_consola(char *pedido_serializado){
 	offset += sizeof(respuesta->mostrarPorPantalla);
 	memcpy(&respuesta->idPrograma,(void*)pedido_serializado+offset,sizeof(int32_t));
 	offset += sizeof(respuesta->idPrograma);
-	memcpy(&(respuesta->tamanomensaje),(void*)pedido_serializado+offset,sizeof(respuesta->tamanomensaje));
-	offset += sizeof(respuesta->tamanomensaje);
-	respuesta->mensaje=malloc(respuesta->tamanomensaje+1);
-	memcpy(respuesta->mensaje,(void*)pedido_serializado+offset,respuesta->tamanomensaje);
-	respuesta->mensaje[respuesta->tamanomensaje]='\0';
+	memcpy(&(respuesta->tamaniomensaje),(void*)pedido_serializado+offset,sizeof(respuesta->tamaniomensaje));
+	offset += sizeof(respuesta->tamaniomensaje);
+	respuesta->mensaje=malloc(respuesta->tamaniomensaje+1);
+	memcpy(respuesta->mensaje,(void*)pedido_serializado+offset,respuesta->tamaniomensaje);
+	respuesta->mensaje[respuesta->tamaniomensaje]='\0';
 
 	return respuesta;
 }

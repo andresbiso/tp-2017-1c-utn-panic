@@ -61,7 +61,7 @@ typedef struct
 typedef struct
 {
 	char* mensaje;
-	int32_t tamanomensaje;
+	int32_t tamaniomensaje;
 	int32_t idPrograma;
 	int32_t terminoProceso;
 	int32_t mostrarPorPantalla;
