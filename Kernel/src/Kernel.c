@@ -29,14 +29,14 @@ sem_t grado;
 void enviarMensajeConsola(char*mensaje,char*key,int32_t pid,int32_t socket,int32_t terminoProceso,int32_t mostrarPorPantalla){
 	t_aviso_consola aviso_consola;
 	aviso_consola.mensaje = mensaje;
-	aviso_consola.tamanomensaje = strlen(aviso_consola.mensaje);
+	aviso_consola.tamaniomensaje = strlen(aviso_consola.mensaje);
 	aviso_consola.idPrograma = pid;
 	aviso_consola.terminoProceso = terminoProceso;
 	aviso_consola.mostrarPorPantalla = mostrarPorPantalla;
 
 	char *pedido_serializado = serializar_aviso_consola(&aviso_consola);
 
-	empaquetarEnviarMensaje(socket,key,aviso_consola.tamanomensaje+(sizeof(int32_t)*4),pedido_serializado);
+	empaquetarEnviarMensaje(socket,key,aviso_consola.tamaniomensaje+(sizeof(int32_t)*4),pedido_serializado);
 	free(pedido_serializado);
 }
 
@@ -184,7 +184,7 @@ void printMessage(char* data, int socket){
 
 	if(consola !=NULL){
 		char*buffer = serializar_aviso_consola(aviso);
-		empaquetarEnviarMensaje(consola->socket,"LOG_MESSAGE",aviso->tamanomensaje+(sizeof(int32_t)*4),buffer);
+		empaquetarEnviarMensaje(consola->socket,"LOG_MESSAGE",aviso->tamaniomensaje+(sizeof(int32_t)*4),buffer);
 		free(buffer);
 	}else{
 		pthread_mutex_lock(&mutexLogNucleo);

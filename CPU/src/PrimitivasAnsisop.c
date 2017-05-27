@@ -252,7 +252,7 @@ t_valor_variable obtenerValorCompartida(t_nombre_compartida	variable) {
 	memcpy(pedido.nombre_variable_compartida,&variable,strlen(variable));
 
 	char *buffer = serializar_pedido_variable_compartida(&pedido);
-	empaquetarEnviarMensaje(socketKernel,"ALMC_BYTES",(sizeof(int32_t)*2)+pedido.tamanio,buffer);
+	empaquetarEnviarMensaje(socketKernel,"GET_VAR_COMP",(sizeof(int32_t)*2)+pedido.tamanio,buffer);
 	free(buffer);
 	free(pedido.nombre_variable_compartida);
 
@@ -265,9 +265,9 @@ t_valor_variable obtenerValorCompartida(t_nombre_compartida	variable) {
 	t_respuesta_variable_compartida* respuesta = deserializar_respuesta_variable_compartida(paquete->datos);
 
 	if(respuesta->codigo == OK_VARIABLE){
-		log_info(cpu_log,"Pedido de variable correcto");
+		log_info(cpu_log,"Se ha obtenido el valor de la variable compartida correctamente");
 	}else{
-		log_error(cpu_log,"Pedido de variable incorrecto");
+		log_error(cpu_log,"Error al intentar obtener valor variable compartida");
 		error_en_ejecucion = 1;
 		actual_pcb->exit_code = -5;
 		return -1;
@@ -323,7 +323,31 @@ void moverCursor(t_descriptor_archivo descriptor_archivo, t_valor_variable posic
 
 }
 void escribir(t_descriptor_archivo descriptor_archivo, void* informacion, t_valor_variable tamanio) {
+	if (error_en_ejecucion) {
+		return;
+	}
 
+	t_aviso_consola pedido;
+	pedido.idPrograma=actual_pcb->pid;
+	pedido.mensaje = malloc(tamanio);
+	pedido.tamaniomensaje = tamanio;
+	pedido.terminoProceso=0;
+	pedido.mostrarPorPantalla=1;
+	memcpy(pedido.mensaje, informacion, tamanio);
+
+	if (descriptor_archivo != 1) return;
+	char *buffer = serializar_aviso_consola(&pedido);
+	empaquetarEnviarMensaje(socketKernel,"PRINT_MESSAGE",(sizeof(int32_t)*4)+tamanio,buffer);
+	free(buffer);
+	free(pedido.mensaje);
+
+	log_info(cpu_log,
+			"Se solicitó la escitura en archivo cuyo descriptor es: %d",
+			descriptor_archivo);
+
+
+
+	return;
 }
 void leer(t_descriptor_archivo descriptor_archivo, t_puntero informacion, t_valor_variable tamanio) {
 
