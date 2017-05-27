@@ -29,8 +29,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-#include "estados.h"
-
+#include "CapaMemoria.h"
 
 int PuertoConsola;
 int PuertoCpu;
@@ -47,9 +46,6 @@ char** SemIds;
 char** SemInit;
 char** SharedVars;
 int StackSize;
-
-t_dictionary *semaforos;
-t_dictionary *variablesCompartidas;
 
 typedef enum {
 	FIFO = 0, RR = 1

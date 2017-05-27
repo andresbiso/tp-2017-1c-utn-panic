@@ -128,6 +128,7 @@ typedef struct
 typedef struct
 {
 	int32_t pid;
+	int32_t tamanio;
 	char* nombre_variable_compartida;
 } __attribute__((__packed__))t_pedido_variable_compartida;
 
@@ -175,6 +176,9 @@ char* serializar_respuesta_finalizar_programa(t_respuesta_finalizar_programa *re
 
 //Kernel
 t_respuesta_variable_compartida* deserializar_respuesta_variable_compartida(char* pedido_serializado);
+char* serializar_respuesta_variable_compartida(t_respuesta_variable_compartida* respuesta);
+
+t_pedido_variable_compartida* deserializar_pedido_variable_compartida(char* pedido_serializado);
 char* serializar_pedido_variable_compartida(t_pedido_variable_compartida* pedido);
 
 void destruir_pcb (t_pcb *pcbADestruir);

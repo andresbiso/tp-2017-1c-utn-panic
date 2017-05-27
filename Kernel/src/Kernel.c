@@ -830,6 +830,10 @@ int main(int argc, char** argv) {
     dictionary_put(diccionarioFunciones,"END_PROG",&finalizarProgramaConsola);
     dictionary_put(diccionarioFunciones,"RET_PCB",&retornarPCB);
     dictionary_put(diccionarioFunciones,"PRINT_MESSAGE",&printMessage);
+    dictionary_put(diccionarioFunciones,"GET_VAR_COMP",&getVariableCompartida);
+    dictionary_put(diccionarioFunciones,"SET_VAR_COMP",&setVariableCompartida);
+    dictionary_put(diccionarioFunciones,"WAIT",&wait);
+    dictionary_put(diccionarioFunciones,"SIGNAL",&signal);
 
     t_dictionary* diccionarioHandshakes = dictionary_create();
     dictionary_put(diccionarioHandshakes,"HCPKE","HKECP");
