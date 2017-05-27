@@ -1,7 +1,5 @@
 #include "Kernel.h"
 
-#include <stdint.h>
-
 typedef struct {
     int socketEscucha;
     void (*nuevaConexion) (int);
@@ -78,58 +76,6 @@ void inotifyWatch(void*args){
 }
 
 //inotify
-
-//Capa de memoria
-
-void getVariableCompartida(char* data, int socket){
-	t_pedido_variable_compartida* pedido = deserializar_pedido_variable_compartida(data);
-
-	pthread_mutex_lock(&mutexLogNucleo);
-	log_info(logNucleo,"Se recibió un mensaje de la CPU:%d por el PID:%d para obtener la variable:%s",socket,pedido->pid,pedido->nombre_variable_compartida);
-	pthread_mutex_unlock(&mutexLogNucleo);
-
-	t_respuesta_variable_compartida respuesta;
-
-	if(!dictionary_has_key(variablesCompartidas,pedido->nombre_variable_compartida)){
-		pthread_mutex_lock(&mutexLogNucleo);
-		log_info(logNucleo,"Variable:%s no encontrada",pedido->nombre_variable_compartida);
-		pthread_mutex_unlock(&mutexLogNucleo);
-		respuesta.valor_variable_compartida=-1;
-		respuesta.codigo=ERROR_VARIABLE;
-	}else{
-		pthread_mutex_lock(&mutexLogNucleo);
-		log_info(logNucleo,"Variable:%s encontrada",pedido->nombre_variable_compartida);
-		pthread_mutex_unlock(&mutexLogNucleo);
-
-		respuesta.valor_variable_compartida=*((int32_t*)dictionary_get(variablesCompartidas,pedido->nombre_variable_compartida));
-		respuesta.codigo=OK_VARIABLE;
-	}
-
-	char* buffer = serializar_respuesta_variable_compartida(&respuesta);
-	empaquetarEnviarMensaje(socket,"RES_VARIABLE",sizeof(t_respuesta_variable_compartida),buffer);
-
-	free(buffer);
-	free(pedido->nombre_variable_compartida);
-	free(pedido);
-}
-
-void setVariableCompartida(char* data, int socket){
-
-
-}
-
-void wait(char* data,int socket){
-
-
-}
-
-void signal(char* data,int socket){
-
-
-}
-
-
-//Capa de memoria
 
 //General
 
@@ -875,6 +821,13 @@ int main(int argc, char** argv) {
 
 	pthread_t hiloInotify;
 	pthread_create(&hiloInotify,NULL,(void*)&inotifyWatch,NULL);
+
+	pthread_mutex_init(&mutexLogNucleo,NULL);
+	pthread_mutex_init(&colaNewMutex,NULL);
+	pthread_mutex_init(&colaReadyMutex,NULL);
+	pthread_mutex_init(&colaBlockedMutex,NULL);
+	pthread_mutex_init(&colaExecMutex,NULL);
+	pthread_mutex_init(&colaExitMutex,NULL);
 
     t_dictionary* diccionarioFunciones = dictionary_create();
     dictionary_put(diccionarioFunciones,"ERROR_FUNC",&mostrarMensaje);

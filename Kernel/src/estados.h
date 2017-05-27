@@ -14,9 +14,14 @@
 #include <stdbool.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <commons/config.h>
 #include <panicommons/serializacion.h>
 #include <semaphore.h>
 #include <pthread.h>
+#include <commons/collections/dictionary.h>
+#include <parser/metadata_program.h>
+#include <panicommons/paniconsole.h>
+#include <panicommons/panisocket.h>
 
 t_queue *colaNew;
 t_queue *colaReady;
@@ -29,6 +34,15 @@ t_list *lista_relacion;
 t_log* logEstados;
 
 sem_t grado;
+
+t_log *logNucleo;
+t_dictionary *variablesCompartidas;
+pthread_mutex_t mutexLogNucleo;
+pthread_mutex_t colaNewMutex;
+pthread_mutex_t colaReadyMutex;
+pthread_mutex_t colaBlockedMutex;
+pthread_mutex_t colaExecMutex;
+pthread_mutex_t colaExitMutex;
 
 void crear_colas();
 void destruir_colas();

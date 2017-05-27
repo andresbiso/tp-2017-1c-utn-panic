@@ -6,16 +6,9 @@
  */
 
 #include "estados.h"
-#include <pthread.h>
 
-pthread_mutex_t colaNewMutex = PTHREAD_MUTEX_INITIALIZER;
-pthread_mutex_t colaReadyMutex = PTHREAD_MUTEX_INITIALIZER;
-pthread_mutex_t colaBlockedMutex = PTHREAD_MUTEX_INITIALIZER;
-pthread_mutex_t colaExecMutex = PTHREAD_MUTEX_INITIALIZER;
-pthread_mutex_t colaExitMutex = PTHREAD_MUTEX_INITIALIZER;
 
-void crear_colas()
-{
+void crear_colas(){
 	colaNew = queue_create();
 	colaReady = queue_create();
 	colaExec = queue_create();
