@@ -417,6 +417,26 @@ char* serializar_respuesta_finalizar_programa(t_respuesta_finalizar_programa *re
 	return buffer;
 }
 
+t_respuesta_variable_compartida* deserializar_respuesta_variable_compartida(char* pedido_serializado) {
+	t_respuesta_variable_compartida* pedido = malloc(sizeof(t_respuesta_variable_compartida));
+
+	memcpy(&pedido->valor_variable_compartida,(void*)pedido_serializado,sizeof(int32_t));
+	memcpy(&pedido->codigo,(void*)pedido_serializado,sizeof(codigo_variable_compartida));
+
+	return pedido;
+}
+
+char* serializar_pedido_variable_compartida(t_pedido_variable_compartida* pedido) {
+	char *buffer = malloc(sizeof(t_pedido_finalizar_programa));
+
+	int offset=0;
+	memcpy(buffer,&(pedido->pid),sizeof(pedido->pid));
+	offset+=sizeof(pedido->pid);
+	memcpy(buffer+offset,&(pedido->nombre_variable_compartida),srtlen(pedido->nombre_variable_compartida));
+
+	return buffer;
+}
+
 void destruir_pcb (t_pcb *pcbADestruir){
 	int i;
 
@@ -437,4 +457,3 @@ void destruir_pcb (t_pcb *pcbADestruir){
 	free(pcbADestruir);
 	pcbADestruir = NULL;
 }
-
