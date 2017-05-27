@@ -416,8 +416,10 @@ char* serializar_respuesta_finalizar_programa(t_respuesta_finalizar_programa *re
 t_respuesta_variable_compartida* deserializar_respuesta_variable_compartida(char* pedido_serializado) {
 	t_respuesta_variable_compartida* pedido = malloc(sizeof(t_respuesta_variable_compartida));
 
+	int offset=0;
 	memcpy(&pedido->valor_variable_compartida,(void*)pedido_serializado,sizeof(int32_t));
-	memcpy(&pedido->codigo,(void*)pedido_serializado,sizeof(codigo_variable_compartida));
+	offset+=sizeof(pedido->valor_variable_compartida);
+	memcpy(&pedido->codigo,(void*)pedido_serializado+offset,sizeof(codigo_variable_compartida));
 
 	return pedido;
 }

@@ -244,8 +244,15 @@ t_valor_variable obtenerValorCompartida(t_nombre_compartida	variable) {
 	if (error_en_ejecucion) {
 		return -1;
 	}
+
+
+
+
+
+	//deserializar_respuesta_variable_compartida();
 	//primero serializo
 	//empaquetarEnviarMensaje(socketMemoria,"OBT_COMP",,);
+	//serializar_pedido_variable_compartida();
 	//deserializo respuesta
 	t_valor_variable a;
 	return a;
