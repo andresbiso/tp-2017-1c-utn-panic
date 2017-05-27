@@ -21,6 +21,7 @@ pthread_mutex_t mutexLog;
 sem_t avisoProcesado;
 t_log* logConsola;
 t_dictionary*semaforosPID;
+t_dictionary*commands;
 t_aviso_consola* avisoKernel;
 
 /*Function prototypes*/

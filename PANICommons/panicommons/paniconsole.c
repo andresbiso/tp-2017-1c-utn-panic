@@ -42,6 +42,10 @@ void waitCommand(t_dictionary* dicCommands){
 		char* input = (char *)malloc(255 * sizeof(char));
 		fgets(input,255,stdin);
 		doCommand(input,dicCommands);
+		if (dictionary_has_key(dicCommands,"theEnd")){
+			free(input);
+			break;
+		}
 		free(input);
 	}
 }

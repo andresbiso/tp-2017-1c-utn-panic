@@ -111,28 +111,23 @@ void end(int sizeArgs, char** path){
 	empaquetarEnviarMensaje(socketKernel,"END_PROG",strlen(pid) ,pid);
 	freeElementsArray(path,sizeArgs);
  }
-/*
+
 void cerrarConsola(int sizeArgs,char** args){
 	while (!dictionary_is_empty(semaforosPID)){
 		int32_t pid= 1;
 		if(dictionary_has_key(semaforosPID,string_itoa(pid))){
 			char* pid2 =string_itoa(pid);
 			empaquetarEnviarMensaje(socketKernel,"END_PROG",strlen(pid2) ,pid2);
-			if(string_itoa(avisoKernel->idPrograma)==pid2){//controla que el kernel tenga el mismo pid
-				dictionary_remove(semaforosPID, pid2);
-				log_info(logConsola,"Se finalizo el proceso, con el PID:%d",avisoKernel->idPrograma);
-			}else{
-				printf("No se logro finalizar el proceso");
-				return;
-			}
 			pid++;
 		};
 		pid++;
 	}
+	dictionary_put(commands,"theEnd",free);
+	printf("Apagando Consola\n");
 
 	freeElementsArray(args,sizeArgs);
 }
-*/
+
 int main(int argc, char** argv) {
 	if (argc == 1) {
 		printf("Falta parametro: archivo de configuracion");
@@ -145,11 +140,11 @@ int main(int argc, char** argv) {
 
 	semaforosPID = dictionary_create();
 
-	t_dictionary* commands = dictionary_create();
+	commands = dictionary_create();
 	dictionary_put(commands,"init",&init);
 	dictionary_put(commands,"clear",&clear);
 	dictionary_put(commands,"end",&end);
-	//dictionary_put(commands,"shutdown",&cerrarConsola);
+	dictionary_put(commands,"shutdown",&cerrarConsola);
 
 	printf("IP_Kernel: %s\n", IpKernel);
 	printf("Puerto_Kernel: %d\n", PuertoKernel);
@@ -169,7 +164,7 @@ int main(int argc, char** argv) {
 
 	waitCommand(commands);
 
-	dictionary_destroy(commands);
+	dictionary_destroy_and_destroy_elements(commands,free);
 	dictionary_destroy_and_destroy_elements(semaforosPID,free);
 	config_destroy(configFile);
 	log_destroy(logConsola);
