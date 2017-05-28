@@ -20,9 +20,11 @@ sudo make install
 utnso
 echo "Se instalo el parser de ansisop"
 
+mv ~/workspace/PANICommons/makefiles ~/workspace/PANICommons/Debug
+
 #Compilo los proyectos
 echo "Compilando..."
-cd ~/workspace/tp-2017-1c-utn-panic/PANICommons/makefiles
+cd ~/workspace/tp-2017-1c-utn-panic/PANICommons/Debug
 make all
 cd ~/workspace/tp-2017-1c-utn-panic/Kernel/makefiles
 make all
