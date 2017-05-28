@@ -1,6 +1,6 @@
 #! /bin/sh
 
-echo "export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:~/workspace/tp-2017-1c-utn-panic/PANICommons/makefiles" >> .bashrc
+echo "export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:~/workspace/tp-2017-1c-utn-panic/PANICommons/Debug" >> .bashrc
 
 #Bajo e instalo las commons
 echo "Instalando las commons..."
