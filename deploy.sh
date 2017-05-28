@@ -1,6 +1,6 @@
 #! /bin/sh
 
-echo "export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:~/workspace/tp-2017-1c-utn-panic/PANICommons/makefiles" >> .bashrc
+echo "export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:~/workspace/tp-2017-1c-utn-panic/PANICommons/Debug" >> .bashrc
 
 #Bajo e instalo las commons
 echo "Instalando las commons..."
@@ -20,9 +20,11 @@ sudo make install
 utnso
 echo "Se instalo el parser de ansisop"
 
+mv ~/workspace/tp-2017-1c-utn-panic/PANICommons/makefiles ~/workspace/tp-2017-1c-utn-panic/PANICommons/Debug
+
 #Compilo los proyectos
 echo "Compilando..."
-cd ~/workspace/tp-2017-1c-utn-panic/PANICommons/makefiles
+cd ~/workspace/tp-2017-1c-utn-panic/PANICommons/Debug
 make all
 cd ~/workspace/tp-2017-1c-utn-panic/Kernel/makefiles
 make all
