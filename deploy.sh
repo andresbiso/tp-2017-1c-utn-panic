@@ -1,10 +1,12 @@
 #! /bin/sh
 
+cd ../..
+
 #Bajo e instalo las commons
 echo "Instalando las commons..."
 
 git clone https://github.com/sisoputnfrba/so-commons-library.git
-cd /so-commons-library
+cd ~/so-commons-library
 sudo make install
 utnso
 echo "Se instalaron las commons"
@@ -13,9 +15,8 @@ echo "Se instalaron las commons"
 echo "Instalando el parser de ansisop..."
 
 git clone https://github.com/sisoputnfrba/ansisop-parser.git
-cd /ansisop-parser
+cd ~/ansisop-parser/parser
 sudo make all
-cd /parser
 sudo make install
 utnso
 echo "Se instalo el parser de ansisop"
@@ -28,7 +29,6 @@ cp ~/workspace/tp-2017-1c-utn-panic/CPU/src/config.txt ~/workspace/tp-2017-1c-ut
 cp ~/workspace/tp-2017-1c-utn-panic/Memoria/src/config.txt ~/workspace/tp-2017-1c-utn-panic/Memoria/makefiles
 cp ~/workspace/tp-2017-1c-utn-panic/FileSystem/src/config.txt ~/workspace/tp-2017-1c-utn-panic/FileSystem/makefiles
 cp ~/workspace/tp-2017-1c-utn-panic/Consola/src/config.txt ~/workspace/tp-2017-1c-utn-panic/Consola/makefiles 
-
 
 #Compilo los proyectos
 echo "Compilando..."
