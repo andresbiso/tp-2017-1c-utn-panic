@@ -45,8 +45,11 @@ make all
 cd ~/workspace/tp-2017-1c-utn-panic/Consola/makefiles
 make all
 
-export LD_LIBRARY_PATH=:/home/utnso/workspace/tp-2017-1c-utn-panic/PANICommons/Debug:~/workspace/tp-2017-1c-utn-panic/PANICommons/Debug
+cd /home/utnso
+echo "export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:~/workspace/tp-2017-1c-utn-panic/PANICommons/Debug" >> .bashrc
 
 echo "Fin compilacion"
 
 echo "Deploy finalizado exitosamente"
+
+reset
