@@ -11,22 +11,16 @@
 void getVariableCompartida(char* data, int socket){
 	t_pedido_variable_compartida* pedido = deserializar_pedido_variable_compartida(data);
 
-	pthread_mutex_lock(&mutexLogNucleo);
 	log_info(logNucleo,"Se recibió un mensaje de la CPU:%d por el PID:%d para obtener la variable:%s",socket,pedido->pid,pedido->nombre_variable_compartida);
-	pthread_mutex_unlock(&mutexLogNucleo);
 
 	t_respuesta_variable_compartida respuesta;
 
 	if(!dictionary_has_key(variablesCompartidas,pedido->nombre_variable_compartida)){
-		pthread_mutex_lock(&mutexLogNucleo);
 		log_info(logNucleo,"Variable:%s no encontrada",pedido->nombre_variable_compartida);
-		pthread_mutex_unlock(&mutexLogNucleo);
 		respuesta.valor_variable_compartida=-1;
 		respuesta.codigo=ERROR_VARIABLE;
 	}else{
-		pthread_mutex_lock(&mutexLogNucleo);
 		log_info(logNucleo,"Variable:%s encontrada",pedido->nombre_variable_compartida);
-		pthread_mutex_unlock(&mutexLogNucleo);
 
 		respuesta.valor_variable_compartida=*((int32_t*)dictionary_get(variablesCompartidas,pedido->nombre_variable_compartida));
 		respuesta.codigo=OK_VARIABLE;

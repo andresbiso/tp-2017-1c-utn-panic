@@ -34,7 +34,6 @@ t_log* logFile;
 t_log* logDumpFile;
 pthread_mutex_t mutexCache;
 pthread_mutex_t mutexMemoriaPrincipal;
-pthread_mutex_t mutexLogFile;
 
 
 typedef struct{

@@ -37,7 +37,6 @@ sem_t grado;
 
 t_log *logNucleo;
 t_dictionary *variablesCompartidas;
-pthread_mutex_t mutexLogNucleo;
 pthread_mutex_t colaNewMutex;
 pthread_mutex_t colaReadyMutex;
 pthread_mutex_t colaBlockedMutex;
