@@ -32,6 +32,13 @@ void destruir_colas()
 	list_destroy_and_destroy_elements(lista_cpus_conectadas, free);
 }
 
+void checkStopped(){
+	pthread_mutex_lock(&stoppedMutex);
+	if(isStopped)
+		sem_wait(&stopped);
+	pthread_mutex_unlock(&stoppedMutex);
+}
+
 t_pcb *sacar_pcb_por_pid(t_list *listaAct, uint32_t pidBuscado)
 {
 	bool matchPID(void *pcb) {
@@ -46,6 +53,8 @@ void moverA_colaNew(t_pcb *pcb)
 	if(!pcb)
 		return;
 
+	checkStopped();
+
 	pthread_mutex_lock(&colaNewMutex);
 	queue_push(colaNew, pcb);
 	pthread_mutex_unlock(&colaNewMutex);
@@ -56,6 +65,8 @@ void moverA_colaNew(t_pcb *pcb)
 void moverA_colaExit(t_pcb *pcb)
 {
 	if(!pcb) return;
+
+	checkStopped();
 
 	pthread_mutex_lock(&colaExitMutex);
 	queue_push(colaExit, pcb);
@@ -69,6 +80,8 @@ void moverA_colaBlocked(t_pcb *pcb)
 	if(!pcb)
 		return;
 
+	checkStopped();
+
 	pthread_mutex_lock(&colaBlockedMutex);
 	queue_push(colaBlocked, pcb);
 	pthread_mutex_unlock(&colaBlockedMutex);
@@ -79,6 +92,8 @@ void moverA_colaExec(t_pcb *pcb)
 {
 	if(!pcb)
 		return;
+
+	checkStopped();
 
 	pthread_mutex_lock(&colaExecMutex);
 	queue_push(colaExec, pcb);
@@ -91,6 +106,8 @@ void moverA_colaReady(t_pcb *pcb)
 	if(!pcb)
 		return;
 
+	checkStopped();
+
 	pthread_mutex_lock(&colaReadyMutex);
 	queue_push(colaReady, pcb);
 	pthread_mutex_unlock(&colaReadyMutex);
@@ -99,6 +116,9 @@ void moverA_colaReady(t_pcb *pcb)
 
 t_pcb* sacarCualquieraDeReady(){
 	t_pcb*pcb = NULL;
+
+	checkStopped();
+
 	pthread_mutex_lock(&colaReadyMutex);
 	pcb = queue_pop(colaReady);
 	pthread_mutex_unlock(&colaReadyMutex);
@@ -106,8 +126,10 @@ t_pcb* sacarCualquieraDeReady(){
 	return pcb;
 }
 
-t_pcb *sacarDe_colaNew(uint32_t pid)
-{
+t_pcb *sacarDe_colaNew(uint32_t pid){
+
+	checkStopped();
+
 	pthread_mutex_lock(&colaNewMutex);
 	t_pcb *pcb = sacar_pcb_por_pid(colaNew->elements, pid);
 	if(pcb)
@@ -116,8 +138,10 @@ t_pcb *sacarDe_colaNew(uint32_t pid)
 	return pcb;
 }
 
-t_pcb *sacarDe_colaReady(uint32_t pid)
-{
+t_pcb *sacarDe_colaReady(uint32_t pid){
+
+	checkStopped();
+
 	pthread_mutex_lock(&colaReadyMutex);
 	t_pcb *pcb = sacar_pcb_por_pid(colaReady->elements, pid);
 	if(pcb)
@@ -126,8 +150,10 @@ t_pcb *sacarDe_colaReady(uint32_t pid)
 	return pcb;
 }
 
-t_pcb *sacarDe_colaExec(uint32_t pid)
-{
+t_pcb *sacarDe_colaExec(uint32_t pid){
+
+	checkStopped();
+
 	pthread_mutex_lock(&colaExecMutex);
 	t_pcb *pcb = sacar_pcb_por_pid(colaExec->elements, pid);
 	if(pcb)
@@ -136,8 +162,10 @@ t_pcb *sacarDe_colaExec(uint32_t pid)
 	return pcb;
 }
 
-t_pcb *sacarDe_colaBlocked(uint32_t pid)
-{
+t_pcb *sacarDe_colaBlocked(uint32_t pid){
+
+	checkStopped();
+
 	pthread_mutex_lock(&colaBlockedMutex);
 	t_pcb *pcb = sacar_pcb_por_pid(colaBlocked->elements, pid);
 	if(pcb)
@@ -151,7 +179,7 @@ void bloquear_pcb(t_pcb* pcbabloquear){
 
 	t_pcb* pcbviejo = sacarDe_colaExec(pcbabloquear->pid);
 	if(pcbviejo){
-		printf("Bloqueo a PID = %d\n",pcbabloquear->pid);
+		log_info(logNucleo,"Bloqueo a PID = %d",pcbabloquear->pid);
 
 		t_pcb* aux = pcbviejo;
 		pcbviejo = pcbabloquear;

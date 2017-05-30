@@ -32,6 +32,8 @@ t_list *lista_programas_actuales;
 t_list *lista_cpus_conectadas;
 t_list *lista_relacion;
 t_log* logEstados;
+bool isStopped;
+
 
 sem_t grado;
 
@@ -42,6 +44,8 @@ pthread_mutex_t colaReadyMutex;
 pthread_mutex_t colaBlockedMutex;
 pthread_mutex_t colaExecMutex;
 pthread_mutex_t colaExitMutex;
+pthread_mutex_t stoppedMutex;
+sem_t stopped;
 
 void crear_colas();
 void destruir_colas();

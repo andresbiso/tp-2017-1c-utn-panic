@@ -324,12 +324,42 @@ void showProcess(int size, char** functionAndParams){
 	freeElementsArray(functionAndParams,size);
 }
 
+void stop(int size, char** functionAndParams){
+	if(size>1){
+		printf("El comando stop no puede recibir parametros\n\r");
+		freeElementsArray(functionAndParams,size);
+		return;
+	}
+
+	if(!isStopped)
+		isStopped=true;
+
+	freeElementsArray(functionAndParams,size);
+}
+
+void restart(int size, char** functionAndParams){
+	if(size>1){
+		printf("El comando stop no puede recibir parametros\n\r");
+		freeElementsArray(functionAndParams,size);
+		return;
+	}
+	if(isStopped){
+		isStopped=false;
+		sem_post(&stopped);
+	}
+
+	freeElementsArray(functionAndParams,size);
+}
+
+
 
 void consolaCreate(void*args){
 	t_dictionary* commands = dictionary_create();
 	dictionary_put(commands,"multiprog",&changeMultiprogramacion);
 	dictionary_put(commands,"showProcess",&showProcess);
 	dictionary_put(commands,"end",&end);
+	dictionary_put(commands,"stop",&stop);
+	dictionary_put(commands,"restart",&restart);
 	waitCommand(commands);
 	dictionary_destroy(commands);
 }
@@ -797,6 +827,10 @@ int main(int argc, char** argv) {
 	pthread_mutex_init(&colaBlockedMutex,NULL);
 	pthread_mutex_init(&colaExecMutex,NULL);
 	pthread_mutex_init(&colaExitMutex,NULL);
+	pthread_mutex_init(&stoppedMutex,NULL);
+	sem_init(&stopped,0,0);
+
+	isStopped=false;
 
     t_dictionary* diccionarioFunciones = dictionary_create();
     dictionary_put(diccionarioFunciones,"ERROR_FUNC",&mostrarMensaje);
