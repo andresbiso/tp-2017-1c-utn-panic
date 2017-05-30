@@ -315,6 +315,18 @@ int paginasLibres(int *paginasLibres){
 	return cantPaginasLibres;
 }
 
+int32_t getNextPaginasPID(int32_t pid){
+	int max=0;
+	int i;
+	for(i=0;i<cantPaginasAdms();i++){
+		t_pagina* pag = getPagina(i);
+		if(pag->pid==pid&&((pag->numeroPag)>max))
+			max=pag->numeroPag;
+		free(pag);
+	}
+	return max+1;
+}
+
 int cantPaginasPID(int32_t pid){
 	int cantidad=0;
 	int i;
@@ -354,7 +366,7 @@ int asignarPaginasPID(int32_t pid,int32_t paginasRequeridas,bool isNew){
 	if(cantPaginasLibres>=paginasRequeridas){
 		//Hay paginas suficientes
 		int i;
-		int offset = isNew?0:cantPaginasPID(pid);//Se usa en el caso de asignar nuevas paginas ->Para contar desde donde se quedo
+		int offset = isNew?0:getNextPaginasPID(pid);//Se usa en el caso de asignar nuevas paginas ->Para contar desde donde se quedo
 		for(i=0;i<paginasRequeridas;i++){
 			int hashIndice = getHash(pid,offset+i);//Buscamos el indice correspondiente a ese pid y nroPagina
 			int indice=hashIndice;
