@@ -11,6 +11,8 @@ sudo make install
 utnso
 echo "Se instalaron las commons"
 
+cd ..
+
 #Bajo e instalo el parser de ansisop
 echo "Instalando el parser de ansisop..."
 
