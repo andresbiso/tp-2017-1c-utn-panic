@@ -17,6 +17,7 @@ echo "Instalando el parser de ansisop..."
 git clone https://github.com/sisoputnfrba/ansisop-parser.git
 cd ~/ansisop-parser/parser
 sudo make all
+utnso
 sudo make install
 utnso
 echo "Se instalo el parser de ansisop"
