@@ -20,7 +20,7 @@ t_config* cargarConfiguracion(char* nombreDelArchivo){
 	 	exit(EXIT_FAILURE);
 	 }
 	if (config_has_property(configFile,"PUNTO_MONTAJE")){
-		punto_montaje= config_get_string_value(configFile,"PUNTO_MONTAJE");
+		puntoMontaje= config_get_string_value(configFile,"PUNTO_MONTAJE");
 	}else {
 		perror("La key PUNTO_MONTAJE no existe");
 		exit(EXIT_FAILURE);
@@ -92,54 +92,53 @@ void leerMetadataArchivo(char* nombre)
 void crearBitMap()
 {
 	char* bitarray;
-	size_t size;
-	t_bitarray* bitmap = bitarray_create_with_mode(bitarray, size, LSB_FIRST);
+	t_bitarray* bitmap = bitarray_create_with_mode(bitarray, sizeof(t_bitarray), LSB_FIRST);
+	bitmap->bitarray = malloc(sizeof(int)*metadataFS.cantidadBloques);
 	guardarArchivoBitmap(&bitmap);
+	//bitarray_destroy(&bitmap);
 }
 void leerArchivoMetadataFS()
 {
-	char* ruta = concat(punto_montaje, "Metadata/Metadata.bin");
+	char* ruta = concat(puntoMontaje, "Metadata/Metadata.bin");
 	FILE* archivo = fopen(ruta, "rb");
 	fread(&metadataFS, sizeof(t_metadata_fs), 1, archivo);
 	fclose(archivo);
 }
 void cargarConfiguracionAdicional()
 {
-	rutaBloques = concat(punto_montaje, "Bloques/");
-	rutaArchivos = concat(punto_montaje, "Archivos/");
-	rutaBitmap = concat(punto_montaje, "Metadata/Bitmap.bin");
+	rutaBloques = concat(puntoMontaje, "Bloques/");
+	rutaArchivos = concat(puntoMontaje, "Archivos/");
+	rutaBitmap = concat(puntoMontaje, "Metadata/Bitmap.bin");
 	leerArchivoMetadataFS();
+}
+void mapearBitmap()
+{
+	archivoBitmap = fopen(rutaBitmap, "rb");
+	mmap(&bitmap, sizeof(t_bitarray), PROT_READ, MAP_SHARED, archivoBitmap, 0);
+}
+void cerrarArchivosYLiberarMemoria()
+{
+	munmap(&bitmap, sizeof(t_bitarray));
+	fclose(archivoBitmap);
+	free(bitmap->bitarray);
+	bitarray_destroy(&bitmap);
 }
 int obtenerBloqueVacio()
 {
-	t_bitarray bitmap;
-	bitmap.bitarray = malloc(sizeof(int)* metadataFS.cantidadBloques);
-	leerArchivoBitmap(&bitmap);
 	int i = 0;
 	while(bitarray_test_bit(&bitmap, i))
 	{
 		i++;
 	};
-	free(bitmap.bitarray);
 	return i;
 }
 void marcarBloqueOcupado(int bloque)
 {
-	t_bitarray bitmap;
-	bitmap.bitarray = malloc(sizeof(int)* metadataFS.cantidadBloques);
-	leerArchivoBitmap(&bitmap);
 	bitarray_set_bit(&bitmap, bloque);
-	guardarArchivoBitmap(&bitmap);
-	free(bitmap.bitarray);
 }
 void marcarBloqueDesocupado(int bloque)
 {
-	t_bitarray bitmap;
-	bitmap.bitarray = malloc(sizeof(int)* metadataFS.cantidadBloques);
-	leerArchivoBitmap(&bitmap);
 	bitarray_clean_bit(&bitmap, bloque);
-	guardarArchivoBitmap(&bitmap);
-	free(bitmap.bitarray);
 }
 void leerArchivoBitmap(t_bitarray bitmap)
 {
@@ -153,14 +152,27 @@ void guardarArchivoBitmap(t_bitarray bitmap)
 	fwrite(&bitmap, sizeof(t_bitarray), 1, archivoBitmap);
 	fclose(archivoBitmap);
 }
+void crearMetadataFS()
+{
+	t_metadata_fs metadata;
+	metadata.cantidadBloques = 5192;
+	metadata.magicNumber = "SADICA";
+	metadata.tamanioBloque = 64;
+	char* ruta = concat(puntoMontaje, "Metadata/Metadata.bin");
+	FILE * archivo = fopen(ruta, "wb");
+	fwrite(&metadata, sizeof(t_metadata_fs), 1, archivo);
+	fclose(archivo);
+}
 int main(int argc, char** argv)
 {
 	t_config* configFile = cargarConfiguracion(argv[1]);
 	printf("PUERTO: %d\n",puerto);
-	printf("PUNTO_MONTAJE: %s\n",punto_montaje);
+	printf("PUNTO_MONTAJE: %s\n",puntoMontaje);
 
 	cargarConfiguracionAdicional();
-	crearArchivo("prueba2.bin", 1);
+	mapearBitmap();
+	//crearBitMap();
+	crearArchivo("prueba.bin", 1);
 
 	t_dictionary* diccionarioFunc= dictionary_create();
 	t_dictionary* diccionarioHands= dictionary_create();
@@ -176,6 +188,7 @@ int main(int argc, char** argv)
 	int sock= crearHostMultiConexion(puerto);
 	correrServidorMultiConexion(sock,NULL,NULL,NULL,diccionarioFunc,diccionarioHands);
 
+	cerrarArchivosYLiberarMemoria();
 	dictionary_destroy(diccionarioFunc);
 	dictionary_destroy(diccionarioHands);
 	config_destroy(configFile);

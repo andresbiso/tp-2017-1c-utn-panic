@@ -14,6 +14,7 @@
 #include <panicommons/serializacion.h>
 #include <commons/config.h>
 #include <commons/bitarray.h>
+#include <sys/mman.h>
 
 //#define foreach(item, array) \
 //    for(int keep = 1, \
@@ -47,11 +48,13 @@ typedef struct
 } t_metadata_fs;
 
 int puerto;
-char *punto_montaje;
+char *puntoMontaje;
 char* rutaBloques;
 char* rutaArchivos;
 char* rutaBitmap;
 t_metadata_fs metadataFS;
+t_bitarray* bitmap;
+FILE* archivoBitmap;
 
 void mostrarMensaje(char* mensajes, int socket);
 int validarArchivo(char* ruta, int socket);
