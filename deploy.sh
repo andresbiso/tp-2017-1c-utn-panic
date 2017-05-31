@@ -51,8 +51,8 @@ make all
 cd /home/utnso
 echo "export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:~/workspace/tp-2017-1c-utn-panic/PANICommons/Debug" >> .bashrc
 
+exec bash
+
 echo "Fin compilacion"
 
 echo "Deploy finalizado exitosamente"
-
-reset
