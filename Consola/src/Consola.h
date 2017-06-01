@@ -19,6 +19,7 @@ int PuertoKernel;
 int socketKernel;
 pthread_mutex_t mutexLog;
 sem_t avisoProcesado;
+sem_t hilosTerminados;
 t_log* logConsola;
 t_dictionary*semaforosPID;
 t_dictionary*commands;

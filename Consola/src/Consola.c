@@ -25,6 +25,9 @@ void esperarMensajePID(void*paramPid){
 			dictionary_remove_and_destroy(semaforosPID, pidKey,free);
 			free(pidKey);
 			sem_post(&avisoProcesado);
+			if(dictionary_is_empty(semaforosPID)){
+							sem_post(&hilosTerminados);
+						}
 			break;
 		}
 
@@ -117,20 +120,24 @@ void end(int sizeArgs, char** path){
  }
 
 void cerrarConsola(int sizeArgs,char** args){
-	while (!dictionary_is_empty(semaforosPID)){
+	int cont=0;
+	sem_init(&hilosTerminados,0,0);
+	while (dictionary_size(semaforosPID)>cont){
 		int32_t pid= 1;
 		if(dictionary_has_key(semaforosPID,string_itoa(pid))){
 			char* pid2 =string_itoa(pid);
 			empaquetarEnviarMensaje(socketKernel,"END_PROG",strlen(pid2) ,pid2);
-			pid++;
-		};
+			cont++;
+		}
 		pid++;
 	}
-	dictionary_put(commands,"theEnd",free);
+	sem_wait(&hilosTerminados);
+	dictionary_put(commands,"theEnd",NULL);
 	printf("Apagando Consola\n");
-
+	sem_destroy(&hilosTerminados);
 	freeElementsArray(args,sizeArgs);
 }
+
 
 int main(int argc, char** argv) {
 	if (argc == 1) {
