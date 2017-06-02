@@ -523,3 +523,83 @@ t_respuesta_crear_archivo* deserializar_respuesta_crear_archivo(char* rta)
 
 	return respuesta;
 }
+
+char* serializar_pedido_post(t_pedido_post* pedido_deserializado){
+	char *buffer = malloc(sizeof(int32_t)+pedido_deserializado->tamanio);
+	int offset =0;
+
+	memcpy(buffer,&(pedido_deserializado->tamanio),sizeof(int32_t));
+	offset+=sizeof(int32_t);
+	memcpy(buffer+offset,&(pedido_deserializado->semId),pedido_deserializado->tamanio);
+
+	return buffer;
+}
+
+t_pedido_post* deserializar_pedido_post(char* pedido_serializado){
+	t_pedido_post* pedido = malloc(sizeof(t_pedido_post));
+	int offset =0;
+
+	memcpy(&(pedido->tamanio),pedido_serializado,sizeof(int32_t));
+	offset+=sizeof(int32_t);
+	pedido->semId=malloc(pedido->tamanio);
+	memcpy(pedido->semId,pedido_serializado+offset,pedido->tamanio);
+
+	return pedido;
+}
+
+char* serializar_respuesta_post(t_respuesta_post* respuesta_deserializada){
+	char* buffer = malloc(sizeof(t_respuesta_post));
+	memcpy(buffer,&(respuesta_deserializada->respuesta),sizeof(int32_t));
+
+	return buffer;
+}
+
+t_respuesta_post* deserializar_respuesta_post(char* respuesta_serializada){
+	t_respuesta_post* respuesta = malloc(sizeof(t_respuesta_post));
+	memcpy(&(respuesta->respuesta),respuesta_serializada,sizeof(int32_t));
+	return respuesta;
+}
+
+char* serializar_pedido_wait(t_pedido_wait* pedido_deserializado){
+	char* buffer = malloc(sizeof(int32_t)+pedido_deserializado->tamanio+tamanio_pcb(pedido_deserializado->pcb));
+	int offset=0;
+
+	memcpy(buffer,&(pedido_deserializado->tamanio),sizeof(int32_t));
+	offset+=sizeof(int32_t);
+	memcpy(buffer+offset,pedido_deserializado->semId,pedido_deserializado->tamanio);
+	offset+=pedido_deserializado->tamanio;
+	t_pcb_serializado* pcb = serializar_pcb(pedido_deserializado->pcb);
+	memcpy(buffer+offset,pcb->contenido_pcb,pcb->tamanio);
+
+	free(pcb->contenido_pcb);
+	free(pcb);
+	return buffer;
+}
+
+t_pedido_wait* deserializar_pedido_wait(char* pedido_serializado){
+	t_pedido_wait* pedido = malloc(sizeof(t_pedido_wait));
+	int offset=0;
+
+	memcpy(&(pedido->tamanio),pedido_serializado,sizeof(int32_t));
+	offset+=sizeof(int32_t);
+	pedido->semId=malloc(pedido->tamanio);
+	memcpy(pedido->semId,pedido_serializado+offset,pedido->tamanio);
+	offset+=pedido->tamanio;
+	pedido->pcb = deserializar_pcb(pedido_serializado+offset);
+
+	return pedido;
+}
+
+char* serializar_respuesta_wait(t_respuesta_wait* respuesta_deserializada){
+	char* buffer = malloc(sizeof(t_respuesta_wait));
+	memcpy(buffer,&(respuesta_deserializada->respuesta),sizeof(int32_t));
+
+	return buffer;
+}
+
+t_respuesta_wait* deserializar_respuesta_wait(char* respuesta_serializada){
+	t_respuesta_wait* respuesta = malloc(sizeof(t_respuesta_wait));
+	memcpy(&(respuesta->respuesta),respuesta_serializada,sizeof(int32_t));
+	return respuesta;
+}
+

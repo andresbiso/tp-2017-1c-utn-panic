@@ -165,6 +165,30 @@ typedef struct
 	codigo_crear_archivo codigoRta;
 } __attribute__((__packed__)) t_respuesta_crear_archivo;
 
+typedef struct{
+	int32_t tamanio;
+	char* semId;
+	t_pcb* pcb;
+}t_pedido_wait;
+
+typedef enum{WAIT_OK=1,WAIT_BLOCK=-1,WAIT_NOT_EXIST=-2} codigo_respuesta_wait;
+
+typedef struct{
+	codigo_respuesta_wait respuesta;
+}t_respuesta_wait;
+
+typedef struct{
+	int32_t tamanio;
+	char* semId;
+}t_pedido_post;
+
+typedef enum{POST_OK=1,POST_NOT_EXIST=-1} codigo_respuesta_post;
+
+typedef struct{
+	codigo_respuesta_post respuesta;
+}t_respuesta_post;
+
+
 t_pcb_serializado* serializar_pcb(t_pcb* pcb);
 t_pcb* deserializar_pcb(char* pcbs);
 
@@ -196,6 +220,7 @@ char* serializar_respuesta_finalizar_programa(t_respuesta_finalizar_programa *re
 //Memoria
 
 //Kernel
+
 t_respuesta_variable_compartida* deserializar_respuesta_variable_compartida(char* pedido_serializado);
 char* serializar_respuesta_variable_compartida(t_respuesta_variable_compartida* respuesta);
 
@@ -204,9 +229,28 @@ char* serializar_pedido_variable_compartida(t_pedido_variable_compartida* pedido
 
 void destruir_pcb (t_pcb *pcbADestruir);
 
+char* serializar_pedido_post(t_pedido_post* pedido_deserializado);
+t_pedido_post* deserializar_pedido_post(char* pedido_serializado);
+
+char* serializar_respuesta_post(t_respuesta_post* respuesta_deserializada);
+t_respuesta_post* deserializar_respuesta_post(char* respuesta_serializada);
+
+char* serializar_pedido_wait(t_pedido_wait* pedido_deserializado);
+t_pedido_wait* deserializar_pedido_wait(char* pedido_serializado);
+
+char* serializar_respuesta_wait(t_respuesta_wait* respuesta_deserializada);
+t_respuesta_wait* deserializar_respuesta_wait(char* respuesta_serializada);
+
+//Kernel
+
+//FS
+
 char* serializar_respuesta_validar_archivo(t_respuesta_validar_archivo* rta);
 t_respuesta_validar_archivo* deserializar_respuesta_validar_archivo(char* rta);
+
 char* serializar_respuesta_crear_archivo(t_respuesta_crear_archivo* rta);
 t_respuesta_crear_archivo* deserializar_respuesta_crear_archivo(char* rta);
+
+//FS
 
 #endif /* PANICOMMONS_SERIALIZACION_H_ */
