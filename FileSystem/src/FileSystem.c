@@ -143,15 +143,16 @@ void leerMetadataArchivo(char* nombre)
 void crearBitMap()
 {
 	char* bitarray;
-	t_bitarray* bitmap = bitarray_create_with_mode(bitarray, sizeof(t_bitarray), LSB_FIRST);
-	bitmap->bitarray = malloc(sizeof(int)*metadataFS.cantidadBloques);
-	guardarArchivoBitmap(&bitmap);
-	//bitarray_destroy(&bitmap);
+	t_bitarray* bitmap2 = bitarray_create_with_mode(bitarray, metadataFS.cantidadBloques * sizeof(int), LSB_FIRST);
+	guardarArchivoBitmap(&bitmap2);
+	printf("TAMANIO BITMAP: %d\n", bitmap2->size);
+	bitarray_destroy(bitmap2);
 }
 void leerArchivoMetadataFS()
 {
 	char* ruta = concat(puntoMontaje, "Metadata/Metadata.bin");
 	FILE* archivo = fopen(ruta, "rb");
+	//mmap(&metadataFS, sizeof(t_metadata_fs), PROT_READ, MAP_SHARED, archivo, 0);
 	fread(&metadataFS, sizeof(t_metadata_fs), 1, archivo);
 	fclose(archivo);
 }
@@ -165,7 +166,7 @@ void cargarConfiguracionAdicional()
 void mapearBitmap()
 {
 	archivoBitmap = fopen(rutaBitmap, "rb");
-	mmap(&bitmap, sizeof(t_bitarray), PROT_READ, MAP_SHARED, archivoBitmap, 0);
+	mmap(&bitmap, sizeof(metadataFS.cantidadBloques*sizeof(int)), PROT_READ, MAP_SHARED, archivoBitmap, 0);
 }
 void cerrarArchivosYLiberarMemoria()
 {
@@ -200,10 +201,10 @@ void leerArchivoBitmap(t_bitarray bitmap)
 	fread(&bitmap, sizeof(t_bitarray), 1, archivoBitmap);
 	fclose(archivoBitmap);
 }
-void guardarArchivoBitmap(t_bitarray bitmap)
+void guardarArchivoBitmap(char* bitmap)
 {
 	FILE* archivoBitmap = fopen(rutaBitmap, "wb");
-	fwrite(&bitmap, sizeof(t_bitarray), 1, archivoBitmap);
+	fwrite(&bitmap, metadataFS.cantidadBloques*sizeof(int), 1, archivoBitmap);
 	fclose(archivoBitmap);
 }
 void crearMetadataFS()
@@ -224,10 +225,13 @@ int main(int argc, char** argv)
 	printf("PUNTO_MONTAJE: %s\n",puntoMontaje);
 	logFS = log_create("fs.log", "FILE SYSTEM", 0, LOG_LEVEL_TRACE);
 
-//	cargarConfiguracionAdicional();
-//	mapearBitmap();
-//	//crearBitMap();
-//	crearArchivo("prueba.bin", 1);
+	cargarConfiguracionAdicional();
+	crearBitMap();
+	mapearBitmap();
+
+	printf("TAMANIO BITMAP: %d\n", bitmap->size);
+
+	//crearArchivo("prueba.bin", 1);
 
 	t_dictionary* diccionarioFunc= dictionary_create();
 	t_dictionary* diccionarioHands= dictionary_create();
