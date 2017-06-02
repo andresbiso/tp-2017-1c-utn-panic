@@ -144,6 +144,27 @@ typedef enum {
 	FINALIZAR_SIN_RECURSOS=-1, FINALIZAR_EXEPCION_MEMORIA=-5, FINALIZAR_BY_CONSOLE = -7, FINALIZAR_OK = 0
 } exit_codes;
 
+typedef struct
+{
+	char* ruta;
+	int32_t offset;
+	int32_t tamanio;
+} __attribute__((__packed__)) t_pedido_datos_fs;
+
+typedef enum{VALIDAR_OK=1, NO_EXISTE_ARCHIVO=-1} codigo_validar_archivo;
+
+typedef struct
+{
+	codigo_validar_archivo codigoRta;
+}__attribute__((__packed__)) t_respuesta_validar_archivo;
+
+typedef enum{CREAR_OK=1, NO_HAY_BLOQUES=-1, CREAR_ERROR=-2} codigo_crear_archivo;
+
+typedef struct
+{
+	codigo_crear_archivo codigoRta;
+} __attribute__((__packed__)) t_respuesta_crear_archivo;
+
 t_pcb_serializado* serializar_pcb(t_pcb* pcb);
 t_pcb* deserializar_pcb(char* pcbs);
 
@@ -182,5 +203,10 @@ t_pedido_variable_compartida* deserializar_pedido_variable_compartida(char* pedi
 char* serializar_pedido_variable_compartida(t_pedido_variable_compartida* pedido);
 
 void destruir_pcb (t_pcb *pcbADestruir);
+
+char* serializar_respuesta_validar_archivo(t_respuesta_validar_archivo* rta);
+t_respuesta_validar_archivo* deserializar_respuesta_validar_archivo(char* rta);
+char* serializar_respuesta_crear_archivo(t_respuesta_crear_archivo* rta);
+t_respuesta_crear_archivo* deserializar_respuesta_crear_archivo(char* rta);
 
 #endif /* PANICOMMONS_SERIALIZACION_H_ */
