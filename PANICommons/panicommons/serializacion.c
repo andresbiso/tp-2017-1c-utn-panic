@@ -438,10 +438,7 @@ char* serializar_respuesta_validar_archivo(t_respuesta_validar_archivo* rta)
 {
 	char* buffer = malloc(sizeof(t_respuesta_validar_archivo));
 
-	int offset = 0;
-	memcpy(buffer, &(rta->ruta), sizeof(rta->ruta));
-	offset += sizeof(rta->ruta);
-	memcpy(buffer+offset, &(rta->codigoRta), sizeof(rta->codigoRta));
+	memcpy(buffer, &(rta->codigoRta), sizeof(rta->codigoRta));
 
 	return buffer;
 }
@@ -450,10 +447,7 @@ t_respuesta_validar_archivo* deserializar_respuesta_validar_archivo(char* rta)
 {
 	t_respuesta_validar_archivo* respuesta = malloc(sizeof(t_respuesta_validar_archivo));
 
-	int offset=0;
-	memcpy(&respuesta->ruta,(void*)rta,sizeof(char*));
-	offset+=sizeof(respuesta->ruta);
-	memcpy(&respuesta->codigoRta,(void*)rta+offset,sizeof(codigo_validar_archivo));
+	memcpy(&respuesta->codigoRta,(void*)rta,sizeof(codigo_validar_archivo));
 
 	return respuesta;
 }
@@ -462,10 +456,7 @@ char* serializar_respuesta_crear_archivo(t_respuesta_crear_archivo* rta)
 {
 	char *buffer = malloc(sizeof(t_respuesta_crear_archivo));
 
-	int offset = 0;
-	memcpy(buffer,&(rta->ruta),sizeof(rta->ruta));
-	offset += sizeof(rta->ruta);
-	memcpy(buffer+offset,&(rta->codigoRta),sizeof(rta->codigoRta));
+	memcpy(buffer,&(rta->codigoRta),sizeof(rta->codigoRta));
 
 	return buffer;
 }
@@ -474,10 +465,7 @@ t_respuesta_crear_archivo* deserializar_respuesta_crear_archivo(char* rta)
 {
 	t_respuesta_crear_archivo* respuesta = malloc(sizeof(t_respuesta_crear_archivo));
 
-	int offset=0;
-	memcpy(&respuesta->ruta,(void*)rta,sizeof(char*));
-	offset+=sizeof(respuesta->ruta);
-	memcpy(&respuesta->codigoRta,(void*)rta+offset,sizeof(codigo_crear_archivo));
+	memcpy(&respuesta->codigoRta,(void*)rta,sizeof(codigo_crear_archivo));
 
 	return respuesta;
 }

@@ -139,7 +139,6 @@ typedef enum{VALIDAR_OK=1, NO_EXISTE_ARCHIVO=-1} codigo_validar_archivo;
 
 typedef struct
 {
-	char* ruta;
 	codigo_validar_archivo codigoRta;
 }__attribute__((__packed__)) t_respuesta_validar_archivo;
 
@@ -147,7 +146,6 @@ typedef enum{CREAR_OK=1, NO_HAY_BLOQUES=-1, CREAR_ERROR=-2} codigo_crear_archivo
 
 typedef struct
 {
-	char* ruta;
 	codigo_crear_archivo codigoRta;
 } __attribute__((__packed__)) t_respuesta_crear_archivo;
 

@@ -30,24 +30,23 @@ t_config* cargarConfiguracion(char* nombreDelArchivo){
 void validarArchivo(char* archivo, int socket)
 {
 	log_info(logFS, "Se validará la existencia del archivo %s", archivo);
-	t_respuesta_validar_archivo* respuesta;
+	t_respuesta_validar_archivo respuesta;
 	char* ruta = concat(rutaArchivos, archivo);
 
 	int rta = access(ruta, F_OK );
 	if (rta != 0)
 	{
 		log_error(logFS, "No existe el archivo que se solicitó");
-		respuesta->codigoRta = NO_EXISTE_ARCHIVO;
+		respuesta.codigoRta = NO_EXISTE_ARCHIVO;
 	}
 	else
 	{
 		log_info(logFS, "Existe el archivo solicitado");
-		respuesta->codigoRta = VALIDAR_OK;
+		respuesta.codigoRta = VALIDAR_OK;
 	}
 
-	respuesta->ruta = archivo;
 	char* buffer = serializar_respuesta_validar_archivo(&respuesta);
-	empaquetarEnviarMensaje(socket, "RES_VALIDAR", sizeof(int), buffer);
+	empaquetarEnviarMensaje(socket, "RES_VALIDAR", sizeof(t_respuesta_validar_archivo), buffer);
 	free(buffer);
 }
 void crearArchivo(char* archivo, int socket)
@@ -86,9 +85,9 @@ void crearArchivo(char* archivo, int socket)
 		log_error(logFS, "No hay bloques libres disponibles");
 		rta->codigoRta = NO_HAY_BLOQUES;
 	}
-	rta->ruta = archivo;
 	char* buffer = serializar_respuesta_crear_archivo(&rta);
 	empaquetarEnviarMensaje(socket, "RES_CREAR_ARCH", sizeof(t_respuesta_crear_archivo), buffer);
+	free(buffer);
 }
 void borrarArchivo(char* nombre, int socket)
 {
