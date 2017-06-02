@@ -33,9 +33,6 @@ t_puntero definirVariable(t_nombre_variable identificador_variable) {
 
 		int poslogica;
 
-		t_pedido_almacenar_bytes* pedido = (t_pedido_almacenar_bytes*)malloc(sizeof (t_pedido_almacenar_bytes));
-		pedido->pid = actual_pcb->pid;
-
 		if(isalpha(identificador_variable)) {
 			log_debug(cpu_log,"%c es una variable",identificador_variable);
 
@@ -77,40 +74,12 @@ t_puntero definirVariable(t_nombre_variable identificador_variable) {
 					poslogica);
 		}
 
-		pedido->pagina = actual_pcb->fin_stack.pag;
-		pedido->offsetPagina = actual_pcb->fin_stack.offset;
-
 		actual_pcb->fin_stack.offset += 4;
 
 		if(actual_pcb->fin_stack.offset >= pagesize){
 			actual_pcb->fin_stack.offset = 0;
 			actual_pcb->fin_stack.pag++;
 		}
-
-		pedido->tamanio = 4;
-		pedido->data = malloc(sizeof(int32_t));
-		memset(pedido->data,0,sizeof(int32_t));
-		char* buffer =  serializar_pedido_almacenar_bytes(pedido);
-		free(pedido->data);
-		// Tamanio de la estructura. Data 4 bytes = int32_t
-		empaquetarEnviarMensaje(socketMemoria, "ALMC_BYTES", (sizeof(int32_t)*4)+pedido->tamanio, buffer);
-		free(buffer);
-		free(pedido);
-
-		t_package* paqueteRespuesta = recibirPaquete(socketMemoria, NULL);
-		t_respuesta_almacenar_bytes* bufferRespuesta = deserializar_respuesta_almacenar_bytes(paqueteRespuesta->datos);
-
-		if (bufferRespuesta->codigo == OK_ALMACENAR){
-			log_info(cpu_log,"Exito al almacenar en el stack");
-		} else {
-			log_error(cpu_log,"Hubo un error al modificar la pagina");
-			error_en_ejecucion = 1;
-			actual_pcb->exit_code = -5;
-			return -1;
-		}
-
-		borrarPaquete(paqueteRespuesta);
-		free(bufferRespuesta);
 
 		return poslogica;
 }
