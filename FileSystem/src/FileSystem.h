@@ -14,6 +14,7 @@
 #include <panicommons/serializacion.h>
 #include <commons/config.h>
 #include <commons/bitarray.h>
+#include <commons/log.h>
 #include <sys/mman.h>
 
 //#define foreach(item, array) \
@@ -55,9 +56,10 @@ char* rutaBitmap;
 t_metadata_fs metadataFS;
 t_bitarray* bitmap;
 FILE* archivoBitmap;
+t_log* logFS;
 
 void mostrarMensaje(char* mensajes, int socket);
-int validarArchivo(char* ruta, int socket);
+void validarArchivo(char* ruta, int socket);
 void crearArchivo(char* ruta, int socket);
 void borrarArchivo(char* ruta, int socket);
 void leerDatosArchivo(t_pedido_datos_fs datosFs, int socket);

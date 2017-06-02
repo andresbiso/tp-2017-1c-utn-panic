@@ -27,39 +27,91 @@ t_config* cargarConfiguracion(char* nombreDelArchivo){
 	}
 	return configFile;
 }
-int validarArchivo(char* ruta, int socket)
+void validarArchivo(char* archivo, int socket)
 {
-	return access(ruta, F_OK );
+	log_info(logFS, "Se validará la existencia del archivo %s", archivo);
+	t_respuesta_validar_archivo* respuesta;
+	char* ruta = concat(rutaArchivos, archivo);
+
+	int rta = access(ruta, F_OK );
+	if (rta != 0)
+	{
+		log_error(logFS, "No existe el archivo que se solicitó");
+		respuesta->codigoRta = NO_EXISTE_ARCHIVO;
+	}
+	else
+	{
+		log_info(logFS, "Existe el archivo solicitado");
+		respuesta->codigoRta = VALIDAR_OK;
+	}
+
+	respuesta->ruta = archivo;
+	char* buffer = serializar_respuesta_validar_archivo(&respuesta);
+	empaquetarEnviarMensaje(socket, "RES_VALIDAR", sizeof(int), buffer);
+	free(buffer);
 }
-void crearArchivo(char* nombre, int socket)
+void crearArchivo(char* archivo, int socket)
 {
+	log_info(logFS, "Se intentará crear el archivo %s", archivo);
 	int bloqueVacio = obtenerBloqueVacio();
-	t_metadata_archivo nuevoArchivo;
-	nuevoArchivo.bloques = malloc(sizeof(int)*10);
-	nuevoArchivo.bloques[0] = bloqueVacio;
-	nuevoArchivo.tamanio = metadataFS.tamanioBloque;
+	t_respuesta_crear_archivo* rta;
+	if (bloqueVacio >= 0)
+	{
+		t_metadata_archivo* nuevoArchivo;
+		nuevoArchivo->bloques = malloc(sizeof(int));
+		nuevoArchivo->bloques[0] = bloqueVacio;
+		nuevoArchivo->tamanio = metadataFS.tamanioBloque;
 
-	char* ruta = concat(rutaArchivos, nombre);
+		char* ruta = concat(rutaArchivos, archivo);
 
-	FILE* archivo = fopen(ruta, "wb");
-	fwrite(&nuevoArchivo, sizeof(t_metadata_archivo),1, archivo);
-	fclose(archivo);
-	free(nuevoArchivo.bloques);
-	marcarBloqueOcupado(bloqueVacio);
+		FILE* file = fopen(ruta, "wb");
+		if (file != NULL)
+		{
+			fwrite(&nuevoArchivo, sizeof(t_metadata_archivo),1, file);
+			fclose(file);
+			log_info(logFS, "El archivo se creó exitosamente");
+			free(nuevoArchivo->bloques);
+			marcarBloqueOcupado(bloqueVacio);
+			rta->codigoRta = CREAR_OK;
+		}
+		else
+		{
+			log_error(logFS, "Error al crear el archivo");
+			rta->codigoRta = CREAR_ERROR;
+		}
+		free(&nuevoArchivo);
+	}
+	else
+	{
+		log_error(logFS, "No hay bloques libres disponibles");
+		rta->codigoRta = NO_HAY_BLOQUES;
+	}
+	rta->ruta = archivo;
+	char* buffer = serializar_respuesta_crear_archivo(&rta);
+	empaquetarEnviarMensaje(socket, "RES_CREAR_ARCH", sizeof(t_respuesta_crear_archivo), buffer);
 }
 void borrarArchivo(char* nombre, int socket)
 {
+	log_info(logFS, "Se intentará borrar el archivo %s", nombre);
 	char* ruta = concat(rutaArchivos, nombre);
 	FILE* archivo = fopen(ruta, "rb");
-	t_metadata_archivo archivoABorrar;
-	fread(&archivoABorrar, sizeof(t_metadata_archivo), 1, archivo);
-	int i = 0;
-	while(archivoABorrar.bloques[i]>= 0 && archivoABorrar.bloques[i] != NULL)
+	if (archivo != NULL)
 	{
-		marcarBloqueDesocupado(archivoABorrar.bloques[i]);
-		i++;
+		t_metadata_archivo* archivoABorrar;
+		fread(&archivoABorrar, sizeof(t_metadata_archivo), 1, archivo);
+		int i = 0;
+		while(archivoABorrar->bloques[i]>= 0 && archivoABorrar->bloques[i] != NULL)
+		{
+			marcarBloqueDesocupado(archivoABorrar->bloques[i]);
+			i++;
+		}
+		fclose(archivo);
+		remove(ruta);
 	}
-	remove(ruta);
+	else
+	{
+		log_error(logFS, "No se pudo borrar el archivo");
+	}
 }
 void leerBloque(int bloque)
 {
@@ -130,7 +182,10 @@ int obtenerBloqueVacio()
 	{
 		i++;
 	};
-	return i;
+	if (i <= metadataFS.cantidadBloques)
+		return i;
+	else
+		return -1;
 }
 void marcarBloqueOcupado(int bloque)
 {
@@ -168,11 +223,12 @@ int main(int argc, char** argv)
 	t_config* configFile = cargarConfiguracion(argv[1]);
 	printf("PUERTO: %d\n",puerto);
 	printf("PUNTO_MONTAJE: %s\n",puntoMontaje);
+	logFS = log_create("fs.log", "FILE SYSTEM", 0, LOG_LEVEL_TRACE);
 
-	cargarConfiguracionAdicional();
-	mapearBitmap();
-	//crearBitMap();
-	crearArchivo("prueba.bin", 1);
+//	cargarConfiguracionAdicional();
+//	mapearBitmap();
+//	//crearBitMap();
+//	crearArchivo("prueba.bin", 1);
 
 	t_dictionary* diccionarioFunc= dictionary_create();
 	t_dictionary* diccionarioHands= dictionary_create();
