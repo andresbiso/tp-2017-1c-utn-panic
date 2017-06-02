@@ -71,8 +71,6 @@ void esperarKernel(void* args){
 			free(avisoKernel->mensaje);
 			free(avisoKernel);
 
-			printf("%d\n\r",semaforosPID->elements_amount);
-
 			if(dictionary_is_empty(semaforosPID)){
 				sem_post(&hilosTerminados);
 			}
