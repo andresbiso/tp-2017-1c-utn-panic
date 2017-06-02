@@ -7,10 +7,6 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-void mostrarMensaje(char* mensaje,int socket){
-	printf("Error: %s \n",mensaje);
-}
-
 //COMMONS
 
 void showInScreenAndLog(char*message){
@@ -684,7 +680,7 @@ void iniciarPrograma(char* data,int socket){
 
 	log_info(logFile,"Pedido de inicio de programa PID:%d PAGS:%d",pedido->idPrograma,pedido->pagRequeridas);
 
-	hayEspacio=asignarPaginasPID(pedido->idPrograma,pedido->pagRequeridas,false);
+	hayEspacio=asignarPaginasPID(pedido->idPrograma,pedido->pagRequeridas,true);
 
 	t_respuesta_inicializar* respuesta = malloc(sizeof(t_respuesta_inicializar));
 	respuesta->idPrograma=pedido->idPrograma;
@@ -994,7 +990,6 @@ int main(int argc, char** argv) {
 	crearEstructurasAdministrativas();
 
 	t_dictionary* diccionarioFunciones = dictionary_create();
-	dictionary_put(diccionarioFunciones,"ERROR_FUNC",&mostrarMensaje);
 	dictionary_put(diccionarioFunciones,"INIT_PROGM",&iniciarPrograma);
 	dictionary_put(diccionarioFunciones,"SOLC_BYTES",&solicitarBytes);
 	dictionary_put(diccionarioFunciones,"ALMC_BYTES",&almacenarBytes);

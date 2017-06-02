@@ -17,13 +17,14 @@
 char* IpKernel;
 int PuertoKernel;
 int socketKernel;
-pthread_mutex_t mutexLog;
+pthread_mutex_t mutexSemaforosPID;
 sem_t avisoProcesado;
 sem_t hilosTerminados;
 t_log* logConsola;
 t_dictionary*semaforosPID;
 t_dictionary*commands;
 t_aviso_consola* avisoKernel;
+bool comandoTerminar=false;
 
 /*Function prototypes*/
 t_config* cargarConfiguracion(char * nombreArchivo);

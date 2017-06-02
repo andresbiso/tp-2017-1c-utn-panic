@@ -8,9 +8,18 @@ void recibirTamanioPagina(int socket){
 	log_info(cpu_log,"Tamaño de pagina de memoria %d",pagesize);
 }
 
+void desconexionKernel(int socket){
+	desconexion=true;
+	log_warning(cpu_log,"El kernel se desconecto");
+}
+
 void waitKernel(int socketKernel,t_dictionary* diccionarioFunciones){
 	while(1){
-		t_package* paquete = recibirPaquete(socketKernel,NULL);
+		t_package* paquete = recibirPaquete(socketKernel,&desconexionKernel);
+		if(desconexion){
+			borrarPaquete(paquete);
+			break;
+		}
 		procesarPaquete(paquete, socketKernel, diccionarioFunciones, NULL,NULL);
 	 }
 }
@@ -129,6 +138,7 @@ int main(int argc, char** argv) {
 		exit(EXIT_FAILURE);
 	}
 	t_config* configFile = cargarConfiguracion(argv[1]);
+	quantum=0;//Arranca en 0 porque si es fifo kernel no manda el quantum
 
 	printf("PUERTO KERNEL: %d\n",puertoKernel);
 	printf("IP KERNEL: %s\n",ipKernel);

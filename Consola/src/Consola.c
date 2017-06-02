@@ -16,18 +16,18 @@ void esperarMensajePID(void*paramPid){
 		sem_wait(mutexPID);
 		log_info(logConsola,"El PID:%d recibió un mensaje :%s",pid,avisoKernel->mensaje);
 
-		if(avisoKernel->mostrarPorPantalla)
+		if(avisoKernel->mostrarPorPantalla){
 			printf("%s\n\r",avisoKernel->mensaje);
+		}
 
 		if(avisoKernel->terminoProceso){
 			log_info(logConsola,"Se finalizo el proceso, con el PID:%d",avisoKernel->idPrograma);
 			char* pidKey = string_itoa(pid);
+			pthread_mutex_lock(&mutexSemaforosPID);
 			dictionary_remove_and_destroy(semaforosPID, pidKey,free);
+			pthread_mutex_unlock(&mutexSemaforosPID);
 			free(pidKey);
 			sem_post(&avisoProcesado);
-			if(dictionary_is_empty(semaforosPID)){
-							sem_post(&hilosTerminados);
-						}
 			break;
 		}
 
@@ -41,30 +41,43 @@ void newPID(char*data,int socket){
 	sem_t* sem=malloc(sizeof(sem_t));
 	sem_init(sem,0,1);
 
-	dictionary_put(semaforosPID,string_itoa(avisoKernel->idPrograma),sem);
+	char* pid = string_itoa(avisoKernel->idPrograma);
+	dictionary_put(semaforosPID,pid,sem);
+	free(pid);
 
 	pthread_t hiloPID;
 	pthread_create(&hiloPID,NULL,(void*)esperarMensajePID,(void*)avisoKernel->idPrograma);
+	pthread_detach(hiloPID);
 }
 
 void esperarKernel(void* args){
-	t_dictionary* diccionario = dictionary_create();
-	dictionary_put(diccionario,"NEW_PID",&newPID);
 	while(1){
 		t_package* paqueteKernel = recibirPaquete(socketKernel,NULL);
-		if(strcmp(paqueteKernel->key,"NEW_PID")==0)
+		if(strcmp(paqueteKernel->key,"NEW_PID")==0){
+			t_dictionary* diccionario = dictionary_create();
+			dictionary_put(diccionario,"NEW_PID",&newPID);
 			procesarPaquete(paqueteKernel,socketKernel,diccionario,NULL,NULL);
-		else{
+			dictionary_destroy(diccionario);
+			sem_wait(&avisoProcesado);
+			free(avisoKernel->mensaje);
+			free(avisoKernel);
+		}else{
 			avisoKernel = deserializar_aviso_consola(paqueteKernel->datos);
-			sem_post((sem_t*)dictionary_get(semaforosPID,string_itoa(avisoKernel->idPrograma)));
+			char* pid = string_itoa(avisoKernel->idPrograma);
+			sem_post((sem_t*)dictionary_get(semaforosPID,pid));
+			free(pid);
 			borrarPaquete(paqueteKernel);
-		}
-		sem_wait(&avisoProcesado);
-		free(avisoKernel->mensaje);
-		free(avisoKernel);
+			sem_wait(&avisoProcesado);
+			free(avisoKernel->mensaje);
+			free(avisoKernel);
 
+			printf("%d\n\r",semaforosPID->elements_amount);
+
+			if(dictionary_is_empty(semaforosPID)){
+				sem_post(&hilosTerminados);
+			}
+		}
 	}
-	dictionary_destroy(diccionario);
 }
 
 
@@ -91,7 +104,7 @@ void init(int sizeArgs, char** path){
 	buffer[tamanio]='\0';
 
 	empaquetarEnviarMensaje(socketKernel,"NUEVO_PROG",strlen(buffer),buffer);
-
+	sem_trywait(&hilosTerminados);
 	fclose(arch);
 	free(buffer);
 	freeElementsArray(path,sizeArgs);
@@ -108,7 +121,7 @@ void end(int sizeArgs, char** path){
 			printf("Numero de argumentos incorrectos, el end solo debe recibir el pid del proceso\n\r");
 			freeElementsArray(path,sizeArgs);
 			return;
-		}
+	}
 	char* pid= path[1];
 	if(!dictionary_has_key(semaforosPID,pid)){  //controla que el pid este en el diccionario
 		printf("PID no encontrado\n\r");
@@ -120,19 +133,14 @@ void end(int sizeArgs, char** path){
  }
 
 void cerrarConsola(int sizeArgs,char** args){
-	int cont=0;
-	sem_init(&hilosTerminados,0,0);
-	while (dictionary_size(semaforosPID)>cont){
-		int32_t pid= 1;
-		if(dictionary_has_key(semaforosPID,string_itoa(pid))){
-			char* pid2 =string_itoa(pid);
-			empaquetarEnviarMensaje(socketKernel,"END_PROG",strlen(pid2) ,pid2);
-			cont++;
-		}
-		pid++;
+	void llamarEnd(char* key, void* value){
+		empaquetarEnviarMensaje(socketKernel,"END_PROG",strlen(key) ,key);
 	}
+	pthread_mutex_lock(&mutexSemaforosPID);
+	dictionary_iterator(semaforosPID,llamarEnd);
+	pthread_mutex_unlock(&mutexSemaforosPID);
 	sem_wait(&hilosTerminados);
-	dictionary_put(commands,"theEnd",NULL);
+	dictionary_put(commands,"theEnd","theEnd");
 	printf("Apagando Consola\n");
 	sem_destroy(&hilosTerminados);
 	freeElementsArray(args,sizeArgs);
@@ -147,7 +155,9 @@ int main(int argc, char** argv) {
 	t_config* configFile = cargarConfiguracion(argv[1]);
 	logConsola = log_create("Consola.log","Consola",false,LOG_LEVEL_TRACE);
 
+	sem_init(&hilosTerminados,0,1);
 	sem_init(&avisoProcesado,0,0);
+	pthread_mutex_init(&mutexSemaforosPID,NULL);
 
 	semaforosPID = dictionary_create();
 
@@ -175,7 +185,8 @@ int main(int argc, char** argv) {
 
 	waitCommand(commands);
 
-	dictionary_destroy_and_destroy_elements(commands,free);
+	pthread_detach(hilo);
+	dictionary_destroy(commands);
 	dictionary_destroy_and_destroy_elements(semaforosPID,free);
 	config_destroy(configFile);
 	log_destroy(logConsola);
