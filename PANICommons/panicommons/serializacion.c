@@ -526,7 +526,7 @@ t_respuesta_crear_archivo* deserializar_respuesta_crear_archivo(char* rta)
 	return respuesta;
 }
 
-char* serializar_pedido_post(t_pedido_post* pedido_deserializado){
+char* serializar_pedido_signal(t_pedido_signal* pedido_deserializado){
 	char *buffer = malloc(sizeof(int32_t)+pedido_deserializado->tamanio);
 	int offset =0;
 
@@ -537,8 +537,8 @@ char* serializar_pedido_post(t_pedido_post* pedido_deserializado){
 	return buffer;
 }
 
-t_pedido_post* deserializar_pedido_post(char* pedido_serializado){
-	t_pedido_post* pedido = malloc(sizeof(t_pedido_post));
+t_pedido_signal* deserializar_pedido_signal(char* pedido_serializado){
+	t_pedido_signal* pedido = malloc(sizeof(t_pedido_signal));
 	int offset =0;
 
 	memcpy(&(pedido->tamanio),pedido_serializado,sizeof(int32_t));
@@ -549,15 +549,15 @@ t_pedido_post* deserializar_pedido_post(char* pedido_serializado){
 	return pedido;
 }
 
-char* serializar_respuesta_post(t_respuesta_post* respuesta_deserializada){
-	char* buffer = malloc(sizeof(t_respuesta_post));
+char* serializar_respuesta_signal(t_respuesta_signal* respuesta_deserializada){
+	char* buffer = malloc(sizeof(t_respuesta_signal));
 	memcpy(buffer,&(respuesta_deserializada->respuesta),sizeof(int32_t));
 
 	return buffer;
 }
 
-t_respuesta_post* deserializar_respuesta_post(char* respuesta_serializada){
-	t_respuesta_post* respuesta = malloc(sizeof(t_respuesta_post));
+t_respuesta_signal* deserializar_respuesta_signal(char* respuesta_serializada){
+	t_respuesta_signal* respuesta = malloc(sizeof(t_respuesta_signal));
 	memcpy(&(respuesta->respuesta),respuesta_serializada,sizeof(int32_t));
 	return respuesta;
 }

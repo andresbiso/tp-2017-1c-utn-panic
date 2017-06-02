@@ -180,13 +180,13 @@ typedef struct{
 typedef struct{
 	int32_t tamanio;
 	char* semId;
-}t_pedido_post;
+}t_pedido_signal;
 
-typedef enum{POST_OK=1,POST_NOT_EXIST=-1} codigo_respuesta_post;
+typedef enum{SIGNAL_OK=1,SIGNAL_NOT_EXIST=-1} codigo_respuesta_signal;
 
 typedef struct{
-	codigo_respuesta_post respuesta;
-}t_respuesta_post;
+	codigo_respuesta_signal respuesta;
+}t_respuesta_signal;
 
 
 t_pcb_serializado* serializar_pcb(t_pcb* pcb);
@@ -229,11 +229,11 @@ char* serializar_pedido_variable_compartida(t_pedido_variable_compartida* pedido
 
 void destruir_pcb (t_pcb *pcbADestruir);
 
-char* serializar_pedido_post(t_pedido_post* pedido_deserializado);
-t_pedido_post* deserializar_pedido_post(char* pedido_serializado);
+char* serializar_pedido_signal(t_pedido_signal* pedido_deserializado);
+t_pedido_signal* deserializar_pedido_signal(char* pedido_serializado);
 
-char* serializar_respuesta_post(t_respuesta_post* respuesta_deserializada);
-t_respuesta_post* deserializar_respuesta_post(char* respuesta_serializada);
+char* serializar_respuesta_signal(t_respuesta_signal* respuesta_deserializada);
+t_respuesta_signal* deserializar_respuesta_signal(char* respuesta_serializada);
 
 char* serializar_pedido_wait(t_pedido_wait* pedido_deserializado);
 t_pedido_wait* deserializar_pedido_wait(char* pedido_serializado);
