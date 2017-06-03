@@ -10,6 +10,13 @@
 
 #include "estados.h"
 
+typedef struct {
+	int valor;
+	t_queue* cola;
+} t_semaforo;
+
+t_dictionary *semaforos;
+
 void getVariableCompartida(char* data, int socket);
 void setVariableCompartida(char* data, int socket);
 void wait(char* data,int socket);

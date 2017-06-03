@@ -266,7 +266,38 @@ void retornar(t_valor_variable retorno) {
 
 // AnSISOP_kernel
 void waitAnsisop(t_nombre_semaforo identificador_semaforo) {
+	if (error_en_ejecucion) {
+			return;
+		}
 
+//	t_pedido_variable_compartida pedido;
+//	pedido.pid=actual_pcb->pid;
+//	pedido.tamanio=strlen(variable);
+//	pedido.nombre_variable_compartida=malloc(strlen(variable));
+//	memcpy(pedido.nombre_variable_compartida,variable,strlen(variable));
+//
+//	char *buffer = serializar_pedido_variable_compartida(&pedido);
+//	empaquetarEnviarMensaje(socketKernel,"WAIT",(sizeof(int32_t)*2)+pedido.tamanio,buffer);
+//	free(buffer);
+//	free(pedido.nombre_variable_compartida);
+//
+//	log_info(cpu_log,
+//			"Se solicita valor variable compartida %s",
+//			variable);
+//
+//	t_package *paquete = recibirPaquete(socketKernel,NULL);
+//
+//	t_respuesta_variable_compartida* respuesta = deserializar_respuesta_variable_compartida(paquete->datos);
+//
+//	if(respuesta->codigo == OK_VARIABLE){
+//		log_info(cpu_log,"Se bloqueo el semaforo: %s", identificador_semaforo);
+//	}else{
+//		log_error(cpu_log,"Error al intentar bloquear semaforo: %s", identificador_semaforo);
+//		error_en_ejecucion = 1;
+//		actual_pcb->exit_code = -5;
+//	}
+
+	return;
 }
 void signalAnsisop(t_nombre_semaforo identificador_semaforo) {
 
@@ -311,11 +342,8 @@ void escribir(t_descriptor_archivo descriptor_archivo, void* informacion, t_valo
 	free(pedido.mensaje);
 
 	log_info(cpu_log,
-			"Se solicitó la escitura en archivo cuyo descriptor es: %d",
+			"Se solicito la escitura en archivo cuyo descriptor es: %d",
 			descriptor_archivo);
-
-
-
 	return;
 }
 void leer(t_descriptor_archivo descriptor_archivo, t_puntero informacion, t_valor_variable tamanio) {

@@ -45,7 +45,10 @@ pthread_mutex_t colaBlockedMutex;
 pthread_mutex_t colaExecMutex;
 pthread_mutex_t colaExitMutex;
 pthread_mutex_t stoppedMutex;
+pthread_mutex_t listForFinishMutex;
 sem_t stopped;
+
+t_list* listForFinish;
 
 void crear_colas();
 void destruir_colas();
@@ -65,7 +68,7 @@ t_pcb *sacarDe_colaBlocked(uint32_t pid);
 t_pcb* sacarCualquieraDeReady();
 
 void bloquear_pcb(t_pcb* pid);
-void desbloquear_pcb(t_pcb* pcb);
+void desbloquear_pcb(int32_t pid);
 void destruir_pcb (t_pcb* pcbADestruir);
 
 #endif /* SRC_ESTADOS_H_ */

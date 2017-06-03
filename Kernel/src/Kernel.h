@@ -30,10 +30,6 @@ char** SemInit;
 char** SharedVars;
 int StackSize;
 
-t_dictionary *semaforos;
-
-t_list* listForFinish;
-
 typedef enum {
 	FIFO = 0, RR = 1
 } modo_planificacion;
@@ -42,11 +38,6 @@ typedef struct{
 	int socket;
 	bool corriendo;
 }t_cpu;
-
-typedef struct {
-	int valor;
-	t_queue* cola;
-} t_semaforo;
 
 typedef struct{
 	int pid;
