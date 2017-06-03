@@ -1,10 +1,5 @@
 #include "Consola.h"
 
-#include <panicommons/panicommons.h>
-#include <pthread.h>
-#include <stdbool.h>
-#include <string.h>
-
 void esperarMensajePID(void*paramPid){
 	int32_t pid = (int32_t)paramPid;
 	sem_t* mutexPID;
@@ -18,14 +13,42 @@ void esperarMensajePID(void*paramPid){
 
 		if(avisoKernel->mostrarPorPantalla){
 			printf("%s\n\r",avisoKernel->mensaje);
+			char* pidKey = string_itoa(pid);
+			pthread_mutex_lock(&mutexStatsPID);
+			t_stats* stats = dictionary_get(statsPID,pidKey);
+			stats->cantMensajesPantalla++;
+			pthread_mutex_unlock(&mutexStatsPID);
+			free(pidKey);
+
 		}
 
 		if(avisoKernel->terminoProceso){
 			log_info(logConsola,"Se finalizo el proceso, con el PID:%d",avisoKernel->idPrograma);
 			char* pidKey = string_itoa(pid);
+
 			pthread_mutex_lock(&mutexSemaforosPID);
 			dictionary_remove_and_destroy(semaforosPID, pidKey,free);
 			pthread_mutex_unlock(&mutexSemaforosPID);
+
+			pthread_mutex_lock(&mutexStatsPID);
+			t_stats* stats = dictionary_remove(statsPID,pidKey);
+			pthread_mutex_unlock(&mutexStatsPID);
+
+			time_t timerow = time(0);
+			struct tm* fin = malloc(sizeof(struct tm));
+			localtime_r(&timerow,fin);
+
+			printf("*******STATS PID:%s*******\n\r",pidKey);
+			printf("Cantidad mensajes mostrados :%d\n\r",stats->cantMensajesPantalla);
+			printf("Inicio :%s\n\r",asctime(stats->inicio));
+			printf("Fin :%s\n\r",asctime(fin));
+			printf("Tiempo de ejecución (segundos) :%0.0lf \n\r",difftime(mktime(fin),mktime(stats->inicio)));
+			printf("*******FIN*******\n\r");
+
+			free(fin);
+			free(stats->inicio);
+			free(stats);
+
 			free(pidKey);
 			sem_post(&avisoProcesado);
 			break;
@@ -42,7 +65,21 @@ void newPID(char*data,int socket){
 	sem_init(sem,0,1);
 
 	char* pid = string_itoa(avisoKernel->idPrograma);
+	pthread_mutex_lock(&mutexSemaforosPID);
 	dictionary_put(semaforosPID,pid,sem);
+	pthread_mutex_unlock(&mutexSemaforosPID);
+
+	time_t timerow = time(0);
+	t_stats* stats = malloc(sizeof(t_stats));
+	stats->cantMensajesPantalla=0;
+	stats->inicio= malloc(sizeof(struct tm));
+	localtime_r(&timerow,stats->inicio);
+
+
+	pthread_mutex_lock(&mutexStatsPID);
+	dictionary_put(statsPID,pid,stats);
+	pthread_mutex_unlock(&mutexStatsPID);
+
 	free(pid);
 
 	pthread_t hiloPID;
@@ -155,10 +192,9 @@ int main(int argc, char** argv) {
 
 	sem_init(&hilosTerminados,0,1);
 	sem_init(&avisoProcesado,0,0);
-	pthread_mutex_init(&mutexSemaforosPID,NULL);
 
 	semaforosPID = dictionary_create();
-
+	statsPID = dictionary_create();
 	commands = dictionary_create();
 	dictionary_put(commands,"init",&init);
 	dictionary_put(commands,"clear",&clear);
@@ -185,6 +221,7 @@ int main(int argc, char** argv) {
 
 	pthread_detach(hilo);
 	dictionary_destroy(commands);
+	dictionary_destroy(statsPID);
 	dictionary_destroy_and_destroy_elements(semaforosPID,free);
 	config_destroy(configFile);
 	log_destroy(logConsola);
