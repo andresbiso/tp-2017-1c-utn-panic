@@ -101,8 +101,7 @@ void moverA_colaExec(t_pcb *pcb)
 	log_debug(logEstados, "El PCB: %d paso a la cola Exec",pcb->pid);
 }
 
-void moverA_colaReady(t_pcb *pcb)
-{
+void moverA_colaReady(t_pcb *pcb){
 	if(!pcb)
 		return;
 
@@ -189,12 +188,25 @@ void bloquear_pcb(t_pcb* pcbabloquear){
 	}
 }
 
-void desbloquear_pcb(t_pcb* pcb){
-	if(!pcb)
-		return;
-
-	t_pcb* pcbsacado = sacarDe_colaBlocked(pcb->pid);
+void desbloquear_pcb(int32_t pid){
+	t_pcb* pcbsacado = sacarDe_colaBlocked(pid);
 
 	if(pcbsacado)
 		moverA_colaReady(pcbsacado);
+}
+
+bool processIsForFinish(int32_t pid){
+
+	bool matchPID(void* elemt){
+		return (*((int32_t*) elemt))==pid;
+	}
+
+	pthread_mutex_lock(&listForFinishMutex);
+	if(list_find(listForFinish,matchPID) != NULL){
+		list_remove_and_destroy_by_condition(listForFinish,matchPID,free);
+		return true;
+	}
+	pthread_mutex_unlock(&listForFinishMutex);
+
+	return false;
 }

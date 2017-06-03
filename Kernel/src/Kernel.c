@@ -85,29 +85,13 @@ void addForFinishIfNotContains(int32_t* pid){
 		return (*((int32_t*) elemt))==(*pid);
 	}
 
-	pthread_mutex_lock(&mutexListForFinish);
+	pthread_mutex_lock(&listForFinishMutex);
 	if(list_find(listForFinish,matchPID)==NULL){
 		list_add(listForFinish,pid);
 	}else{
 		free(pid);
 	}
-	pthread_mutex_unlock(&mutexListForFinish);
-}
-
-bool processIsForFinish(int32_t pid){
-
-	bool matchPID(void* elemt){
-		return (*((int32_t*) elemt))==pid;
-	}
-
-	if(list_find(listForFinish,matchPID) != NULL){
-		pthread_mutex_lock(&mutexListForFinish);
-		list_remove_and_destroy_by_condition(listForFinish,matchPID,free);
-		pthread_mutex_unlock(&mutexListForFinish);
-		return true;
-	}
-
-	return false;
+	pthread_mutex_unlock(&listForFinishMutex);
 }
 
 void retornarPCB(char* data,int socket){
@@ -180,9 +164,12 @@ void finalizarProceso(void* pidArg){
 			log_info(logNucleo,"Finalizando proceso con PID:%d, que estaba en READY",*pid);
 
 			t_respuesta_finalizar_programa* respuesta = finalizarProcesoMemoria(*pid);
-			if(respuesta->codigo==OK_FINALIZAR)
-				enviarMensajeConsola("Proceso finalizado abruptamente\0","LOG_MESSAGE",pcb->pid,consola->socket,1,0);
 			pcb->exit_code=FINALIZAR_BY_CONSOLE;
+			if(respuesta->codigo==OK_FINALIZAR){
+				char* message=string_from_format("Proceso finalizado con exitCode: %d\0",pcb->exit_code);
+				enviarMensajeConsola(message,"LOG_MESSAGE",pcb->pid,consola->socket,1,0);
+				free(message);
+			}
 			moverA_colaExit(pcb);
 
 			free(respuesta);
@@ -251,7 +238,7 @@ void bajarGrado(void* nuevoGrado){
 		else
 			sem_wait(&grado);
 	}
-
+	free(nuevoGrado);
 	log_info(logNucleo,"Nuevo grado de multiprogramacion %d",GradoMultiprog);
 }
 
@@ -290,35 +277,55 @@ void showProcess(int size, char** functionAndParams){
 	if(size==2){
 		if(string_equals_ignore_case("new",functionAndParams[1])){
 			log_info(logNucleo,"-------- Procesos en NEW    --------");
+			pthread_mutex_lock(&colaNewMutex);
 			list_iterate(colaNew->elements,logPID);
+			pthread_mutex_unlock(&colaNewMutex);
 		}
 		if(string_equals_ignore_case("ready",functionAndParams[1])){
 			log_info(logNucleo,"-------- Procesos en READY  --------");
+			pthread_mutex_lock(&colaReadyMutex);
 			list_iterate(colaReady->elements,logPID);
+			pthread_mutex_unlock(&colaReadyMutex);
 		}
 		if(string_equals_ignore_case("exec",functionAndParams[1])){
 			log_info(logNucleo,"-------- Procesos en EXEC   --------");
+			pthread_mutex_lock(&colaExecMutex);
 			list_iterate(colaExec->elements,logPID);
+			pthread_mutex_unlock(&colaExecMutex);
 		}
 		if(string_equals_ignore_case("block",functionAndParams[1])){
 			log_info(logNucleo,"-------- Procesos en BLOCKED--------");
+			pthread_mutex_lock(&colaBlockedMutex);
 			list_iterate(colaBlocked->elements,logPID);
+			pthread_mutex_unlock(&colaBlockedMutex);
 		}
 		if(string_equals_ignore_case("exit",functionAndParams[1])){
 			log_info(logNucleo,"-------- Procesos en EXIT 	--------");
+			pthread_mutex_lock(&colaExitMutex);
 			list_iterate(colaExit->elements,logPID);
+			pthread_mutex_unlock(&colaExitMutex);
 		}
 	}else{
 		log_info(logNucleo,"-------- Procesos en NEW    --------");
+		pthread_mutex_lock(&colaNewMutex);
 		list_iterate(colaNew->elements,logPID);
+		pthread_mutex_unlock(&colaNewMutex);
 		log_info(logNucleo,"-------- Procesos en READY  --------");
+		pthread_mutex_lock(&colaReadyMutex);
 		list_iterate(colaReady->elements,logPID);
+		pthread_mutex_unlock(&colaReadyMutex);
 		log_info(logNucleo,"-------- Procesos en EXEC   --------");
+		pthread_mutex_lock(&colaExecMutex);
 		list_iterate(colaExec->elements,logPID);
+		pthread_mutex_unlock(&colaExecMutex);
 		log_info(logNucleo,"-------- Procesos en BLOCKED--------");
+		pthread_mutex_lock(&colaBlockedMutex);
 		list_iterate(colaBlocked->elements,logPID);
+		pthread_mutex_unlock(&colaBlockedMutex);
 		log_info(logNucleo,"-------- Procesos en EXIT 	--------");
+		pthread_mutex_lock(&colaExitMutex);
 		list_iterate(colaExit->elements,logPID);
+		pthread_mutex_unlock(&colaExitMutex);
 	}
 
 	freeElementsArray(functionAndParams,size);
@@ -339,7 +346,7 @@ void stop(int size, char** functionAndParams){
 
 void restart(int size, char** functionAndParams){
 	if(size>1){
-		printf("El comando stop no puede recibir parametros\n\r");
+		printf("El comando restart no puede recibir parametros\n\r");
 		freeElementsArray(functionAndParams,size);
 		return;
 	}
@@ -369,12 +376,12 @@ void consolaCreate(void*args){
 void recibirTamanioPagina(int socket){
 	t_package* paquete = recibirPaquete(socket,NULL);
 	tamanio_pag_memoria = atoi(paquete->datos);
+	borrarPaquete(paquete);
 }
 
 int obtenerEIncrementarPID()
 {
 	int		pid;
-	;
 
 	pthread_mutex_lock(&mutexPID);
 	pid = ultimoPID;
@@ -828,6 +835,7 @@ int main(int argc, char** argv) {
 	pthread_mutex_init(&colaExecMutex,NULL);
 	pthread_mutex_init(&colaExitMutex,NULL);
 	pthread_mutex_init(&stoppedMutex,NULL);
+	pthread_mutex_init(&listForFinishMutex,NULL);
 	sem_init(&stopped,0,0);
 
 	isStopped=false;
