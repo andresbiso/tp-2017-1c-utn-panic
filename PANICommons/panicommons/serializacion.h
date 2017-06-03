@@ -171,7 +171,7 @@ typedef struct{
 	t_pcb* pcb;
 }t_pedido_wait;
 
-typedef enum{WAIT_OK=1,WAIT_BLOCK=-1,WAIT_NOT_EXIST=-2} codigo_respuesta_wait;
+typedef enum{WAIT_OK=1,WAIT_BLOCKED=-1,WAIT_NOT_EXIST=-2} codigo_respuesta_wait;
 
 typedef struct{
 	codigo_respuesta_wait respuesta;
@@ -188,7 +188,7 @@ typedef struct{
 	codigo_respuesta_signal respuesta;
 }t_respuesta_signal;
 
-
+u_int32_t tamanio_pcb(t_pcb* pcb);
 t_pcb_serializado* serializar_pcb(t_pcb* pcb);
 t_pcb* deserializar_pcb(char* pcbs);
 

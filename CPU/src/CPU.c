@@ -38,11 +38,15 @@ void correrPCB(char* pcb, int socket){
 	actual_pcb = deserializar_pcb(pcb);
 	log_info(cpu_log,"Recibí PCB del PID:%d",actual_pcb->pid);
 	ejecutarPrograma();
-	t_pcb_serializado* paqueteSerializado = serializar_pcb(actual_pcb);
-	empaquetarEnviarMensaje(socketKernel, "RET_PCB", paqueteSerializado->tamanio, paqueteSerializado->contenido_pcb);
-	log_info(cpu_log,"Finaliza procesamiento PCB del PID:%d",actual_pcb->pid);
-	free(paqueteSerializado->contenido_pcb);
-	free(paqueteSerializado);
+	if (!proceso_bloqueado) {
+		t_pcb_serializado* paqueteSerializado = serializar_pcb(actual_pcb);
+		empaquetarEnviarMensaje(socketKernel, "RET_PCB", paqueteSerializado->tamanio, paqueteSerializado->contenido_pcb);
+		log_info(cpu_log,"Finaliza procesamiento PCB del PID:%d",actual_pcb->pid);
+		free(paqueteSerializado->contenido_pcb);
+		free(paqueteSerializado);
+	}
+	error_en_ejecucion = 0;
+	proceso_bloqueado = 0;
 	destruir_pcb(actual_pcb);
 }
 
@@ -70,11 +74,11 @@ void ejecutarPrograma() {
 		sleep(quantumSleep * 0.001);
 		cicloActual--;
 		actual_pcb->pc++;
-		if(error_en_ejecucion)
+		if(error_en_ejecucion || proceso_bloqueado)
 			break;
 	}
 	//Finalizo ok si no hubo un error en la ejecucion y es fifo (ejecuta todas las rafagas) o es RR y llega hasta la ultima instruccion
-	if(!error_en_ejecucion && (fifo || actual_pcb->pc==actual_pcb->cant_instrucciones) )
+	if(!error_en_ejecucion && !proceso_bloqueado && (fifo || actual_pcb->pc==actual_pcb->cant_instrucciones) )
 		actual_pcb->exit_code=FINALIZAR_OK;
 	free(pedido);
 }

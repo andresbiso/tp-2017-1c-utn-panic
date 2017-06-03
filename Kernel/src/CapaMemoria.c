@@ -56,7 +56,7 @@ void wait(char* data,int socket){
 		sem->valor--;
 		if(sem->valor <0){
 			log_info(logNucleo,"El SEM:%s queda con valor:%d y se bloquea al PID:%d",pedido->semId,sem->valor,pedido->pcb->pid);
-			respuesta.respuesta=WAIT_BLOCK;
+			respuesta.respuesta=WAIT_BLOCKED;
 			bloquear_pcb(pedido->pcb);
 			int32_t* pidBloqueado = malloc(sizeof(int32_t));
 			*pidBloqueado=pedido->pcb->pid;
@@ -70,7 +70,7 @@ void wait(char* data,int socket){
 	empaquetarEnviarMensaje(socket,"RES_WAIT",sizeof(t_respuesta_wait),buffer);
 	free(buffer);
 
-	if(respuesta.respuesta!=WAIT_BLOCK)
+	if(respuesta.respuesta!=WAIT_BLOCKED)
 		destruir_pcb(pedido->pcb);//Se destruye porque CPU se encarga del pcb
 	free(pedido->semId);
 	free(pedido);
