@@ -10,6 +10,8 @@
 
 #include "PrimitivasAnsisop.h"
 
+bool desconexion=false;
+
 void waitKernel(int socketKernel,t_dictionary* diccionarioFunciones);
 void modificarQuantum(char*data, int socket);
 void modificarQuantumSleep(char*data, int socket);

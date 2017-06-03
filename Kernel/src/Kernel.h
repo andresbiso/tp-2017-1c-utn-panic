@@ -8,29 +8,11 @@
 #ifndef KERNEL_H_
 #define KERNEL_H_
 
-#include <commons/config.h>
-#include <panicommons/panisocket.h>
-#include <commons/collections/queue.h>
-#include <panicommons/serializacion.h>
-#include <panicommons/panicommons.h>
-#include <panicommons/paniconsole.h>
-#include <commons/log.h>
-#include <commons/string.h>
-#include "inotify.h"
-#include <commons/collections/dictionary.h>
-#include <commons/collections/list.h>
-#include <parser/metadata_program.h>
-#include <pthread.h>
-#include <semaphore.h>
 #include <stdbool.h>
-#include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
-#include <sys/types.h>
-#include <unistd.h>
+#include "inotify.h"
 
-#include "estados.h"
-
+#include "CapaMemoria.h"
 
 int PuertoConsola;
 int PuertoCpu;
@@ -48,9 +30,6 @@ char** SemInit;
 char** SharedVars;
 int StackSize;
 
-t_dictionary *semaforos;
-t_dictionary *variablesCompartidas;
-
 typedef enum {
 	FIFO = 0, RR = 1
 } modo_planificacion;
@@ -59,11 +38,6 @@ typedef struct{
 	int socket;
 	bool corriendo;
 }t_cpu;
-
-typedef struct {
-	int valor;
-	t_queue* cola;
-} t_semaforo;
 
 typedef struct{
 	int pid;
@@ -78,11 +52,12 @@ typedef struct{
 
 modo_planificacion Modo;
 
-t_log *logNucleo;
-
 int ultimoPID;
 pthread_mutex_t	mutexPID = PTHREAD_MUTEX_INITIALIZER;
-pthread_mutex_t mutexKernel = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t mutexMemoria = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t mutexCPUConectadas = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t mutexProgramasActuales = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t mutexListForFinish = PTHREAD_MUTEX_INITIALIZER;
 
 t_config* cargarConfiguracion(char* archivo);
 void cargar_varCompartidas();

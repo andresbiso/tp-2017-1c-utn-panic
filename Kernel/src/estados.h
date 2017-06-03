@@ -14,9 +14,14 @@
 #include <stdbool.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <commons/config.h>
 #include <panicommons/serializacion.h>
 #include <semaphore.h>
 #include <pthread.h>
+#include <commons/collections/dictionary.h>
+#include <parser/metadata_program.h>
+#include <panicommons/paniconsole.h>
+#include <panicommons/panisocket.h>
 
 t_queue *colaNew;
 t_queue *colaReady;
@@ -27,8 +32,23 @@ t_list *lista_programas_actuales;
 t_list *lista_cpus_conectadas;
 t_list *lista_relacion;
 t_log* logEstados;
+bool isStopped;
+
 
 sem_t grado;
+
+t_log *logNucleo;
+t_dictionary *variablesCompartidas;
+pthread_mutex_t colaNewMutex;
+pthread_mutex_t colaReadyMutex;
+pthread_mutex_t colaBlockedMutex;
+pthread_mutex_t colaExecMutex;
+pthread_mutex_t colaExitMutex;
+pthread_mutex_t stoppedMutex;
+pthread_mutex_t listForFinishMutex;
+sem_t stopped;
+
+t_list* listForFinish;
 
 void crear_colas();
 void destruir_colas();
@@ -48,7 +68,7 @@ t_pcb *sacarDe_colaBlocked(uint32_t pid);
 t_pcb* sacarCualquieraDeReady();
 
 void bloquear_pcb(t_pcb* pid);
-void desbloquear_pcb(t_pcb* pcb);
+void desbloquear_pcb(int32_t pid);
 void destruir_pcb (t_pcb* pcbADestruir);
 
 #endif /* SRC_ESTADOS_H_ */

@@ -61,9 +61,10 @@ typedef struct
 typedef struct
 {
 	char* mensaje;
-	int32_t tamanomensaje;
+	int32_t tamaniomensaje;
 	int32_t idPrograma;
 	int32_t terminoProceso;
+	int32_t mostrarPorPantalla;
 } __attribute__((__packed__)) t_aviso_consola;
 
 typedef enum{OK_INICIALIZAR=1,SIN_ESPACIO_INICIALIZAR=-1} codigo_respuesta_inicializar;
@@ -124,9 +125,69 @@ typedef struct
 	codigo_finalizar_programa codigo;
 } __attribute__((__packed__))t_respuesta_finalizar_programa;
 
+typedef struct
+{
+	int32_t pid;
+	int32_t tamanio;
+	char* nombre_variable_compartida;
+} __attribute__((__packed__))t_pedido_variable_compartida;
+
+typedef enum{OK_VARIABLE=1,ERROR_VARIABLE=-1} codigo_variable_compartida;
+
+typedef struct
+{
+	int32_t valor_variable_compartida;
+	codigo_variable_compartida codigo;
+} __attribute__((__packed__))t_respuesta_variable_compartida;
+
 typedef enum {
-	FINALIZAR_BY_CONSOLE = -7, FINALIZAR_OK = 0
+	FINALIZAR_SIN_RECURSOS=-1, FINALIZAR_EXEPCION_MEMORIA=-5, FINALIZAR_BY_CONSOLE = -7, FINALIZAR_OK = 0
 } exit_codes;
+
+typedef struct
+{
+	char* ruta;
+	int32_t offset;
+	int32_t tamanio;
+} __attribute__((__packed__)) t_pedido_datos_fs;
+
+typedef enum{VALIDAR_OK=1, NO_EXISTE_ARCHIVO=-1} codigo_validar_archivo;
+
+typedef struct
+{
+	codigo_validar_archivo codigoRta;
+}__attribute__((__packed__)) t_respuesta_validar_archivo;
+
+typedef enum{CREAR_OK=1, NO_HAY_BLOQUES=-1, CREAR_ERROR=-2} codigo_crear_archivo;
+
+typedef struct
+{
+	codigo_crear_archivo codigoRta;
+} __attribute__((__packed__)) t_respuesta_crear_archivo;
+
+typedef struct{
+	int32_t tamanio;
+	char* semId;
+	t_pcb* pcb;
+}t_pedido_wait;
+
+typedef enum{WAIT_OK=1,WAIT_BLOCK=-1,WAIT_NOT_EXIST=-2} codigo_respuesta_wait;
+
+typedef struct{
+	codigo_respuesta_wait respuesta;
+}t_respuesta_wait;
+
+typedef struct{
+	int32_t tamanio;
+	char* semId;
+}t_pedido_signal;
+
+typedef enum{SIGNAL_OK=1,SIGNAL_NOT_EXIST=-1} codigo_respuesta_signal;
+
+typedef struct{
+	codigo_respuesta_signal respuesta;
+}t_respuesta_signal;
+
 
 t_pcb_serializado* serializar_pcb(t_pcb* pcb);
 t_pcb* deserializar_pcb(char* pcbs);
@@ -158,6 +219,38 @@ char* serializar_respuesta_finalizar_programa(t_respuesta_finalizar_programa *re
 
 //Memoria
 
+//Kernel
+
+t_respuesta_variable_compartida* deserializar_respuesta_variable_compartida(char* pedido_serializado);
+char* serializar_respuesta_variable_compartida(t_respuesta_variable_compartida* respuesta);
+
+t_pedido_variable_compartida* deserializar_pedido_variable_compartida(char* pedido_serializado);
+char* serializar_pedido_variable_compartida(t_pedido_variable_compartida* pedido);
+
 void destruir_pcb (t_pcb *pcbADestruir);
+
+char* serializar_pedido_signal(t_pedido_signal* pedido_deserializado);
+t_pedido_signal* deserializar_pedido_signal(char* pedido_serializado);
+
+char* serializar_respuesta_signal(t_respuesta_signal* respuesta_deserializada);
+t_respuesta_signal* deserializar_respuesta_signal(char* respuesta_serializada);
+
+char* serializar_pedido_wait(t_pedido_wait* pedido_deserializado);
+t_pedido_wait* deserializar_pedido_wait(char* pedido_serializado);
+
+char* serializar_respuesta_wait(t_respuesta_wait* respuesta_deserializada);
+t_respuesta_wait* deserializar_respuesta_wait(char* respuesta_serializada);
+
+//Kernel
+
+//FS
+
+char* serializar_respuesta_validar_archivo(t_respuesta_validar_archivo* rta);
+t_respuesta_validar_archivo* deserializar_respuesta_validar_archivo(char* rta);
+
+char* serializar_respuesta_crear_archivo(t_respuesta_crear_archivo* rta);
+t_respuesta_crear_archivo* deserializar_respuesta_crear_archivo(char* rta);
+
+//FS
 
 #endif /* PANICOMMONS_SERIALIZACION_H_ */

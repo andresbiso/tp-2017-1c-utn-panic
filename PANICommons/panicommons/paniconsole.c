@@ -7,7 +7,7 @@
 
 #include "paniconsole.h"
 
-void commands(t_dictionary* dicCommands){
+void showCommands(t_dictionary* dicCommands){
 
 	printf("%s","Comandos disponibles:\n\r");
 	void showCommand(char* key, void* value){
@@ -28,7 +28,7 @@ void doCommand(char* command,t_dictionary* dicCommands){
 		void (*funcion) (int,char**) = dictionary_get(dicCommands,functionAndParams[0]);
 		funcion(size,functionAndParams);
 	}else if (functionAndParams[0] != NULL && string_equals_ignore_case(functionAndParams[0],"help")){
-		commands(dicCommands);
+		showCommands(dicCommands);
 		freeElementsArray(functionAndParams,size);
 	}else{
 		printf("%s","Comando desconocido\n\r");
@@ -42,6 +42,10 @@ void waitCommand(t_dictionary* dicCommands){
 		char* input = (char *)malloc(255 * sizeof(char));
 		fgets(input,255,stdin);
 		doCommand(input,dicCommands);
+		if (dictionary_has_key(dicCommands,"theEnd")){
+			free(input);
+			break;
+		}
 		free(input);
 	}
 }
