@@ -49,6 +49,14 @@ void validarArchivo(char* archivo, int socket)
 	empaquetarEnviarMensaje(socket, "RES_VALIDAR", sizeof(t_respuesta_validar_archivo), buffer);
 	free(buffer);
 }
+void marcarBloqueOcupado(int bloque)
+{
+	bitarray_set_bit(bitmap, bloque);
+}
+void marcarBloqueDesocupado(int bloque)
+{
+	bitarray_clean_bit(bitmap, bloque);
+}
 void crearArchivo(char* archivo, int socket)
 {
 	log_info(logFS, "Se intentará crear el archivo %s", archivo);
@@ -78,7 +86,7 @@ void crearArchivo(char* archivo, int socket)
 			log_error(logFS, "Error al crear el archivo");
 			rta->codigoRta = CREAR_ERROR;
 		}
-		free(&nuevoArchivo);
+		free(nuevoArchivo);
 	}
 	else
 	{
@@ -119,10 +127,20 @@ void leerBloque(int bloque)
 
 	fclose(file);
 }
-void leerDatosArchivo(t_pedido_datos_fs datosFs, int socket)
+t_metadata_archivo leerMetadataArchivo(char* nombre)
 {
-	t_metadata_archivo metadataArchivo;
-	leerMetadataArchivo(datosFs.ruta, &metadataArchivo);
+	t_metadata_archivo archivoLeido;
+	char* ruta = concat(rutaArchivos, nombre);
+	FILE* archivo = fopen(ruta, "rb");
+	fread(&archivoLeido.tamanio, sizeof(int32_t), 1, archivo);
+	fclose(archivo);
+	free(archivoLeido.bloques);
+
+	return archivoLeido;
+}
+void leerDatosArchivo(char* nombre, int socket)
+{
+	t_metadata_archivo metadataArchivo= leerMetadataArchivo(nombre);
 	int i = 0;
 	while (metadataArchivo.bloques[i] >= 0 && metadataArchivo.bloques[i] != NULL)
 	{
@@ -130,29 +148,10 @@ void leerDatosArchivo(t_pedido_datos_fs datosFs, int socket)
 		i++;
 	}
 }
-void leerMetadataArchivo(char* nombre)
-{
-	t_metadata_archivo archivoLeido;
-	archivoLeido.bloques = malloc(sizeof(int)*10);
-	char* ruta = concat(rutaArchivos, nombre);
-	FILE* archivo = fopen(ruta, "rb");
-	fread(&archivoLeido, sizeof(t_metadata_archivo), 1, archivo);
-	fclose(archivo);
-	free(archivoLeido.bloques);
-}
-void crearBitMap()
-{
-	char* bitarray;
-	t_bitarray* bitmap2 = bitarray_create_with_mode(bitarray, metadataFS.cantidadBloques * sizeof(int), LSB_FIRST);
-	guardarArchivoBitmap(&bitmap2);
-	printf("TAMANIO BITMAP: %d\n", bitmap2->size);
-	bitarray_destroy(bitmap2);
-}
 void leerArchivoMetadataFS()
 {
 	char* ruta = concat(puntoMontaje, "Metadata/Metadata.bin");
 	FILE* archivo = fopen(ruta, "rb");
-	//mmap(&metadataFS, sizeof(t_metadata_fs), PROT_READ, MAP_SHARED, archivo, 0);
 	fread(&metadataFS, sizeof(t_metadata_fs), 1, archivo);
 	fclose(archivo);
 }
@@ -166,14 +165,16 @@ void cargarConfiguracionAdicional()
 void mapearBitmap()
 {
 	archivoBitmap = fopen(rutaBitmap, "rb");
-	mmap(&bitmap, sizeof(metadataFS.cantidadBloques*sizeof(int)), PROT_READ, MAP_SHARED, archivoBitmap, 0);
+	char* bitmapArray = malloc(metadataFS.cantidadBloques*sizeof(int));
+	mmap(bitmapArray, metadataFS.cantidadBloques*sizeof(int), PROT_WRITE, MAP_SHARED, fileno(archivoBitmap), 0);
+	bitmap = bitarray_create_with_mode(bitmapArray, metadataFS.cantidadBloques * sizeof(int), LSB_FIRST);
 }
 void cerrarArchivosYLiberarMemoria()
 {
 	munmap(&bitmap, sizeof(t_bitarray));
 	fclose(archivoBitmap);
 	free(bitmap->bitarray);
-	bitarray_destroy(&bitmap);
+	bitarray_destroy(bitmap);
 }
 int obtenerBloqueVacio()
 {
@@ -187,36 +188,11 @@ int obtenerBloqueVacio()
 	else
 		return -1;
 }
-void marcarBloqueOcupado(int bloque)
-{
-	bitarray_set_bit(&bitmap, bloque);
-}
-void marcarBloqueDesocupado(int bloque)
-{
-	bitarray_clean_bit(&bitmap, bloque);
-}
 void leerArchivoBitmap(t_bitarray bitmap)
 {
 	FILE* archivoBitmap = fopen(rutaBitmap, "rb");
 	fread(&bitmap, sizeof(t_bitarray), 1, archivoBitmap);
 	fclose(archivoBitmap);
-}
-void guardarArchivoBitmap(char* bitmap)
-{
-	FILE* archivoBitmap = fopen(rutaBitmap, "wb");
-	fwrite(&bitmap, metadataFS.cantidadBloques*sizeof(int), 1, archivoBitmap);
-	fclose(archivoBitmap);
-}
-void crearMetadataFS()
-{
-	t_metadata_fs metadata;
-	metadata.cantidadBloques = 5192;
-	metadata.magicNumber = "SADICA";
-	metadata.tamanioBloque = 64;
-	char* ruta = concat(puntoMontaje, "Metadata/Metadata.bin");
-	FILE * archivo = fopen(ruta, "wb");
-	fwrite(&metadata, sizeof(t_metadata_fs), 1, archivo);
-	fclose(archivo);
 }
 int main(int argc, char** argv)
 {
@@ -226,12 +202,9 @@ int main(int argc, char** argv)
 	logFS = log_create("fs.log", "FILE SYSTEM", 0, LOG_LEVEL_TRACE);
 
 	cargarConfiguracionAdicional();
-	crearBitMap();
 	mapearBitmap();
 
 	printf("TAMANIO BITMAP: %d\n", bitmap->size);
-
-	//crearArchivo("prueba.bin", 1);
 
 	t_dictionary* diccionarioFunc= dictionary_create();
 	t_dictionary* diccionarioHands= dictionary_create();
