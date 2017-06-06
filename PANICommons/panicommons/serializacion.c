@@ -417,8 +417,8 @@ char* serializar_respuesta_finalizar_programa(t_respuesta_finalizar_programa *re
 	return buffer;
 }
 
-t_respuesta_variable_compartida* deserializar_respuesta_variable_compartida(char* pedido_serializado) {
-	t_respuesta_variable_compartida* pedido = malloc(sizeof(t_respuesta_variable_compartida));
+t_respuesta_obtener_variable_compartida* deserializar_respuesta_obtener_variable_compartida(char* pedido_serializado) {
+	t_respuesta_obtener_variable_compartida* pedido = malloc(sizeof(t_respuesta_obtener_variable_compartida));
 
 	int offset=0;
 	memcpy(&pedido->valor_variable_compartida,(void*)pedido_serializado,sizeof(int32_t));
@@ -428,8 +428,8 @@ t_respuesta_variable_compartida* deserializar_respuesta_variable_compartida(char
 	return pedido;
 }
 
-char* serializar_respuesta_variable_compartida(t_respuesta_variable_compartida* respuesta){
-	char* respuesta_serializada = malloc(sizeof(t_respuesta_variable_compartida));
+char* serializar_respuesta_obtener_variable_compartida(t_respuesta_obtener_variable_compartida* respuesta){
+	char* respuesta_serializada = malloc(sizeof(t_respuesta_obtener_variable_compartida));
 
 	int offset=0;
 	memcpy(respuesta_serializada,&respuesta->valor_variable_compartida,sizeof(int32_t));
@@ -439,8 +439,8 @@ char* serializar_respuesta_variable_compartida(t_respuesta_variable_compartida* 
 	return respuesta_serializada;
 }
 
-t_pedido_variable_compartida* deserializar_pedido_variable_compartida(char* pedido_serializado){
-	t_pedido_variable_compartida* pedido = malloc(sizeof(t_pedido_variable_compartida));
+t_pedido_obtener_variable_compartida* deserializar_pedido_obtener_variable_compartida(char* pedido_serializado){
+	t_pedido_obtener_variable_compartida* pedido = malloc(sizeof(t_pedido_obtener_variable_compartida));
 
 	int offset=0;
 	memcpy(&pedido->pid,(void*)pedido_serializado,sizeof(int32_t));
@@ -456,7 +456,7 @@ t_pedido_variable_compartida* deserializar_pedido_variable_compartida(char* pedi
 
 }
 
-char* serializar_pedido_variable_compartida(t_pedido_variable_compartida* pedido) {
+char* serializar_pedido_obtener_variable_compartida(t_pedido_obtener_variable_compartida* pedido) {
 	char *buffer = malloc(sizeof(int32_t)*2+pedido->tamanio);
 
 	int offset=0;
@@ -468,6 +468,27 @@ char* serializar_pedido_variable_compartida(t_pedido_variable_compartida* pedido
 
 	return buffer;
 }
+
+t_respuesta_asignar_variable_compartida* deserializar_respuesta_asignar_variable_compartida(char* pedido_serializado) {
+	t_respuesta_asignar_variable_compartida* a;
+	return a;
+}
+
+char* serializar_respuesta_asignar_variable_compartida(t_respuesta_asignar_variable_compartida* respuesta) {
+	char* a;
+	return a;
+}
+
+t_pedido_asignar_variable_compartida* deserializar_pedido_asignar_variable_compartida(char* pedido_serializado) {
+	t_pedido_asignar_variable_compartida* a;
+	return a;
+}
+
+char* serializar_pedido_asignar_variable_compartida(t_pedido_asignar_variable_compartida* pedido) {
+	char* a;
+	return a;
+}
+
 
 void destruir_pcb (t_pcb *pcbADestruir){
 	int i;

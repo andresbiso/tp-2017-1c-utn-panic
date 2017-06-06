@@ -130,7 +130,7 @@ typedef struct
 	int32_t pid;
 	int32_t tamanio;
 	char* nombre_variable_compartida;
-} __attribute__((__packed__))t_pedido_variable_compartida;
+} __attribute__((__packed__))t_pedido_obtener_variable_compartida;
 
 typedef enum{OK_VARIABLE=1,ERROR_VARIABLE=-1} codigo_variable_compartida;
 
@@ -138,7 +138,23 @@ typedef struct
 {
 	int32_t valor_variable_compartida;
 	codigo_variable_compartida codigo;
-} __attribute__((__packed__))t_respuesta_variable_compartida;
+} __attribute__((__packed__))t_respuesta_obtener_variable_compartida;
+
+typedef struct
+{
+	int32_t pid;
+	int32_t tamanio;
+	char* nombre_variable_compartida;
+	int32_t valor_variable_compartida;
+} __attribute__((__packed__))t_pedido_asignar_variable_compartida;
+
+typedef enum{OK_ASIGNAR_VARIABLE=1,ERROR_ASIGNAR_VARIABLE=-1} codigo_asignar_variable_compartida;
+
+typedef struct
+{
+	int32_t valor_variable_compartida;
+	codigo_asignar_variable_compartida codigo;
+} __attribute__((__packed__))t_respuesta_asignar_variable_compartida;
 
 typedef enum {
 	FINALIZAR_SIN_RECURSOS=-1, FINALIZAR_EXEPCION_MEMORIA=-5, FINALIZAR_BY_CONSOLE = -7, FINALIZAR_OK = 0
@@ -221,11 +237,18 @@ char* serializar_respuesta_finalizar_programa(t_respuesta_finalizar_programa *re
 
 //Kernel
 
-t_respuesta_variable_compartida* deserializar_respuesta_variable_compartida(char* pedido_serializado);
-char* serializar_respuesta_variable_compartida(t_respuesta_variable_compartida* respuesta);
+t_respuesta_obtener_variable_compartida* deserializar_respuesta_obtener_variable_compartida(char* pedido_serializado);
+char* serializar_respuesta_obtener_variable_compartida(t_respuesta_obtener_variable_compartida* respuesta);
 
-t_pedido_variable_compartida* deserializar_pedido_variable_compartida(char* pedido_serializado);
-char* serializar_pedido_variable_compartida(t_pedido_variable_compartida* pedido);
+t_pedido_obtener_variable_compartida* deserializar_pedido_obtener_variable_compartida(char* pedido_serializado);
+char* serializar_pedido_obtener_variable_compartida(t_pedido_obtener_variable_compartida* pedido);
+
+t_respuesta_asignar_variable_compartida* deserializar_respuesta_asignar_variable_compartida(char* pedido_serializado);
+char* serializar_respuesta_asignar_variable_compartida(t_respuesta_asignar_variable_compartida* respuesta);
+
+t_pedido_asignar_variable_compartida* deserializar_pedido_asignar_variable_compartida(char* pedido_serializado);
+char* serializar_pedido_asignar_variable_compartida(t_pedido_asignar_variable_compartida* pedido);
+
 
 void destruir_pcb (t_pcb *pcbADestruir);
 
