@@ -1,5 +1,8 @@
 #include "PrimitivasAnsisop.h"
 
+#include <stdbool.h>
+#include <sys/types.h>
+
 t_puntero pos_fisica_a_logica(t_posMemoria posfisica){
 	return posfisica.pag*pagesize+posfisica.offset;
 }
@@ -214,7 +217,7 @@ t_valor_variable obtenerValorCompartida(t_nombre_compartida	variable) {
 		return -1;
 	}
 
-	t_pedido_variable_compartida pedido;
+	t_pedido_obtener_variable_compartida pedido;
 	pedido.pid=actual_pcb->pid;
 	pedido.tamanio=strlen(variable);
 	pedido.nombre_variable_compartida=malloc(strlen(variable));
@@ -231,7 +234,7 @@ t_valor_variable obtenerValorCompartida(t_nombre_compartida	variable) {
 
 	t_package *paquete = recibirPaquete(socketKernel,NULL);
 
-	t_respuesta_variable_compartida* respuesta = deserializar_respuesta_variable_compartida(paquete->datos);
+	t_respuesta_obtener_variable_compartida* respuesta = deserializar_respuesta_variable_compartida(paquete->datos);
 
 	if(respuesta->codigo == OK_VARIABLE){
 		log_info(cpu_log,"Se ha obtenido el valor de la variable compartida correctamente");
@@ -245,8 +248,40 @@ t_valor_variable obtenerValorCompartida(t_nombre_compartida	variable) {
 	return respuesta->valor_variable_compartida;
 }
 t_valor_variable asignarValorCompartida(t_nombre_compartida	variable, t_valor_variable valor) {
-	t_valor_variable a;
-	return a;
+	if (error_en_ejecucion) {
+		return -1;
+	}
+
+	t_pedido_asignar_variable_compartida pedido;
+	pedido.pid=actual_pcb->pid;
+	pedido.tamanio=strlen(variable);
+	pedido.nombre_variable_compartida=malloc(strlen(variable));
+	pedido.valor_variable_compartida=valor;
+	memcpy(pedido.nombre_variable_compartida,variable,strlen(variable));
+
+	char *buffer = serializar_pedido_variable_compartida(&pedido);
+	empaquetarEnviarMensaje(socketKernel,"GET_VAR_COMP",(sizeof(int32_t)*2)+pedido.tamanio,buffer);
+	free(buffer);
+	free(pedido.nombre_variable_compartida);
+
+	log_info(cpu_log,
+			"Se solicita valor variable compartida %s",
+			variable);
+
+	t_package *paquete = recibirPaquete(socketKernel,NULL);
+
+	t_respuesta_asignar_variable_compartida* respuesta = deserializar_respuesta_variable_compartida(paquete->datos);
+
+	if(respuesta->codigo == OK_VARIABLE){
+		log_info(cpu_log,"Se ha obtenido el valor de la variable compartida correctamente");
+	}else{
+		log_error(cpu_log,"Error al intentar obtener valor variable compartida");
+		error_en_ejecucion = 1;
+		actual_pcb->exit_code = -5;
+		return -1;
+	}
+
+	return respuesta->valor_variable_compartida;
 }
 void irAlLabel(t_nombre_etiqueta t_nombre_etiqueta) {
 
@@ -267,40 +302,80 @@ void retornar(t_valor_variable retorno) {
 // AnSISOP_kernel
 void waitAnsisop(t_nombre_semaforo identificador_semaforo) {
 	if (error_en_ejecucion) {
-			return;
-		}
+		return;
+	}
 
-//	t_pedido_variable_compartida pedido;
-//	pedido.pid=actual_pcb->pid;
-//	pedido.tamanio=strlen(variable);
-//	pedido.nombre_variable_compartida=malloc(strlen(variable));
-//	memcpy(pedido.nombre_variable_compartida,variable,strlen(variable));
-//
-//	char *buffer = serializar_pedido_variable_compartida(&pedido);
-//	empaquetarEnviarMensaje(socketKernel,"WAIT",(sizeof(int32_t)*2)+pedido.tamanio,buffer);
-//	free(buffer);
-//	free(pedido.nombre_variable_compartida);
-//
-//	log_info(cpu_log,
-//			"Se solicita valor variable compartida %s",
-//			variable);
-//
-//	t_package *paquete = recibirPaquete(socketKernel,NULL);
-//
-//	t_respuesta_variable_compartida* respuesta = deserializar_respuesta_variable_compartida(paquete->datos);
-//
-//	if(respuesta->codigo == OK_VARIABLE){
-//		log_info(cpu_log,"Se bloqueo el semaforo: %s", identificador_semaforo);
-//	}else{
-//		log_error(cpu_log,"Error al intentar bloquear semaforo: %s", identificador_semaforo);
-//		error_en_ejecucion = 1;
-//		actual_pcb->exit_code = -5;
-//	}
+	t_pedido_wait pedido;
+	pedido.pcb=actual_pcb;
+	pedido.tamanio=strlen(identificador_semaforo);
+	pedido.semId=malloc(strlen(identificador_semaforo));
+	memcpy(pedido.semId,identificador_semaforo,strlen(identificador_semaforo));
+
+	char *buffer = serializar_pedido_wait(&pedido);
+	empaquetarEnviarMensaje(socketKernel,"WAIT",sizeof(int32_t)+pedido.tamanio+tamanio_pcb(pedido.pcb),buffer);
+	free(buffer);
+	free(pedido.semId);
+
+	log_info(cpu_log,
+			"Se envia wait al semaforo %s",
+			identificador_semaforo);
+
+	t_package *paquete = recibirPaquete(socketKernel,NULL);
+
+	t_respuesta_wait* respuesta = deserializar_respuesta_wait(paquete->datos);
+
+	switch(respuesta->respuesta) {
+	case WAIT_OK:
+		log_info(cpu_log,"El semaforo %s recibio el wait", identificador_semaforo);
+		break;
+	case WAIT_BLOCKED:
+		log_error(cpu_log,"Error: El semaforo %s ya se encuentra boqueado", identificador_semaforo);
+		proceso_bloqueado = 1;
+		break;
+	case WAIT_NOT_EXIST:
+		log_error(cpu_log,"Error: El semaforo %s no existe", identificador_semaforo);
+		error_en_ejecucion = 1;
+		actual_pcb->exit_code = -5;
+		break;
+	}
 
 	return;
 }
 void signalAnsisop(t_nombre_semaforo identificador_semaforo) {
+	if (error_en_ejecucion) {
+		return;
+	}
 
+	t_pedido_signal pedido;
+	pedido.tamanio=strlen(identificador_semaforo);
+	pedido.semId=malloc(strlen(identificador_semaforo));
+	memcpy(pedido.semId,identificador_semaforo,strlen(identificador_semaforo));
+
+	char *buffer = serializar_pedido_wait(&pedido);
+	empaquetarEnviarMensaje(socketKernel,"WAIT",sizeof(int32_t)+pedido.tamanio,buffer);
+	free(buffer);
+	free(pedido.semId);
+
+	log_info(cpu_log,
+			"Se envia signal al semaforo %s",
+			identificador_semaforo);
+
+	t_package *paquete = recibirPaquete(socketKernel,NULL);
+
+	t_respuesta_signal* respuesta = deserializar_respuesta_signal(paquete->datos);
+
+	switch(respuesta->respuesta) {
+	case SIGNAL_OK:
+		log_info(cpu_log,"El semaforo %s recibio el signal", identificador_semaforo);
+		break;
+	case SIGNAL_NOT_EXIST:
+		log_error(cpu_log,"Error: El semaforo %s no existe", identificador_semaforo);
+		error_en_ejecucion = 1;
+		actual_pcb->exit_code = -5;
+		break;
+	}
+
+	return;
 }
 t_puntero reservar(t_valor_variable espacio) {
 	t_puntero a;
