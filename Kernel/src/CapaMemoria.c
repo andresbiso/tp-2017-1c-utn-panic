@@ -61,6 +61,9 @@ void wait(char* data,int socket){
 			int32_t* pidBloqueado = malloc(sizeof(int32_t));
 			*pidBloqueado=pedido->pcb->pid;
 			queue_push(sem->cola,pidBloqueado);
+
+			cpu_change_running(socket,false);
+			program_change_running(pedido->pcb->pid,false);
 		}else{
 			log_info(logNucleo,"El SEM:%s queda con valor:%d y no se bloquea al PID:%d",pedido->semId,sem->valor,pedido->pcb->pid);
 			respuesta.respuesta=WAIT_OK;

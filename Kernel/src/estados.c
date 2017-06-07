@@ -204,9 +204,40 @@ bool processIsForFinish(int32_t pid){
 	pthread_mutex_lock(&listForFinishMutex);
 	if(list_find(listForFinish,matchPID) != NULL){
 		list_remove_and_destroy_by_condition(listForFinish,matchPID,free);
+		pthread_mutex_unlock(&listForFinishMutex);
 		return true;
 	}
 	pthread_mutex_unlock(&listForFinishMutex);
 
 	return false;
 }
+
+void cpu_change_running(int32_t socket, bool newState){
+	bool matchSocket(void*elem){
+		return ((t_cpu*)elem)->socket==socket;
+	}
+
+	pthread_mutex_lock(&mutexCPUConectadas);
+	t_cpu* cpu = list_find(lista_cpus_conectadas,matchSocket);
+	cpu->corriendo=newState;
+	pthread_mutex_unlock(&mutexCPUConectadas);
+}
+
+
+t_consola* matchear_consola_por_pid(int pid){
+
+	bool matchPID_Consola(void *consola) {
+						return ((t_consola*)consola)->pid == pid;
+					}
+	return list_find(lista_programas_actuales, matchPID_Consola);
+}
+
+void program_change_running(int32_t pid, bool newState){
+
+	pthread_mutex_lock(&mutexProgramasActuales);
+	t_consola* consola = matchear_consola_por_pid(pid);
+	consola->corriendo=newState;
+	pthread_mutex_unlock(&mutexProgramasActuales);
+}
+
+
