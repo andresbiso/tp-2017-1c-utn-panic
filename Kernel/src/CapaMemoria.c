@@ -8,14 +8,12 @@
 #include "CapaMemoria.h"
 //Capa de memoria
 
-//TODO Ver que pasa en el desbloqueo cuando el proceso esta en lista para finalizar (sea por consola o kernel)
-
 void getVariableCompartida(char* data, int socket){
-	t_pedido_variable_compartida* pedido = deserializar_pedido_variable_compartida(data);
+	t_pedido_obtener_variable_compartida* pedido = deserializar_pedido_obtener_variable_compartida(data);
 
 	log_info(logNucleo,"Se recibió un mensaje de la CPU:%d por el PID:%d para obtener la variable:%s",socket,pedido->pid,pedido->nombre_variable_compartida);
 
-	t_respuesta_variable_compartida respuesta;
+	t_respuesta_obtener_variable_compartida respuesta;
 
 	if(!dictionary_has_key(variablesCompartidas,pedido->nombre_variable_compartida)){
 		log_info(logNucleo,"Variable:%s no encontrada",pedido->nombre_variable_compartida);
@@ -28,8 +26,8 @@ void getVariableCompartida(char* data, int socket){
 		respuesta.codigo=OK_VARIABLE;
 	}
 
-	char* buffer = serializar_respuesta_variable_compartida(&respuesta);
-	empaquetarEnviarMensaje(socket,"RES_VARIABLE",sizeof(t_respuesta_variable_compartida),buffer);
+	char* buffer = serializar_respuesta_obtener_variable_compartida(&respuesta);
+	empaquetarEnviarMensaje(socket,"RES_VARIABLE",sizeof(t_respuesta_obtener_variable_compartida),buffer);
 
 	free(buffer);
 	free(pedido->nombre_variable_compartida);
@@ -43,6 +41,9 @@ void setVariableCompartida(char* data, int socket){
 void wait(char* data,int socket){
 	t_pedido_wait* pedido = deserializar_pedido_wait(data);
 	t_respuesta_wait respuesta;
+
+	if(pedido->semId[pedido->tamanio-1]=='\n')
+		pedido->semId[pedido->tamanio-1]='\0';
 
 	log_info(logNucleo,"Pedido de WAIT en SEM:%s",pedido->semId);
 
@@ -84,6 +85,9 @@ void signal(char* data,int socket){
 
 	t_respuesta_signal respuesta;
 
+	if(pedido->semId[pedido->tamanio-1]=='\n')
+			pedido->semId[pedido->tamanio-1]='\0';
+
 	log_info(logNucleo,"Pedido de SIGNAL en SEM:%s",pedido->semId);
 
 	t_semaforo* sem = dictionary_get(semaforos,pedido->semId);
@@ -114,6 +118,15 @@ void signal(char* data,int socket){
 	free(pedido->semId);
 	free(pedido);
 }
+
+void reservar(void* data,int socket){
+	//TODO
+}
+
+void liberar(void* data,int socket){
+	//TODO
+}
+
 
 
 //Capa de memoria

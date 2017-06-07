@@ -553,7 +553,7 @@ char* serializar_pedido_signal(t_pedido_signal* pedido_deserializado){
 
 	memcpy(buffer,&(pedido_deserializado->tamanio),sizeof(int32_t));
 	offset+=sizeof(int32_t);
-	memcpy(buffer+offset,&(pedido_deserializado->semId),pedido_deserializado->tamanio);
+	memcpy(buffer+offset,pedido_deserializado->semId,pedido_deserializado->tamanio);
 
 	return buffer;
 }
@@ -564,7 +564,8 @@ t_pedido_signal* deserializar_pedido_signal(char* pedido_serializado){
 
 	memcpy(&(pedido->tamanio),pedido_serializado,sizeof(int32_t));
 	offset+=sizeof(int32_t);
-	pedido->semId=malloc(pedido->tamanio);
+	pedido->semId=malloc(pedido->tamanio+1);
+	pedido->semId[pedido->tamanio]='\0';
 	memcpy(pedido->semId,pedido_serializado+offset,pedido->tamanio);
 
 	return pedido;
@@ -605,7 +606,8 @@ t_pedido_wait* deserializar_pedido_wait(char* pedido_serializado){
 
 	memcpy(&(pedido->tamanio),pedido_serializado,sizeof(int32_t));
 	offset+=sizeof(int32_t);
-	pedido->semId=malloc(pedido->tamanio);
+	pedido->semId=malloc(pedido->tamanio+1);
+	pedido->semId[pedido->tamanio]='\0';
 	memcpy(pedido->semId,pedido_serializado+offset,pedido->tamanio);
 	offset+=pedido->tamanio;
 	pedido->pcb = deserializar_pcb(pedido_serializado+offset);

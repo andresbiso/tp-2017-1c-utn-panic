@@ -59,6 +59,7 @@ void ejecutarPrograma() {
 		pedido->pagina = actual_pcb->indice_codigo[actual_pcb->pc].pag;
 		pedido->offsetPagina = actual_pcb->indice_codigo[actual_pcb->pc].offset;
 		pedido->tamanio = actual_pcb->indice_codigo[actual_pcb->pc].size;
+		actual_pcb->pc++;
 		char* buffer =  serializar_pedido_solicitar_bytes(pedido);
 		int longitudMensaje = sizeof(t_pedido_solicitar_bytes);
 		if(!empaquetarEnviarMensaje(socketMemoria, "SOLC_BYTES", longitudMensaje, buffer)) {
@@ -73,7 +74,6 @@ void ejecutarPrograma() {
 		free(bufferRespuesta);
 		sleep(quantumSleep * 0.001);
 		cicloActual--;
-		actual_pcb->pc++;
 		if(error_en_ejecucion || proceso_bloqueado)
 			break;
 	}

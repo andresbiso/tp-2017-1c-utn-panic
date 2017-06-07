@@ -153,6 +153,9 @@ void finalizarProceso(void* pidArg){
 void printMessage(char* data, int socket){
 	t_aviso_consola* aviso = deserializar_aviso_consola(data);
 
+	if(aviso->mensaje[aviso->tamaniomensaje]=='\n')
+		aviso->mensaje[aviso->tamaniomensaje]='\0';
+
 	log_info(logNucleo,"Se recibio un MENSAJE:%s para el PID:%d de la CONSOLA:%d",aviso->mensaje,aviso->idPrograma,socket);
 
 	pthread_mutex_lock(&mutexProgramasActuales);

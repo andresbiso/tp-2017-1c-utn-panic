@@ -16,6 +16,7 @@ typedef struct {
 } t_semaforo;
 
 t_dictionary *semaforos;
+t_dictionary *paginasGlobalesHeap;
 
 void getVariableCompartida(char* data, int socket);
 void setVariableCompartida(char* data, int socket);
