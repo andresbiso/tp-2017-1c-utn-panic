@@ -7,6 +7,19 @@
 
 #include "estados.h"
 
+void enviarMensajeConsola(char*mensaje,char*key,int32_t pid,int32_t socket,int32_t terminoProceso,int32_t mostrarPorPantalla){
+	t_aviso_consola aviso_consola;
+	aviso_consola.mensaje = mensaje;
+	aviso_consola.tamaniomensaje = strlen(aviso_consola.mensaje);
+	aviso_consola.idPrograma = pid;
+	aviso_consola.terminoProceso = terminoProceso;
+	aviso_consola.mostrarPorPantalla = mostrarPorPantalla;
+
+	char *pedido_serializado = serializar_aviso_consola(&aviso_consola);
+
+	empaquetarEnviarMensaje(socket,key,aviso_consola.tamaniomensaje+(sizeof(int32_t)*4),pedido_serializado);
+	free(pedido_serializado);
+}
 
 void crear_colas(){
 	colaNew = queue_create();
@@ -111,6 +124,26 @@ void moverA_colaReady(t_pcb *pcb){
 	queue_push(colaReady, pcb);
 	pthread_mutex_unlock(&colaReadyMutex);
 	log_debug(logEstados, "El PCB: %d paso a la cola Ready",pcb->pid);
+
+	if(processIsForFinish(pcb->pid)){
+		pcb->exit_code=FINALIZAR_BY_CONSOLE;
+		moverA_colaExit(pcb);
+		t_respuesta_finalizar_programa* respuesta = finalizarProcesoMemoria(pcb->pid);
+
+		if(respuesta->codigo==OK_FINALIZAR){
+			char* message = string_from_format("Proceso finalizado con exitCode: %d\0",pcb->exit_code);
+
+			pthread_mutex_lock(&mutexProgramasActuales);
+			t_consola* consola = matchear_consola_por_pid(pcb->pid);
+			enviarMensajeConsola(message,"END_PRGM",pcb->pid,consola->socket,1,0);
+			free(consola);
+			pthread_mutex_unlock(&mutexProgramasActuales);
+
+			free(message);
+		}
+	}
+
+
 }
 
 t_pcb* sacarCualquieraDeReady(){
@@ -238,6 +271,28 @@ void program_change_running(int32_t pid, bool newState){
 	t_consola* consola = matchear_consola_por_pid(pid);
 	consola->corriendo=newState;
 	pthread_mutex_unlock(&mutexProgramasActuales);
+}
+
+t_respuesta_finalizar_programa* finalizarProcesoMemoria(int32_t pid){
+	t_pedido_finalizar_programa pedido;
+	pedido.pid = pid;
+
+	char* buffer = serializar_pedido_finalizar_programa(&pedido);
+	empaquetarEnviarMensaje(socketMemoria,"FINZ_PROGM",sizeof(t_pedido_finalizar_programa),buffer);
+	free(buffer);
+
+	t_package* paquete = recibirPaqueteMemoria();
+	t_respuesta_finalizar_programa* respuesta = deserializar_respuesta_finalizar_programa(paquete->datos);
+	borrarPaquete(paquete);
+
+	return respuesta;
+}
+
+t_package* recibirPaqueteMemoria(){
+	pthread_mutex_lock(&mutexMemoria);
+	t_package* paquete = recibirPaquete(socketMemoria,NULL);
+	pthread_mutex_unlock(&mutexMemoria);
+	return paquete;
 }
 
 

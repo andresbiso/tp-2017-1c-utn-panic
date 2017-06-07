@@ -14,7 +14,6 @@ typedef struct {
 	char* codigo;
 } __attribute__((__packed__)) threadPrograma;
 
-int socketMemoria;
 int socketFS;
 int socketCPU;
 int socketcpuConectadas;
@@ -23,20 +22,6 @@ int tamanio_pag_memoria;
 sem_t grado;
 
 //consola
-
-void enviarMensajeConsola(char*mensaje,char*key,int32_t pid,int32_t socket,int32_t terminoProceso,int32_t mostrarPorPantalla){
-	t_aviso_consola aviso_consola;
-	aviso_consola.mensaje = mensaje;
-	aviso_consola.tamaniomensaje = strlen(aviso_consola.mensaje);
-	aviso_consola.idPrograma = pid;
-	aviso_consola.terminoProceso = terminoProceso;
-	aviso_consola.mostrarPorPantalla = mostrarPorPantalla;
-
-	char *pedido_serializado = serializar_aviso_consola(&aviso_consola);
-
-	empaquetarEnviarMensaje(socket,key,aviso_consola.tamaniomensaje+(sizeof(int32_t)*4),pedido_serializado);
-	free(pedido_serializado);
-}
 
 void finalizarProgramaConsola(char*data,int socket){
 	int32_t* pid = malloc(sizeof(int32_t));
@@ -72,13 +57,6 @@ void inotifyWatch(void*args){
 //inotify
 
 //General
-
-t_package* recibirPaqueteMemoria(){
-	pthread_mutex_lock(&mutexMemoria);
-	t_package* paquete = recibirPaquete(socketMemoria,NULL);
-	pthread_mutex_unlock(&mutexMemoria);
-	return paquete;
-}
 
 void addForFinishIfNotContains(int32_t* pid){
 	bool matchPID(void* elemt){
@@ -132,21 +110,6 @@ void retornarPCB(char* data,int socket){
 
 	enviar_a_cpu();
 
-}
-
-t_respuesta_finalizar_programa* finalizarProcesoMemoria(int32_t pid){
-	t_pedido_finalizar_programa pedido;
-	pedido.pid = pid;
-
-	char* buffer = serializar_pedido_finalizar_programa(&pedido);
-	empaquetarEnviarMensaje(socketMemoria,"FINZ_PROGM",sizeof(t_pedido_finalizar_programa),buffer);
-	free(buffer);
-
-	t_package* paquete = recibirPaqueteMemoria();
-	t_respuesta_finalizar_programa* respuesta = deserializar_respuesta_finalizar_programa(paquete->datos);
-	borrarPaquete(paquete);
-
-	return respuesta;
 }
 
 void finalizarProceso(void* pidArg){
@@ -806,6 +769,7 @@ int main(int argc, char** argv) {
 	pthread_mutex_init(&listForFinishMutex,NULL);
 	pthread_mutex_init(&mutexCPUConectadas,NULL);
 	pthread_mutex_init(&mutexProgramasActuales,NULL);
+	pthread_mutex_init(&mutexMemoria,NULL);
 	sem_init(&stopped,0,0);
 
 	isStopped=false;

@@ -59,7 +59,10 @@ pthread_mutex_t stoppedMutex;
 pthread_mutex_t listForFinishMutex;
 pthread_mutex_t mutexCPUConectadas;
 pthread_mutex_t mutexProgramasActuales;
+pthread_mutex_t mutexMemoria;
 sem_t stopped;
+
+int socketMemoria;
 
 t_list* listForFinish;
 
@@ -88,6 +91,8 @@ bool processIsForFinish(int32_t pid);
 void cpu_change_running(int32_t socket, bool newState);
 t_consola* matchear_consola_por_pid(int pid);
 void program_change_running(int32_t pid, bool newState);
-
+void enviarMensajeConsola(char*mensaje,char*key,int32_t pid,int32_t socket,int32_t terminoProceso,int32_t mostrarPorPantalla);
+t_respuesta_finalizar_programa* finalizarProcesoMemoria(int32_t pid);
+t_package* recibirPaqueteMemoria();
 
 #endif /* SRC_ESTADOS_H_ */

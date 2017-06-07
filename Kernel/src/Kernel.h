@@ -38,7 +38,6 @@ modo_planificacion Modo;
 
 int ultimoPID;
 pthread_mutex_t	mutexPID = PTHREAD_MUTEX_INITIALIZER;
-pthread_mutex_t mutexMemoria = PTHREAD_MUTEX_INITIALIZER;
 
 t_config* cargarConfiguracion(char* archivo);
 void cargar_varCompartidas();
