@@ -260,7 +260,7 @@ t_valor_variable asignarValorCompartida(t_nombre_compartida	variable, t_valor_va
 	memcpy(pedido.nombre_variable_compartida,variable,strlen(variable));
 
 	char *buffer = serializar_pedido_asignar_variable_compartida(&pedido);
-	empaquetarEnviarMensaje(socketKernel,"GET_VAR_COMP",(sizeof(int32_t)*2)+pedido.tamanio,buffer);
+	empaquetarEnviarMensaje(socketKernel,"SET_VAR_COMP",(sizeof(int32_t)*3)+pedido.tamanio,buffer);
 	free(buffer);
 	free(pedido.nombre_variable_compartida);
 
@@ -272,7 +272,7 @@ t_valor_variable asignarValorCompartida(t_nombre_compartida	variable, t_valor_va
 
 	t_respuesta_asignar_variable_compartida* respuesta = deserializar_respuesta_asignar_variable_compartida(paquete->datos);
 
-	if(respuesta->codigo == OK_VARIABLE){
+	if(respuesta->codigo == OK_ASIGNAR_VARIABLE){
 		log_info(cpu_log,"Se ha obtenido el valor de la variable compartida correctamente");
 	}else{
 		log_error(cpu_log,"Error al intentar obtener valor variable compartida");
@@ -281,7 +281,7 @@ t_valor_variable asignarValorCompartida(t_nombre_compartida	variable, t_valor_va
 		return -1;
 	}
 
-	return respuesta->valor_variable_compartida;
+	return valor;
 }
 void irAlLabel(t_nombre_etiqueta t_nombre_etiqueta) {
 

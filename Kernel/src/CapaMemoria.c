@@ -11,7 +11,10 @@
 void getVariableCompartida(char* data, int socket){
 	t_pedido_obtener_variable_compartida* pedido = deserializar_pedido_obtener_variable_compartida(data);
 
-	log_info(logNucleo,"Se recibió un mensaje de la CPU:%d por el PID:%d para obtener la variable:%s",socket,pedido->pid,pedido->nombre_variable_compartida);
+	if(pedido->nombre_variable_compartida[pedido->tamanio]=='\n')
+		pedido->nombre_variable_compartida[pedido->tamanio]='\0';
+
+	log_info(logNucleo,"Se recibio un mensaje de la CPU:%d por el PID:%d para obtener la variable:%s",socket,pedido->pid,pedido->nombre_variable_compartida);
 
 	t_respuesta_obtener_variable_compartida respuesta;
 
@@ -35,7 +38,32 @@ void getVariableCompartida(char* data, int socket){
 }
 
 void setVariableCompartida(char* data, int socket){
-	//TODO
+	t_pedido_asignar_variable_compartida* pedido = deserializar_pedido_asignar_variable_compartida(data);
+
+	if(pedido->nombre_variable_compartida[pedido->tamanio]=='\n')
+		pedido->nombre_variable_compartida[pedido->tamanio]='\0';
+
+	log_info(logNucleo,"Se recibio un mensaje de la CPU:%d por el PID:%d para asignar la variable:%s",socket,pedido->pid,pedido->nombre_variable_compartida);
+
+	t_respuesta_asignar_variable_compartida respuesta;
+
+	if(!dictionary_has_key(variablesCompartidas,pedido->nombre_variable_compartida)){
+		log_info(logNucleo,"Variable:%s no encontrada",pedido->nombre_variable_compartida);
+		respuesta.codigo=ERROR_ASIGNAR_VARIABLE;
+	}else{
+		log_info(logNucleo,"Variable:%s encontrada",pedido->nombre_variable_compartida);
+
+		int32_t* valorActual = ((int32_t*)dictionary_get(variablesCompartidas,pedido->nombre_variable_compartida));
+		*valorActual=pedido->valor_variable_compartida;
+		respuesta.codigo=OK_ASIGNAR_VARIABLE;
+	}
+
+	char* buffer = serializar_respuesta_asignar_variable_compartida(&respuesta);
+	empaquetarEnviarMensaje(socket,"RES_ASIG_VARIABLE",sizeof(t_respuesta_asignar_variable_compartida),buffer);
+
+	free(buffer);
+	free(pedido->nombre_variable_compartida);
+	free(pedido);
 }
 
 void wait(char* data,int socket){
