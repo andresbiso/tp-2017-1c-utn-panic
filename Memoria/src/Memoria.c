@@ -417,7 +417,6 @@ t_pagina* encontrarPagina(int32_t pid,int32_t nroPagina){
 			if(indice>0)
 				indice--;
 			else{
-				free(pag);
 				pag=NULL;
 				break;
 			}

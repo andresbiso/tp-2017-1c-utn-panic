@@ -98,7 +98,7 @@ void retornarPCB(char* data,int socket){
 			pthread_mutex_lock(&mutexProgramasActuales);
 			t_consola* consola = matchear_consola_por_pid(pcb->pid);
 			enviarMensajeConsola(message,"END_PRGM",pcb->pid,consola->socket,1,0);
-			free(consola);
+			eliminarConsolaPorPID(pcb->pid);
 			pthread_mutex_unlock(&mutexProgramasActuales);
 
 			free(message);
@@ -136,7 +136,7 @@ void finalizarProceso(void* pidArg){
 					enviarMensajeConsola(message,"LOG_MESSAGE",pcb->pid,consola->socket,1,0);
 					free(message);
 				}
-				free(consola);
+				eliminarConsolaPorPID(pcb->pid);
 				moverA_colaExit(pcb);
 
 				free(respuesta);
@@ -153,8 +153,8 @@ void finalizarProceso(void* pidArg){
 void printMessage(char* data, int socket){
 	t_aviso_consola* aviso = deserializar_aviso_consola(data);
 
-	if(aviso->mensaje[aviso->tamaniomensaje]=='\n')
-		aviso->mensaje[aviso->tamaniomensaje]='\0';
+	if(aviso->mensaje[aviso->tamaniomensaje-2]=='\n')
+		aviso->mensaje[aviso->tamaniomensaje-2]='\0';
 
 	log_info(logNucleo,"Se recibio un MENSAJE:%s para el PID:%d de la CONSOLA:%d",aviso->mensaje,aviso->idPrograma,socket);
 

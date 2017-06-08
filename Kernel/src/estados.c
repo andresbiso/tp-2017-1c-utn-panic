@@ -136,7 +136,7 @@ void moverA_colaReady(t_pcb *pcb){
 			pthread_mutex_lock(&mutexProgramasActuales);
 			t_consola* consola = matchear_consola_por_pid(pcb->pid);
 			enviarMensajeConsola(message,"END_PRGM",pcb->pid,consola->socket,1,0);
-			free(consola);
+			eliminarConsolaPorPID(consola->pid);
 			pthread_mutex_unlock(&mutexProgramasActuales);
 
 			free(message);
@@ -263,6 +263,13 @@ t_consola* matchear_consola_por_pid(int pid){
 						return ((t_consola*)consola)->pid == pid;
 					}
 	return list_find(lista_programas_actuales, matchPID_Consola);
+}
+
+void eliminarConsolaPorPID(int32_t pid){
+	bool matchPID_Consola(void *consola) {
+							return ((t_consola*)consola)->pid == pid;
+	}
+	list_remove_and_destroy_by_condition(lista_programas_actuales,matchPID_Consola,free);
 }
 
 void program_change_running(int32_t pid, bool newState){
