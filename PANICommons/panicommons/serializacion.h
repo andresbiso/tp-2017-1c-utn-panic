@@ -152,7 +152,6 @@ typedef enum{OK_ASIGNAR_VARIABLE=1,ERROR_ASIGNAR_VARIABLE=-1} codigo_asignar_var
 
 typedef struct
 {
-	int32_t valor_variable_compartida;
 	codigo_asignar_variable_compartida codigo;
 } __attribute__((__packed__))t_respuesta_asignar_variable_compartida;
 

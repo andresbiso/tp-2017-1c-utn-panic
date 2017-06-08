@@ -223,7 +223,7 @@ t_valor_variable obtenerValorCompartida(t_nombre_compartida	variable) {
 	pedido.nombre_variable_compartida=malloc(strlen(variable));
 	memcpy(pedido.nombre_variable_compartida,variable,strlen(variable));
 
-	char *buffer = serializar_pedido_variable_compartida(&pedido);
+	char *buffer = serializar_pedido_obtener_variable_compartida(&pedido);
 	empaquetarEnviarMensaje(socketKernel,"GET_VAR_COMP",(sizeof(int32_t)*2)+pedido.tamanio,buffer);
 	free(buffer);
 	free(pedido.nombre_variable_compartida);
@@ -234,7 +234,7 @@ t_valor_variable obtenerValorCompartida(t_nombre_compartida	variable) {
 
 	t_package *paquete = recibirPaquete(socketKernel,NULL);
 
-	t_respuesta_obtener_variable_compartida* respuesta = deserializar_respuesta_variable_compartida(paquete->datos);
+	t_respuesta_obtener_variable_compartida* respuesta = deserializar_respuesta_obtener_variable_compartida(paquete->datos);
 
 	if(respuesta->codigo == OK_VARIABLE){
 		log_info(cpu_log,"Se ha obtenido el valor de la variable compartida correctamente");
@@ -259,8 +259,8 @@ t_valor_variable asignarValorCompartida(t_nombre_compartida	variable, t_valor_va
 	pedido.valor_variable_compartida=valor;
 	memcpy(pedido.nombre_variable_compartida,variable,strlen(variable));
 
-	char *buffer = serializar_pedido_variable_compartida(&pedido);
-	empaquetarEnviarMensaje(socketKernel,"GET_VAR_COMP",(sizeof(int32_t)*2)+pedido.tamanio,buffer);
+	char *buffer = serializar_pedido_asignar_variable_compartida(&pedido);
+	empaquetarEnviarMensaje(socketKernel,"SET_VAR_COMP",(sizeof(int32_t)*3)+pedido.tamanio,buffer);
 	free(buffer);
 	free(pedido.nombre_variable_compartida);
 
@@ -270,9 +270,9 @@ t_valor_variable asignarValorCompartida(t_nombre_compartida	variable, t_valor_va
 
 	t_package *paquete = recibirPaquete(socketKernel,NULL);
 
-	t_respuesta_asignar_variable_compartida* respuesta = deserializar_respuesta_variable_compartida(paquete->datos);
+	t_respuesta_asignar_variable_compartida* respuesta = deserializar_respuesta_asignar_variable_compartida(paquete->datos);
 
-	if(respuesta->codigo == OK_VARIABLE){
+	if(respuesta->codigo == OK_ASIGNAR_VARIABLE){
 		log_info(cpu_log,"Se ha obtenido el valor de la variable compartida correctamente");
 	}else{
 		log_error(cpu_log,"Error al intentar obtener valor variable compartida");
@@ -281,7 +281,7 @@ t_valor_variable asignarValorCompartida(t_nombre_compartida	variable, t_valor_va
 		return -1;
 	}
 
-	return respuesta->valor_variable_compartida;
+	return valor;
 }
 void irAlLabel(t_nombre_etiqueta t_nombre_etiqueta) {
 
@@ -351,8 +351,8 @@ void signalAnsisop(t_nombre_semaforo identificador_semaforo) {
 	pedido.semId=malloc(strlen(identificador_semaforo));
 	memcpy(pedido.semId,identificador_semaforo,strlen(identificador_semaforo));
 
-	char *buffer = serializar_pedido_wait(&pedido);
-	empaquetarEnviarMensaje(socketKernel,"WAIT",sizeof(int32_t)+pedido.tamanio,buffer);
+	char *buffer = serializar_pedido_signal(&pedido);
+	empaquetarEnviarMensaje(socketKernel,"SIGNAL",sizeof(int32_t)+pedido.tamanio,buffer);
 	free(buffer);
 	free(pedido.semId);
 

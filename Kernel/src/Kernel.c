@@ -14,7 +14,6 @@ typedef struct {
 	char* codigo;
 } __attribute__((__packed__)) threadPrograma;
 
-int socketMemoria;
 int socketFS;
 int socketCPU;
 int socketcpuConectadas;
@@ -23,20 +22,6 @@ int tamanio_pag_memoria;
 sem_t grado;
 
 //consola
-
-void enviarMensajeConsola(char*mensaje,char*key,int32_t pid,int32_t socket,int32_t terminoProceso,int32_t mostrarPorPantalla){
-	t_aviso_consola aviso_consola;
-	aviso_consola.mensaje = mensaje;
-	aviso_consola.tamaniomensaje = strlen(aviso_consola.mensaje);
-	aviso_consola.idPrograma = pid;
-	aviso_consola.terminoProceso = terminoProceso;
-	aviso_consola.mostrarPorPantalla = mostrarPorPantalla;
-
-	char *pedido_serializado = serializar_aviso_consola(&aviso_consola);
-
-	empaquetarEnviarMensaje(socket,key,aviso_consola.tamaniomensaje+(sizeof(int32_t)*4),pedido_serializado);
-	free(pedido_serializado);
-}
 
 void finalizarProgramaConsola(char*data,int socket){
 	int32_t* pid = malloc(sizeof(int32_t));
@@ -73,13 +58,6 @@ void inotifyWatch(void*args){
 
 //General
 
-t_package* recibirPaqueteMemoria(){
-	pthread_mutex_lock(&mutexMemoria);
-	t_package* paquete = recibirPaquete(socketMemoria,NULL);
-	pthread_mutex_unlock(&mutexMemoria);
-	return paquete;
-}
-
 void addForFinishIfNotContains(int32_t* pid){
 	bool matchPID(void* elemt){
 		return (*((int32_t*) elemt))==(*pid);
@@ -102,10 +80,7 @@ void retornarPCB(char* data,int socket){
 	t_pcb* pcbOld = sacarDe_colaExec(pcb->pid);
 	destruir_pcb(pcbOld);
 
-	t_relacion* relacion = matchear_relacion_por_socketcpu_pid(socket,pcb->pid);
-	pthread_mutex_lock(&mutexCPUConectadas);
-	relacion->cpu->corriendo=false;
-	pthread_mutex_unlock(&mutexCPUConectadas);
+	cpu_change_running(socket,false);
 
 	if(processIsForFinish(pcb->pid) && pcb->exit_code>0){
 		pcb->exit_code=FINALIZAR_BY_CONSOLE;
@@ -119,33 +94,22 @@ void retornarPCB(char* data,int socket){
 
 		if(respuesta->codigo==OK_FINALIZAR){
 			char* message = string_from_format("Proceso finalizado con exitCode: %d\0",pcb->exit_code);
-			enviarMensajeConsola(message,"END_PRGM",pcb->pid,relacion->programa->socket,1,0);
+
+			pthread_mutex_lock(&mutexProgramasActuales);
+			t_consola* consola = matchear_consola_por_pid(pcb->pid);
+			enviarMensajeConsola(message,"END_PRGM",pcb->pid,consola->socket,1,0);
+			eliminarConsolaPorPID(pcb->pid);
+			pthread_mutex_unlock(&mutexProgramasActuales);
+
 			free(message);
 		}
 	}else{
 		moverA_colaReady(pcb);
+		program_change_running(pcb->pid,false);
 	}
-	pthread_mutex_lock(&mutexProgramasActuales);
-	relacion->programa->corriendo=false;
-	pthread_mutex_unlock(&mutexProgramasActuales);
 
 	enviar_a_cpu();
 
-}
-
-t_respuesta_finalizar_programa* finalizarProcesoMemoria(int32_t pid){
-	t_pedido_finalizar_programa pedido;
-	pedido.pid = pid;
-
-	char* buffer = serializar_pedido_finalizar_programa(&pedido);
-	empaquetarEnviarMensaje(socketMemoria,"FINZ_PROGM",sizeof(t_pedido_finalizar_programa),buffer);
-	free(buffer);
-
-	t_package* paquete = recibirPaqueteMemoria();
-	t_respuesta_finalizar_programa* respuesta = deserializar_respuesta_finalizar_programa(paquete->datos);
-	borrarPaquete(paquete);
-
-	return respuesta;
 }
 
 void finalizarProceso(void* pidArg){
@@ -153,39 +117,48 @@ void finalizarProceso(void* pidArg){
 
 	log_info(logNucleo,"A punto de finalizar el proceso con el PID:%d",*pid);
 
+	pthread_mutex_lock(&mutexProgramasActuales);
 	t_consola* consola = matchear_consola_por_pid(*pid);
 
-	if(consola->corriendo==false){
-		//Puede estar bloqueado o en ready
-		t_pcb* pcb;
+	if(consola != NULL){
+		if(consola->corriendo==false){
+			//Puede estar bloqueado o en ready
+			t_pcb* pcb;
 
-		pcb = sacarDe_colaReady(*pid);
-		if(pcb!=NULL){//Esta en ready
-			log_info(logNucleo,"Finalizando proceso con PID:%d, que estaba en READY",*pid);
+			pcb = sacarDe_colaReady(*pid);
+			if(pcb!=NULL){//Esta en ready
+				log_info(logNucleo,"Finalizando proceso con PID:%d, que estaba en READY",*pid);
 
-			t_respuesta_finalizar_programa* respuesta = finalizarProcesoMemoria(*pid);
-			pcb->exit_code=FINALIZAR_BY_CONSOLE;
-			if(respuesta->codigo==OK_FINALIZAR){
-				char* message=string_from_format("Proceso finalizado con exitCode: %d\0",pcb->exit_code);
-				enviarMensajeConsola(message,"LOG_MESSAGE",pcb->pid,consola->socket,1,0);
-				free(message);
+				t_respuesta_finalizar_programa* respuesta = finalizarProcesoMemoria(*pid);
+				pcb->exit_code=FINALIZAR_BY_CONSOLE;
+				if(respuesta->codigo==OK_FINALIZAR){
+					char* message=string_from_format("Proceso finalizado con exitCode: %d\0",pcb->exit_code);
+					enviarMensajeConsola(message,"LOG_MESSAGE",pcb->pid,consola->socket,1,0);
+					free(message);
+				}
+				eliminarConsolaPorPID(pcb->pid);
+				moverA_colaExit(pcb);
+
+				free(respuesta);
+			}else{//Esta bloqueado
+				addForFinishIfNotContains(pid);
 			}
-			moverA_colaExit(pcb);
-
-			free(respuesta);
-		}else{//Esta bloqueado
+		}else{
 			addForFinishIfNotContains(pid);
 		}
-	}else{
-		addForFinishIfNotContains(pid);
 	}
+	pthread_mutex_unlock(&mutexProgramasActuales);
 }
 
 void printMessage(char* data, int socket){
 	t_aviso_consola* aviso = deserializar_aviso_consola(data);
 
+	if(aviso->mensaje[aviso->tamaniomensaje-2]=='\n')
+		aviso->mensaje[aviso->tamaniomensaje-2]='\0';
+
 	log_info(logNucleo,"Se recibio un MENSAJE:%s para el PID:%d de la CONSOLA:%d",aviso->mensaje,aviso->idPrograma,socket);
 
+	pthread_mutex_lock(&mutexProgramasActuales);
 	t_consola* consola =matchear_consola_por_pid(aviso->idPrograma);
 
 	if(consola !=NULL){
@@ -195,6 +168,7 @@ void printMessage(char* data, int socket){
 	}else{
 		log_warning(logNucleo,"No se encontró la consola para el PID:%d",aviso->idPrograma);
 	}
+	pthread_mutex_unlock(&mutexProgramasActuales);
 
 	free(aviso->mensaje);
 	free(aviso);
@@ -214,7 +188,9 @@ void end(int size, char** functionAndParams){
 	int32_t* pid = malloc(sizeof(int32_t));
 	*pid=atoi(functionAndParams[1]);
 
+	pthread_mutex_lock(&mutexProgramasActuales);
 	t_consola* consola = matchear_consola_por_pid(*pid);
+	pthread_mutex_unlock(&mutexProgramasActuales);
 
 	if(consola==NULL){
 		printf("PID no encontrado\n\r");
@@ -682,19 +658,6 @@ void cargar_programa(int32_t socket, int pid){
 	log_debug(logNucleo,"se agrego a la lista el programa con socket %d, pid: %d", socket, programa_nuevo->pid);
 }
 
-void relacionar_cpu_programa(t_cpu *cpu, t_consola *programa, t_pcb *pcb){
-	t_relacion *nueva_relacion;
-	nueva_relacion=malloc(sizeof(t_relacion));
-	cpu->corriendo=true;
-	programa->corriendo=true;
-	nueva_relacion->cpu=cpu;
-	nueva_relacion->programa=programa;
-	list_add(lista_relacion,nueva_relacion);
-	log_info(logNucleo,"Se agrego la relacion entre cpu del socket: %d y el programa del socket: %d",cpu->socket, programa->socket);
-	moverA_colaExec(pcb);
-	log_debug(logNucleo, "Movi a la cola Exec el pcb con pid: %d", pcb->pid);
-}
-
 void elminar_consola_por_pid(int pid){
 
 	bool matchconsola(void *consola) {
@@ -714,44 +677,6 @@ void eliminar_cpu_por_socket(int socketcpu){
 	pthread_mutex_lock(&mutexCPUConectadas);
 	list_remove_and_destroy_by_condition(lista_cpus_conectadas,matchSocket_Cpu,free);
 	pthread_mutex_unlock(&mutexCPUConectadas);
-}
-
-t_consola* matchear_consola_por_pid(int pid){
-
-	bool matchPID_Consola(void *consola) {
-						return ((t_consola*)consola)->pid == pid;
-					}
-
-	t_consola * programa_terminado=list_find(lista_programas_actuales, matchPID_Consola);
-	return programa_terminado;
-}
-
-t_relacion* matchear_relacion_por_socketcpu_pid(int socket,int32_t pid){
-
-	bool matchsocketcpurelacion(void *relacion) {
-						return ((t_relacion*)relacion)->cpu->socket == socket && ((t_relacion*)relacion)->programa->pid==pid;
-					}
-
-	return list_find(lista_relacion, matchsocketcpurelacion);
-}
-
-t_relacion* matchear_relacion_por_socketconsola(int socket){
-
-	bool matchsocketconsolarelacion(void *relacion) {
-						return ((t_relacion*)relacion)->programa->socket == socket;
-					}
-
-	return list_find(lista_relacion, matchsocketconsolarelacion);
-}
-
-void elminar_consola_por_socket(int socket){
-
-	bool matchconsola(void *consola) {
-						return ((t_consola*)consola)->socket == socket;
-					}
-	pthread_mutex_lock(&mutexProgramasActuales);
-	list_remove_and_destroy_by_condition(lista_programas_actuales,matchconsola,free);
-	pthread_mutex_lock(&mutexProgramasActuales);
 }
 
 bool esta_libre(void * unaCpu){
@@ -780,16 +705,24 @@ void enviar_a_cpu(){
 		return ((t_consola*)programa)->pid == pcb_ready->pid;
 	}
 
+	pthread_mutex_lock(&mutexProgramasActuales);
 	t_consola *programa = list_find(lista_programas_actuales, matchPID);
+
 	if(!programa){
 		pthread_mutex_unlock(&mutexCPUConectadas);
+		pthread_mutex_unlock(&mutexProgramasActuales);
 		return;
 	}
 
-	log_debug(logNucleo,"Corriendo el PCB (PID %d) del programa (socket %d)en el CPU (socket %d)",pcb_ready->pid,programa->socket,cpu_libre->socket);
+	log_debug(logNucleo,"Corriendo el PCB (PID %d) del programa (socket %d) en el CPU (socket %d)",pcb_ready->pid,programa->socket,cpu_libre->socket);
 
-	relacionar_cpu_programa(cpu_libre,programa,pcb_ready);
+	moverA_colaExec(pcb_ready);
+	log_debug(logNucleo, "Movi a la cola Exec el pcb con pid: %d", pcb_ready->pid);
+
+	programa->corriendo=true;
+	cpu_libre->corriendo=true;
 	pthread_mutex_unlock(&mutexCPUConectadas);
+	pthread_mutex_unlock(&mutexProgramasActuales);
 
 	log_info(logNucleo, "Pude relacionar cpu con programa");
 
@@ -829,6 +762,7 @@ int main(int argc, char** argv) {
 	pthread_t hiloInotify;
 	pthread_create(&hiloInotify,NULL,(void*)&inotifyWatch,NULL);
 
+	pthread_mutex_init(&relacionMutex,NULL);
 	pthread_mutex_init(&colaNewMutex,NULL);
 	pthread_mutex_init(&colaReadyMutex,NULL);
 	pthread_mutex_init(&colaBlockedMutex,NULL);
@@ -836,6 +770,9 @@ int main(int argc, char** argv) {
 	pthread_mutex_init(&colaExitMutex,NULL);
 	pthread_mutex_init(&stoppedMutex,NULL);
 	pthread_mutex_init(&listForFinishMutex,NULL);
+	pthread_mutex_init(&mutexCPUConectadas,NULL);
+	pthread_mutex_init(&mutexProgramasActuales,NULL);
+	pthread_mutex_init(&mutexMemoria,NULL);
 	sem_init(&stopped,0,0);
 
 	isStopped=false;

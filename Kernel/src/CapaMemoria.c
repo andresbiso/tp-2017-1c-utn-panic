@@ -8,14 +8,15 @@
 #include "CapaMemoria.h"
 //Capa de memoria
 
-//TODO Ver que pasa en el desbloqueo cuando el proceso esta en lista para finalizar (sea por consola o kernel)
-
 void getVariableCompartida(char* data, int socket){
-	t_pedido_variable_compartida* pedido = deserializar_pedido_variable_compartida(data);
+	t_pedido_obtener_variable_compartida* pedido = deserializar_pedido_obtener_variable_compartida(data);
 
-	log_info(logNucleo,"Se recibió un mensaje de la CPU:%d por el PID:%d para obtener la variable:%s",socket,pedido->pid,pedido->nombre_variable_compartida);
+	if(pedido->nombre_variable_compartida[pedido->tamanio]=='\n')
+		pedido->nombre_variable_compartida[pedido->tamanio]='\0';
 
-	t_respuesta_variable_compartida respuesta;
+	log_info(logNucleo,"Se recibio un mensaje de la CPU:%d por el PID:%d para obtener la variable:%s",socket,pedido->pid,pedido->nombre_variable_compartida);
+
+	t_respuesta_obtener_variable_compartida respuesta;
 
 	if(!dictionary_has_key(variablesCompartidas,pedido->nombre_variable_compartida)){
 		log_info(logNucleo,"Variable:%s no encontrada",pedido->nombre_variable_compartida);
@@ -28,8 +29,8 @@ void getVariableCompartida(char* data, int socket){
 		respuesta.codigo=OK_VARIABLE;
 	}
 
-	char* buffer = serializar_respuesta_variable_compartida(&respuesta);
-	empaquetarEnviarMensaje(socket,"RES_VARIABLE",sizeof(t_respuesta_variable_compartida),buffer);
+	char* buffer = serializar_respuesta_obtener_variable_compartida(&respuesta);
+	empaquetarEnviarMensaje(socket,"RES_VARIABLE",sizeof(t_respuesta_obtener_variable_compartida),buffer);
 
 	free(buffer);
 	free(pedido->nombre_variable_compartida);
@@ -37,12 +38,40 @@ void getVariableCompartida(char* data, int socket){
 }
 
 void setVariableCompartida(char* data, int socket){
-	//TODO
+	t_pedido_asignar_variable_compartida* pedido = deserializar_pedido_asignar_variable_compartida(data);
+
+	if(pedido->nombre_variable_compartida[pedido->tamanio]=='\n')
+		pedido->nombre_variable_compartida[pedido->tamanio]='\0';
+
+	log_info(logNucleo,"Se recibio un mensaje de la CPU:%d por el PID:%d para asignar la variable:%s",socket,pedido->pid,pedido->nombre_variable_compartida);
+
+	t_respuesta_asignar_variable_compartida respuesta;
+
+	if(!dictionary_has_key(variablesCompartidas,pedido->nombre_variable_compartida)){
+		log_info(logNucleo,"Variable:%s no encontrada",pedido->nombre_variable_compartida);
+		respuesta.codigo=ERROR_ASIGNAR_VARIABLE;
+	}else{
+		log_info(logNucleo,"Variable:%s encontrada",pedido->nombre_variable_compartida);
+
+		int32_t* valorActual = ((int32_t*)dictionary_get(variablesCompartidas,pedido->nombre_variable_compartida));
+		*valorActual=pedido->valor_variable_compartida;
+		respuesta.codigo=OK_ASIGNAR_VARIABLE;
+	}
+
+	char* buffer = serializar_respuesta_asignar_variable_compartida(&respuesta);
+	empaquetarEnviarMensaje(socket,"RES_ASIG_VARIABLE",sizeof(t_respuesta_asignar_variable_compartida),buffer);
+
+	free(buffer);
+	free(pedido->nombre_variable_compartida);
+	free(pedido);
 }
 
 void wait(char* data,int socket){
 	t_pedido_wait* pedido = deserializar_pedido_wait(data);
 	t_respuesta_wait respuesta;
+
+	if(pedido->semId[pedido->tamanio-1]=='\n')
+		pedido->semId[pedido->tamanio-1]='\0';
 
 	log_info(logNucleo,"Pedido de WAIT en SEM:%s",pedido->semId);
 
@@ -61,6 +90,9 @@ void wait(char* data,int socket){
 			int32_t* pidBloqueado = malloc(sizeof(int32_t));
 			*pidBloqueado=pedido->pcb->pid;
 			queue_push(sem->cola,pidBloqueado);
+
+			cpu_change_running(socket,false);
+			program_change_running(pedido->pcb->pid,false);
 		}else{
 			log_info(logNucleo,"El SEM:%s queda con valor:%d y no se bloquea al PID:%d",pedido->semId,sem->valor,pedido->pcb->pid);
 			respuesta.respuesta=WAIT_OK;
@@ -80,6 +112,9 @@ void signal(char* data,int socket){
 	t_pedido_signal* pedido = deserializar_pedido_signal(data);
 
 	t_respuesta_signal respuesta;
+
+	if(pedido->semId[pedido->tamanio-1]=='\n')
+			pedido->semId[pedido->tamanio-1]='\0';
 
 	log_info(logNucleo,"Pedido de SIGNAL en SEM:%s",pedido->semId);
 
@@ -111,6 +146,15 @@ void signal(char* data,int socket){
 	free(pedido->semId);
 	free(pedido);
 }
+
+void reservar(void* data,int socket){
+	//TODO
+}
+
+void liberar(void* data,int socket){
+	//TODO
+}
+
 
 
 //Capa de memoria

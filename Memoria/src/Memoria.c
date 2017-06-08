@@ -31,7 +31,7 @@ int32_t hash(int32_t pid,int32_t nroPag){
 
 int32_t getHash(int32_t pid,int32_t nroPag){
 	int hashResult = hash(pid,nroPag);
-	int cantPags = (cantPaginasAdms()-1);//Es base 0 por eso le restamos uno a la cantidad de paginas
+	int cantPags = (marcos-1);//Es base 0 por eso le restamos uno a la cantidad de paginas
 	if (hashResult > cantPags) {
 	  return hashResult % cantPags;
 	}else{
@@ -294,7 +294,7 @@ t_pagina* getPagina(int indice){
 int paginasLibres(int *paginasLibres){
 	int cantPaginasLibres=0;
 	int i;
-	for(i=0;i<cantPaginasAdms();i++){
+	for(i=0;i<marcos;i++){
 		t_pagina* pag = getPagina(i);
 		if(pag->pid==-1){
 			cantPaginasLibres++;
@@ -314,7 +314,7 @@ int paginasLibres(int *paginasLibres){
 int32_t getNextPaginasPID(int32_t pid){
 	int max=0;
 	int i;
-	for(i=0;i<cantPaginasAdms();i++){
+	for(i=0;i<marcos;i++){
 		t_pagina* pag = getPagina(i);
 		if(pag->pid==pid&&((pag->numeroPag)>max))
 			max=pag->numeroPag;
@@ -326,7 +326,7 @@ int32_t getNextPaginasPID(int32_t pid){
 int cantPaginasPID(int32_t pid){
 	int cantidad=0;
 	int i;
-	for(i=0;i<cantPaginasAdms();i++){
+	for(i=0;i<marcos;i++){
 		t_pagina* pag = getPagina(i);
 		if(pag->pid==pid)
 			cantidad++;
@@ -353,7 +353,7 @@ void escribirEnEstrucAdmin(t_pagina* pagina){
 
 int asignarPaginasPID(int32_t pid,int32_t paginasRequeridas,bool isNew){
 	int cantPaginasLibres=0;
-	int32_t* pagLibres = malloc(sizeof(int32_t)*cantPaginasAdms());
+	int32_t* pagLibres = malloc(sizeof(int32_t)*marcos);
 	sleep(retardoMemoria/1000);//pasamos a milisegundos
 	pthread_mutex_lock(&mutexMemoriaPrincipal);
 
@@ -369,7 +369,7 @@ int asignarPaginasPID(int32_t pid,int32_t paginasRequeridas,bool isNew){
 			int reverse=0;//Para buscar para atras
 
 			while(!pagLibres[indice]){//Recorremos si no esta libre la pagina del hash hasta encontrar una que si
-				if(indice<(cantPaginasAdms()-1) && !reverse)
+				if(indice<(marcos-1) && !reverse)
 					indice++;
 				else{
 					if(indice>=hashIndice){
@@ -405,9 +405,9 @@ t_pagina* encontrarPagina(int32_t pid,int32_t nroPagina){
 	int indice=hashIndice;
 	int reverse=0;//Para buscar para atras
 
-	while(pag->pid!=pid && pag->numeroPag!=nroPagina){//Recorremos si la pagina que retorna el hash no es la que corresponde
+	while(pag->pid!=pid || pag->numeroPag!=nroPagina){//Recorremos si la pagina que retorna el hash no es la que corresponde
 		free(pag);
-		if(indice<(cantPaginasAdms()-1) && !reverse)
+		if(indice<(marcos-1) && !reverse)
 			indice++;
 		else{
 			if(indice>=hashIndice){
@@ -417,7 +417,6 @@ t_pagina* encontrarPagina(int32_t pid,int32_t nroPagina){
 			if(indice>0)
 				indice--;
 			else{
-				free(pag);
 				pag=NULL;
 				break;
 			}
@@ -485,18 +484,16 @@ void dumpProcesos(int size, char** functionAndParams){
 	showInScreenAndLog("-----------------------------------------------------------------------------------------------");
 
 	int i;
-	int32_t offsetEstrucAdmin=cantPaginasAdms()*TAM_ELM_TABLA_INV;
 
 	pthread_mutex_lock(&mutexMemoriaPrincipal);
-	for(i=0;i<cantPaginasAdms();i++){
+	for(i=cantPaginasAdms();i<marcos;i++){
 		t_pagina* pag = getPagina(i);
 
 		int32_t offsetHastaPagina= (marcoSize*(pag->indice));
-		int32_t offsetTotal = offsetEstrucAdmin+offsetHastaPagina;
 
 		if(pid == -1 || pag->pid == pid){
 			char*contenido = malloc(marcoSize);
-			memcpy(contenido,bloqueMemoria+offsetTotal,marcoSize);
+			memcpy(contenido,bloqueMemoria+offsetHastaPagina,marcoSize);
 
 			char* message = string_from_format("|   %d	 |",pag->indice);
 
@@ -536,7 +533,7 @@ void dumpTabla(int size, char** functionAndParams){
 
 	int i;
 	pthread_mutex_lock(&mutexMemoriaPrincipal);
-	for(i=0;i<cantPaginasAdms();i++){
+	for(i=0;i<marcos;i++){
 		t_pagina* pag = getPagina(i);
 		char* message = string_from_format("|  %d  |  %d  |  %d  |",pag->indice,pag->pid,pag->numeroPag);
 		showInScreenAndLog(message);
@@ -583,7 +580,7 @@ void sizeMemory(int size, char** functionAndParams){
 		return;
 	}
 
-	int framesTotales = cantPaginasAdms();
+	int framesTotales = marcos	;
 
 	pthread_mutex_lock(&mutexMemoriaPrincipal);
 	int framesLibres = paginasLibres(NULL);
@@ -752,9 +749,6 @@ void solicitarBytes(char* data,int socket){
 		respuesta->data="ERROR";
 		log_info(logFile,"Pagina no encontrada PID:%d PAG:%d",pedido->pid,pedido->pagina);
 	}else{
-		int32_t offsetEstrucAdmin=cantPaginasAdms()*TAM_ELM_TABLA_INV;
-		int32_t offsetHastaData= (marcoSize*(pag->indice))+pedido->offsetPagina;
-		int32_t offsetTotal = offsetEstrucAdmin+offsetHastaData;
 
 		log_info(logFile,"Solicitud de bytes para MARCO:%d OFFSET:%d TAMANIO:%d",pag->indice,pedido->offsetPagina,pedido->tamanio);
 		if(marcoSize -(pedido->offsetPagina+pedido->tamanio) <0){
@@ -763,11 +757,12 @@ void solicitarBytes(char* data,int socket){
 			respuesta->data="ERROR";
 			log_info(logFile,"Overflow al solicitar bytes PID:%d PAG:%d OFFSET:%d TAMANIO:%d",pedido->pid,pedido->pagina,pedido->offsetPagina,pedido->tamanio);
 		}else{
+			int32_t offsetHastaData= (marcoSize*(pag->indice))+pedido->offsetPagina;
 			respuesta->codigo=OK_SOLICITAR;
 			respuesta->tamanio=pedido->tamanio;
 			respuesta->data = malloc(pedido->tamanio);
-			memcpy(respuesta->data,bloqueMemoria+offsetTotal,pedido->tamanio);
-			cacheMiss(pedido->pid,pedido->pagina,bloqueMemoria+(offsetEstrucAdmin+(marcoSize*(pag->indice))));
+			memcpy(respuesta->data,bloqueMemoria+offsetHastaData,pedido->tamanio);
+			cacheMiss(pedido->pid,pedido->pagina,bloqueMemoria+(marcoSize*(pag->indice)));
 
 			log_info(logFile,"Exito al solicitar bytes PID:%d PAG:%d OFFSET:%d TAMANIO:%d",pedido->pid,pedido->pagina,pedido->offsetPagina,pedido->tamanio);
 		}
@@ -812,9 +807,6 @@ void almacenarBytes(char* data,int socket){
 		respuesta->codigo=PAGINA_ALM_NOT_FOUND;
 		log_info(logFile,"Pagina no encontrada PID:%d PAG:%d",pedido->pid,pedido->pagina);
 	}else{
-		int32_t offsetEstrucAdmin=cantPaginasAdms()*TAM_ELM_TABLA_INV;
-		int32_t offsetHastaData= (marcoSize*(pag->indice))+pedido->offsetPagina;
-		int32_t offsetTotal = offsetEstrucAdmin+offsetHastaData;
 
 		log_info(logFile,"Solicitud de almacenamiento bytes para MARCO:%d OFFSET:%d TAMANIO:%d",pag->indice,pedido->offsetPagina,pedido->tamanio);
 
@@ -824,7 +816,8 @@ void almacenarBytes(char* data,int socket){
 			if(cache!=NULL)
 				freeCache(cache);
 		}else{
-			memcpy(bloqueMemoria+offsetTotal,pedido->data,pedido->tamanio);
+			int32_t offsetHastaData= (marcoSize*(pag->indice))+pedido->offsetPagina;
+			memcpy(bloqueMemoria+offsetHastaData,pedido->data,pedido->tamanio);
 			if(cache!=NULL){
 				log_info(logFile,"Se actualiza la pagina de cache del PID:%d NRO:%d",cache->pid,cache->nroPagina);
 				memcpy(cache->contenido+pedido->offsetPagina,pedido->data,pedido->tamanio);
@@ -898,16 +891,13 @@ void finalizarPrograma(char* data,int socket){
 	int i;
 	sleep(retardoMemoria/1000);
 	pthread_mutex_lock(&mutexMemoriaPrincipal);
-	for(i=0;i<cantPaginasAdms();i++){
+	for(i=0;i<marcos;i++){
 		t_pagina* pag = getPagina(i);
 		if(pag->pid==pedido->pid){
 			pag->pid=-1;
 
-			int32_t offsetEstrucAdmin=cantPaginasAdms()*TAM_ELM_TABLA_INV;
 			int32_t offsetHastaData= (marcoSize*(pag->indice));
-			int32_t offsetTotal = offsetEstrucAdmin+offsetHastaData;
-
-			memset(bloqueMemoria+offsetTotal,0,marcoSize);
+			memset(bloqueMemoria+offsetHastaData,0,marcoSize);
 
 			pag->numeroPag=0;
 			escribirPaginaEnTabla(pag);
@@ -938,12 +928,11 @@ void getMarcos(char* data,int socket){
 //FIN INTERFAZ MEMORIA
 
 void crearEstructurasAdministrativas(){
-	int pagAdminis = cantPaginasAdms();
 	int i;
 
-	for(i=0;i<pagAdminis;i++){
+	for(i=0;i<marcos;i++){
 		t_pagina* pagina = malloc(sizeof(t_pagina));
-		*pagina = crearPagina(i,-1,0);
+		*pagina = crearPagina(i,i<cantPaginasAdms()?-2:-1,0);
 		escribirEnEstrucAdmin(pagina);
 		free(pagina);
 	}

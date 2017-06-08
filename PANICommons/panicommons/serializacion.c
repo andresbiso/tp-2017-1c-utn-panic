@@ -470,23 +470,52 @@ char* serializar_pedido_obtener_variable_compartida(t_pedido_obtener_variable_co
 }
 
 t_respuesta_asignar_variable_compartida* deserializar_respuesta_asignar_variable_compartida(char* pedido_serializado) {
-	t_respuesta_asignar_variable_compartida* a;
-	return a;
+	t_respuesta_asignar_variable_compartida* respuesta = malloc(sizeof(t_respuesta_asignar_variable_compartida));
+
+	memcpy(&respuesta->codigo,(void*)pedido_serializado,sizeof(codigo_asignar_variable_compartida));
+
+	return respuesta;
 }
 
 char* serializar_respuesta_asignar_variable_compartida(t_respuesta_asignar_variable_compartida* respuesta) {
-	char* a;
-	return a;
+	char* respuesta_serializada = malloc(sizeof(t_respuesta_asignar_variable_compartida));
+
+	memcpy(respuesta_serializada,&respuesta->codigo,sizeof(codigo_asignar_variable_compartida));
+
+	return respuesta_serializada;
 }
 
 t_pedido_asignar_variable_compartida* deserializar_pedido_asignar_variable_compartida(char* pedido_serializado) {
-	t_pedido_asignar_variable_compartida* a;
-	return a;
+	t_pedido_asignar_variable_compartida* pedido = malloc(sizeof(t_pedido_asignar_variable_compartida));
+
+	int offset=0;
+	memcpy(&pedido->pid,(void*)pedido_serializado,sizeof(int32_t));
+	offset+=sizeof(pedido->pid);
+	memcpy(&pedido->tamanio,(void*)pedido_serializado+offset,sizeof(int32_t));
+	offset+=sizeof(pedido->tamanio);
+	pedido->nombre_variable_compartida= malloc(pedido->tamanio+2);//uno para el \0 otro para el !
+	pedido->nombre_variable_compartida[0]='!';
+	pedido->nombre_variable_compartida[pedido->tamanio+1]='\0';
+	memcpy(pedido->nombre_variable_compartida+1,(void*)pedido_serializado+offset,pedido->tamanio);//El +1 por el !
+	offset+=pedido->tamanio;
+	memcpy(&pedido->valor_variable_compartida,(void*)pedido_serializado+offset,sizeof(int32_t));
+
+	return pedido;
 }
 
 char* serializar_pedido_asignar_variable_compartida(t_pedido_asignar_variable_compartida* pedido) {
-	char* a;
-	return a;
+	char* buffer = malloc(sizeof(int32_t)*3+pedido->tamanio);
+
+	int offset=0;
+	memcpy(buffer,&(pedido->pid),sizeof(pedido->pid));
+	offset+=sizeof(pedido->pid);
+	memcpy(buffer+offset,&(pedido->tamanio),sizeof(pedido->tamanio));
+	offset+=sizeof(pedido->tamanio);
+	memcpy(buffer+offset,pedido->nombre_variable_compartida,pedido->tamanio);
+	offset+=pedido->tamanio;
+	memcpy(buffer+offset,&(pedido->valor_variable_compartida),sizeof(int32_t));
+
+	return buffer;
 }
 
 
@@ -553,7 +582,7 @@ char* serializar_pedido_signal(t_pedido_signal* pedido_deserializado){
 
 	memcpy(buffer,&(pedido_deserializado->tamanio),sizeof(int32_t));
 	offset+=sizeof(int32_t);
-	memcpy(buffer+offset,&(pedido_deserializado->semId),pedido_deserializado->tamanio);
+	memcpy(buffer+offset,pedido_deserializado->semId,pedido_deserializado->tamanio);
 
 	return buffer;
 }
@@ -564,7 +593,8 @@ t_pedido_signal* deserializar_pedido_signal(char* pedido_serializado){
 
 	memcpy(&(pedido->tamanio),pedido_serializado,sizeof(int32_t));
 	offset+=sizeof(int32_t);
-	pedido->semId=malloc(pedido->tamanio);
+	pedido->semId=malloc(pedido->tamanio+1);
+	pedido->semId[pedido->tamanio]='\0';
 	memcpy(pedido->semId,pedido_serializado+offset,pedido->tamanio);
 
 	return pedido;
@@ -605,7 +635,8 @@ t_pedido_wait* deserializar_pedido_wait(char* pedido_serializado){
 
 	memcpy(&(pedido->tamanio),pedido_serializado,sizeof(int32_t));
 	offset+=sizeof(int32_t);
-	pedido->semId=malloc(pedido->tamanio);
+	pedido->semId=malloc(pedido->tamanio+1);
+	pedido->semId[pedido->tamanio]='\0';
 	memcpy(pedido->semId,pedido_serializado+offset,pedido->tamanio);
 	offset+=pedido->tamanio;
 	pedido->pcb = deserializar_pcb(pedido_serializado+offset);
