@@ -63,6 +63,7 @@ pthread_mutex_t mutexMemoria;
 sem_t stopped;
 
 int socketMemoria;
+int tamanio_pag_memoria;
 
 t_list* listForFinish;
 

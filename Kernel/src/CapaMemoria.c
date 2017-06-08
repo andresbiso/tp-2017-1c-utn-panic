@@ -148,13 +148,27 @@ void signal(char* data,int socket){
 }
 
 void reservar(void* data,int socket){
-	//TODO
+	t_pedido_reservar* pedido = deserializar_pedido_reservar(data);
+
+	t_respuesta_reservar respuesta;
+
+	log_info(logNucleo,"Se recibio un pedido de reserva de memoria del socket:%d por el PID:%d por bytes:%d",socket,pedido->pid,pedido->bytes);
+
+	if((pedido->bytes) > (tamanio_pag_memoria-10)){ //Pedido mayor al disponible en una pagina
+		respuesta.codigo=RESERVAR_OVERFLOW;
+	}else{
+		//TODO
+	}
+
+	char* buffer = serializar_respuesta_reservar(&respuesta);
+	empaquetarEnviarMensaje(socket,"RET_RESERVAR",sizeof(t_respuesta_reservar),buffer);
+	free(buffer);
+
+	free(pedido);
 }
 
 void liberar(void* data,int socket){
 	//TODO
 }
-
-
 
 //Capa de memoria

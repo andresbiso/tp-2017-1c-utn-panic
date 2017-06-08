@@ -17,7 +17,6 @@ typedef struct {
 int socketFS;
 int socketCPU;
 int socketcpuConectadas;
-int tamanio_pag_memoria;
 
 sem_t grado;
 
@@ -777,6 +776,7 @@ int main(int argc, char** argv) {
 
 	isStopped=false;
 
+	paginasGlobalesHeap=dictionary_create();
     t_dictionary* diccionarioFunciones = dictionary_create();
     dictionary_put(diccionarioFunciones,"ERROR_FUNC",&mostrarMensaje);
     dictionary_put(diccionarioFunciones,"NUEVO_PROG",&nuevoPrograma);
