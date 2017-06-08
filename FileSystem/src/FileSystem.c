@@ -57,6 +57,18 @@ void marcarBloqueDesocupado(int bloque)
 {
 	bitarray_clean_bit(bitmap, bloque);
 }
+int obtenerBloqueVacio()
+{
+	int i = 0;
+	while(bitarray_test_bit(bitmap, i))
+	{
+		i++;
+	};
+	if (i <= metadataFS.cantidadBloques)
+		return i;
+	else
+		return -1;
+}
 void crearArchivo(char* archivo, int socket)
 {
 	log_info(logFS, "Se intentará crear el archivo %s", archivo);
@@ -152,7 +164,7 @@ void leerArchivoMetadataFS()
 {
 	char* ruta = concat(puntoMontaje, "Metadata/Metadata.bin");
 	FILE* archivo = fopen(ruta, "rb");
-	fread(&metadataFS, sizeof(t_metadata_fs), 1, archivo);
+	fread(&metadataFS, sizeof(t_metadata_fs) + sizeof("SADICA"), 1, archivo);
 	fclose(archivo);
 }
 void cargarConfiguracionAdicional()
@@ -171,28 +183,28 @@ void mapearBitmap()
 }
 void cerrarArchivosYLiberarMemoria()
 {
-	munmap(&bitmap, sizeof(t_bitarray));
+	munmap(bitmap->bitarray, metadataFS.cantidadBloques*sizeof(int));
 	fclose(archivoBitmap);
-	free(bitmap->bitarray);
 	bitarray_destroy(bitmap);
-}
-int obtenerBloqueVacio()
-{
-	int i = 0;
-	while(bitarray_test_bit(&bitmap, i))
-	{
-		i++;
-	};
-	if (i <= metadataFS.cantidadBloques)
-		return i;
-	else
-		return -1;
 }
 void leerArchivoBitmap(t_bitarray bitmap)
 {
 	FILE* archivoBitmap = fopen(rutaBitmap, "rb");
 	fread(&bitmap, sizeof(t_bitarray), 1, archivoBitmap);
 	fclose(archivoBitmap);
+}
+void crearMetadataFS()
+{
+	t_metadata_fs asd;
+	asd.cantidadBloques = 5192;
+	asd.tamanioBloque = 64;
+	asd.magicNumber = malloc(sizeof("SADICA"));
+	asd.magicNumber = "SADICA";
+	char* ruta = concat(puntoMontaje, "Metadata/Metadata.bin");
+	FILE* file = fopen(ruta, "wb");
+	fwrite(&asd, sizeof(t_metadata_fs) + sizeof("SADICA"), 1, file);
+	fclose(file);
+	free(asd.magicNumber);
 }
 int main(int argc, char** argv)
 {
@@ -201,6 +213,7 @@ int main(int argc, char** argv)
 	printf("PUNTO_MONTAJE: %s\n",puntoMontaje);
 	logFS = log_create("fs.log", "FILE SYSTEM", 0, LOG_LEVEL_TRACE);
 
+	crearMetadataFS();
 	cargarConfiguracionAdicional();
 	mapearBitmap();
 
