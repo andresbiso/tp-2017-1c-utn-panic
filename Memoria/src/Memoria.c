@@ -795,10 +795,7 @@ void almacenarBytes(char* data,int socket){
 
 	pthread_mutex_lock(&mutexCache);
 	t_cache* cache = findInCache(pedido->pid,pedido->pagina);
-	if(cache==NULL){
-		inCache=false;
-		pthread_mutex_unlock(&mutexCache);//Si no esta en cache desbloqueamos el acceso sino se espera hasta que escribamos en memoria
-	}
+
 	sleep(retardoMemoria/1000);
 	pthread_mutex_lock(&mutexMemoriaPrincipal);
 
@@ -818,11 +815,13 @@ void almacenarBytes(char* data,int socket){
 		}else{
 			int32_t offsetHastaData= (marcoSize*(pag->indice))+pedido->offsetPagina;
 			memcpy(bloqueMemoria+offsetHastaData,pedido->data,pedido->tamanio);
-			if(cache!=NULL){
-				log_info(logFile,"Se actualiza la pagina de cache del PID:%d NRO:%d",cache->pid,cache->nroPagina);
-				memcpy(cache->contenido+pedido->offsetPagina,pedido->data,pedido->tamanio);
-				freeCache(cache);
+			if(cache==NULL){
+				cacheMiss(pedido->pid,pedido->pagina,bloqueMemoria+(marcoSize*(pag->indice)));
+				cache=findInCache(pedido->pid,pedido->pagina);
 			}
+			log_info(logFile,"Se actualiza la pagina de cache del PID:%d NRO:%d",cache->pid,cache->nroPagina);
+			memcpy(cache->contenido+pedido->offsetPagina,pedido->data,pedido->tamanio);
+			freeCache(cache);
 			log_info(logFile,"Pedido correcto escribir en pagina PID:%d PAG:%d TAMANIO:%d OFFSET:%d",pedido->pid,pedido->pagina,pedido->tamanio,pedido->offsetPagina);
 			respuesta->codigo=OK_ALMACENAR;
 		}

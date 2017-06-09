@@ -212,6 +212,7 @@ typedef struct{
 typedef enum{RESERVAR_OK=0,RESERVAR_OVERFLOW=-1,RESERVAR_SIN_ESPACIO=-2} codigo_respuesta_reservar;
 
 typedef struct{
+	int32_t puntero;
 	codigo_respuesta_reservar codigo;
 }t_respuesta_reservar;
 

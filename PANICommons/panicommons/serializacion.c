@@ -686,7 +686,10 @@ t_pedido_reservar* deserializar_pedido_reservar(char* pedido_serializado){
 char* serializar_respuesta_reservar(t_respuesta_reservar* respuesta){
 	char* buffer = malloc(sizeof(t_respuesta_reservar));
 
+	int offset=0;
 	memcpy(buffer,&respuesta->codigo,sizeof(codigo_respuesta_reservar));
+	offset+=sizeof(codigo_respuesta_reservar);
+	memcpy(buffer+offset,&respuesta->puntero,sizeof(int32_t));
 
 	return buffer;
 }
@@ -694,7 +697,10 @@ char* serializar_respuesta_reservar(t_respuesta_reservar* respuesta){
 t_respuesta_reservar* deserializar_respuesta_reservar(char* respuesta_serializada){
 	t_respuesta_reservar* respuesta = malloc(sizeof(t_respuesta_reservar));
 
+	int offset=0;
 	memcpy(&respuesta->codigo,respuesta_serializada,sizeof(codigo_respuesta_reservar));
+	offset+=sizeof(codigo_respuesta_reservar);
+	memcpy(&respuesta->puntero,respuesta_serializada+offset,sizeof(int32_t));
 
 	return respuesta;
 }

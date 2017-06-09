@@ -15,6 +15,21 @@ typedef struct {
 	t_queue* cola;
 } t_semaforo;
 
+typedef struct{
+	uint32_t size;
+	bool isFree;
+}t_heap_metadata;
+
+typedef struct{
+	int32_t nroPagina;
+	int32_t espacioDisponible;
+}t_pagina_heap;
+
+typedef struct {
+	int32_t maxPaginas;
+	t_list* paginas;
+} t_paginas_proceso;
+
 t_dictionary *semaforos;
 t_dictionary *paginasGlobalesHeap;
 
