@@ -25,8 +25,9 @@ int cantPaginasAdms(){
 int32_t hash(int32_t pid,int32_t nroPag){
 	if(nroPag != 0)
 		return ((pid*nroPag)+(pid/nroPag));
-	else
-		return pid;
+	else if (pid < cantPaginasAdms())
+		return pid+cantPaginasAdms();
+	return pid;
 }
 
 int32_t getHash(int32_t pid,int32_t nroPag){
@@ -795,10 +796,7 @@ void almacenarBytes(char* data,int socket){
 
 	pthread_mutex_lock(&mutexCache);
 	t_cache* cache = findInCache(pedido->pid,pedido->pagina);
-	if(cache==NULL){
-		inCache=false;
-		pthread_mutex_unlock(&mutexCache);//Si no esta en cache desbloqueamos el acceso sino se espera hasta que escribamos en memoria
-	}
+
 	sleep(retardoMemoria/1000);
 	pthread_mutex_lock(&mutexMemoriaPrincipal);
 
@@ -818,11 +816,13 @@ void almacenarBytes(char* data,int socket){
 		}else{
 			int32_t offsetHastaData= (marcoSize*(pag->indice))+pedido->offsetPagina;
 			memcpy(bloqueMemoria+offsetHastaData,pedido->data,pedido->tamanio);
-			if(cache!=NULL){
-				log_info(logFile,"Se actualiza la pagina de cache del PID:%d NRO:%d",cache->pid,cache->nroPagina);
-				memcpy(cache->contenido+pedido->offsetPagina,pedido->data,pedido->tamanio);
-				freeCache(cache);
+			if(cache==NULL){
+				cacheMiss(pedido->pid,pedido->pagina,bloqueMemoria+(marcoSize*(pag->indice)));
+				cache=findInCache(pedido->pid,pedido->pagina);
 			}
+			log_info(logFile,"Se actualiza la pagina de cache del PID:%d NRO:%d",cache->pid,cache->nroPagina);
+			memcpy(cache->contenido+pedido->offsetPagina,pedido->data,pedido->tamanio);
+			freeCache(cache);
 			log_info(logFile,"Pedido correcto escribir en pagina PID:%d PAG:%d TAMANIO:%d OFFSET:%d",pedido->pid,pedido->pagina,pedido->tamanio,pedido->offsetPagina);
 			respuesta->codigo=OK_ALMACENAR;
 		}
@@ -919,6 +919,10 @@ void finalizarPrograma(char* data,int socket){
 	free(pedido);
 }
 
+void liberarPagina(char* data,int socket){
+	//TODO
+}
+
 void getMarcos(char* data,int socket){
 	char* buffer = string_itoa(marcoSize);
 	empaquetarEnviarMensaje(socket,"RECB_MARCOS",strlen(buffer),buffer);
@@ -984,6 +988,7 @@ int main(int argc, char** argv) {
 	dictionary_put(diccionarioFunciones,"ALMC_BYTES",&almacenarBytes);
 	dictionary_put(diccionarioFunciones,"ASIG_PAGES",&asignarPaginas);
 	dictionary_put(diccionarioFunciones,"FINZ_PROGM",&finalizarPrograma);
+	dictionary_put(diccionarioFunciones,"LIBERAR_PAG",&liberarPagina);
 	dictionary_put(diccionarioFunciones,"GET_MARCOS",&getMarcos);
 
 	t_dictionary* diccionarioHandshakes = dictionary_create();

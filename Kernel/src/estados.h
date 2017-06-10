@@ -63,6 +63,7 @@ pthread_mutex_t mutexMemoria;
 sem_t stopped;
 
 int socketMemoria;
+int tamanio_pag_memoria;
 
 t_list* listForFinish;
 
@@ -95,5 +96,6 @@ void program_change_running(int32_t pid, bool newState);
 void enviarMensajeConsola(char*mensaje,char*key,int32_t pid,int32_t socket,int32_t terminoProceso,int32_t mostrarPorPantalla);
 t_respuesta_finalizar_programa* finalizarProcesoMemoria(int32_t pid);
 t_package* recibirPaqueteMemoria();
+void enviar_a_cpu();
 
 #endif /* SRC_ESTADOS_H_ */

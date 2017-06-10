@@ -203,6 +203,20 @@ typedef struct{
 	codigo_respuesta_signal respuesta;
 }t_respuesta_signal;
 
+typedef struct{
+	int32_t pid;
+	int32_t bytes;
+	int32_t paginasTotales;
+}t_pedido_reservar;
+
+typedef enum{RESERVAR_OK=0,RESERVAR_OVERFLOW=-1,RESERVAR_SIN_ESPACIO=-2} codigo_respuesta_reservar;
+
+typedef struct{
+	int32_t puntero;
+	codigo_respuesta_reservar codigo;
+}t_respuesta_reservar;
+
+
 u_int32_t tamanio_pcb(t_pcb* pcb);
 t_pcb_serializado* serializar_pcb(t_pcb* pcb);
 t_pcb* deserializar_pcb(char* pcbs);
@@ -263,6 +277,11 @@ t_pedido_wait* deserializar_pedido_wait(char* pedido_serializado);
 char* serializar_respuesta_wait(t_respuesta_wait* respuesta_deserializada);
 t_respuesta_wait* deserializar_respuesta_wait(char* respuesta_serializada);
 
+char* serializar_pedido_reservar(t_pedido_reservar* pedido);
+t_pedido_reservar* deserializar_pedido_reservar(char* pedido_serializado);
+
+char* serializar_respuesta_reservar(t_respuesta_reservar* pedido);
+t_respuesta_reservar* deserializar_respuesta_reservar(char* pedido_serializado);
 //Kernel
 
 //FS

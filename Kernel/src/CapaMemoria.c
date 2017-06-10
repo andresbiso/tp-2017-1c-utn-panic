@@ -106,6 +106,9 @@ void wait(char* data,int socket){
 		destruir_pcb(pedido->pcb);//Se destruye porque CPU se encarga del pcb
 	free(pedido->semId);
 	free(pedido);
+
+	if(respuesta.respuesta==WAIT_BLOCKED)
+		enviar_a_cpu();
 }
 
 void signal(char* data,int socket){
@@ -128,33 +131,125 @@ void signal(char* data,int socket){
 		log_info(logNucleo,"Cantidad de procesos en cola del SEM:%d",sem->valor,queue_size(sem->cola));
 		sem->valor++;
 		log_info(logNucleo,"El SEM:%s queda con valor:%d",pedido->semId,sem->valor);
-		if(sem->valor >=0){
+		if(sem->valor <=0){
 			if(queue_size(sem->cola)!=0){
 				int32_t* pidADesbloquear = queue_pop(sem->cola);
 				desbloquear_pcb(*pidADesbloquear);
 				free(pidADesbloquear);
 			}else{
-				log_info(logNucleo,"El SEM:%s con cola de espera vacia");
+				log_info(logNucleo,"El SEM:%s con cola de espera vacia",pedido->semId);
 			}
 		}
 	}
 
-	char*buffer = serializar_respuesta_signal(&respuesta);
-	empaquetarEnviarMensaje(socket,"RES_SIGNAL",sizeof(t_respuesta_signal),buffer);
-	free(buffer);
-
 	free(pedido->semId);
 	free(pedido);
+
 }
 
 void reservar(void* data,int socket){
-	//TODO
+	t_pedido_reservar* pedido = deserializar_pedido_reservar(data);
+
+	t_respuesta_reservar respuesta;
+	respuesta.puntero=0;
+
+	log_info(logNucleo,"Se recibio un pedido de reserva de memoria del socket:%d por el PID:%d por bytes:%d",socket,pedido->pid,pedido->bytes);
+
+	if((pedido->bytes) > (tamanio_pag_memoria-10)){ //Pedido mayor al disponible en una pagina
+		respuesta.codigo=RESERVAR_OVERFLOW;
+		respuesta.puntero=-1;
+	}else{
+		//TODO
+		char* pidKey = string_itoa(pedido->pid);
+		t_paginas_proceso* paginas_proceso = dictionary_get(paginasGlobalesHeap,pidKey);
+
+		bool pageWithNoSpace(void* elem){
+			return ((t_pagina_heap*)elem)->espacioDisponible<(pedido->bytes+5);
+		}
+
+		if(paginas_proceso == NULL || list_all_satisfy(paginas_proceso->paginas,pageWithNoSpace)){
+			if(paginas_proceso==NULL){
+				paginas_proceso= malloc(sizeof(t_paginas_proceso));
+				paginas_proceso->maxPaginas=pedido->paginasTotales-1;//Para incrementarlo despues (para el caso que tiene paginas o no)
+				paginas_proceso->paginas = list_create();
+				dictionary_put(paginasGlobalesHeap,pidKey,paginas_proceso);
+			}
+
+			t_pedido_inicializar pedido_memoria;
+			pedido_memoria.pagRequeridas=1;
+			pedido_memoria.idPrograma=pedido->pid;
+
+			char* buffer = serializar_pedido_inicializar(&pedido_memoria);
+			empaquetarEnviarMensaje(socketMemoria,"ASIG_PAGES",sizeof(t_pedido_inicializar),buffer);
+			free(buffer);
+
+			t_package* paquete = recibirPaqueteMemoria();
+			t_respuesta_inicializar* respuesta_memoria = deserializar_respuesta_inicializar(paquete->datos);
+
+			if(respuesta_memoria->codigoRespuesta == OK_INICIALIZAR){
+				paginas_proceso->maxPaginas++;
+
+				t_pedido_almacenar_bytes pedido_memoria;
+				pedido_memoria.pid=pedido->pid;
+				pedido_memoria.offsetPagina=0;
+				pedido_memoria.tamanio=5;
+				pedido_memoria.pagina=paginas_proceso->maxPaginas;
+				pedido_memoria.data=malloc(5);
+
+				t_heap_metadata metadata;
+				metadata.isFree=true;
+				metadata.size=tamanio_pag_memoria-5;
+
+				memcpy(pedido_memoria.data,&metadata.isFree,1);
+				memcpy(pedido_memoria.data+1,&metadata.size,4);
+
+				char* buffer = serializar_pedido_almacenar_bytes(&pedido_memoria);
+				empaquetarEnviarMensaje(socketMemoria,"ASIG_PAGES",sizeof(t_pedido_inicializar),buffer);
+				free(buffer);
+				free(pedido_memoria.data);
+
+				t_package* paquete = recibirPaqueteMemoria();
+				t_respuesta_almacenar_bytes* respuesta_alm = deserializar_respuesta_almacenar_bytes(paquete->datos);
+
+				if(respuesta_alm->codigo != OK_ALMACENAR){
+					respuesta.codigo=RESERVAR_SIN_ESPACIO;
+					respuesta.puntero=-1;
+				}else{
+					t_pagina_heap* pagina = malloc(sizeof(t_pagina_heap));
+					pagina->espacioDisponible=tamanio_pag_memoria-10;
+					pagina->nroPagina=paginas_proceso->maxPaginas;
+					list_add(paginas_proceso->paginas,pagina);
+				}
+				free(respuesta_alm);
+				borrarPaquete(paquete);
+
+			}else{
+				respuesta.codigo=RESERVAR_SIN_ESPACIO;
+				respuesta.puntero=-1;
+			}
+
+			if(respuesta.puntero != -1){
+
+			}
+
+			borrarPaquete(paquete);
+			free(respuesta_memoria);
+		}
+
+		if(paginas_proceso!=NULL)
+			free(paginas_proceso);
+		free(pidKey);
+	}
+
+	char* buffer = serializar_respuesta_reservar(&respuesta);
+	empaquetarEnviarMensaje(socket,"RET_RESERVAR",sizeof(t_respuesta_reservar),buffer);
+	free(buffer);
+
+	free(pedido);
 }
 
 void liberar(void* data,int socket){
 	//TODO
 }
-
-
 
 //Capa de memoria

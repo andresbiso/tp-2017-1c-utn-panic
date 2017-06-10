@@ -17,7 +17,6 @@ typedef struct {
 int socketFS;
 int socketCPU;
 int socketcpuConectadas;
-int tamanio_pag_memoria;
 
 sem_t grado;
 
@@ -601,6 +600,9 @@ void respuesta_inicializar_programa(int socket, int socketMemoria, char* codigo)
 			}else{
 				pcb_respuesta->exit_code=FINALIZAR_SIN_RECURSOS;
 
+				t_respuesta_finalizar_programa* respuesta_fin = finalizarProcesoMemoria(pcb_respuesta->pid);
+				free(respuesta_fin);
+
 				char* message = string_from_format("Proceso finalizado con exitCode: %d\0",pcb_respuesta->exit_code);
 				enviarMensajeConsola(message,"END_PRGM",pcb_respuesta->pid,socket,1,0);
 				free(message);
@@ -777,6 +779,7 @@ int main(int argc, char** argv) {
 
 	isStopped=false;
 
+	paginasGlobalesHeap=dictionary_create();
     t_dictionary* diccionarioFunciones = dictionary_create();
     dictionary_put(diccionarioFunciones,"ERROR_FUNC",&mostrarMensaje);
     dictionary_put(diccionarioFunciones,"NUEVO_PROG",&nuevoPrograma);
