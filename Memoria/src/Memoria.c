@@ -25,8 +25,9 @@ int cantPaginasAdms(){
 int32_t hash(int32_t pid,int32_t nroPag){
 	if(nroPag != 0)
 		return ((pid*nroPag)+(pid/nroPag));
-	else
-		return pid;
+	else if (pid < cantPaginasAdms())
+		return pid+cantPaginasAdms();
+	return pid;
 }
 
 int32_t getHash(int32_t pid,int32_t nroPag){
@@ -918,6 +919,10 @@ void finalizarPrograma(char* data,int socket){
 	free(pedido);
 }
 
+void liberarPagina(char* data,int socket){
+	//TODO
+}
+
 void getMarcos(char* data,int socket){
 	char* buffer = string_itoa(marcoSize);
 	empaquetarEnviarMensaje(socket,"RECB_MARCOS",strlen(buffer),buffer);
@@ -983,6 +988,7 @@ int main(int argc, char** argv) {
 	dictionary_put(diccionarioFunciones,"ALMC_BYTES",&almacenarBytes);
 	dictionary_put(diccionarioFunciones,"ASIG_PAGES",&asignarPaginas);
 	dictionary_put(diccionarioFunciones,"FINZ_PROGM",&finalizarPrograma);
+	dictionary_put(diccionarioFunciones,"LIBERAR_PAG",&liberarPagina);
 	dictionary_put(diccionarioFunciones,"GET_MARCOS",&getMarcos);
 
 	t_dictionary* diccionarioHandshakes = dictionary_create();

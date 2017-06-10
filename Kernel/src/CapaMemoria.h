@@ -37,6 +37,8 @@ void getVariableCompartida(char* data, int socket);
 void setVariableCompartida(char* data, int socket);
 void wait(char* data,int socket);
 void signal(char* data,int socket);
+void reservar(void* data,int socket);
+void liberar(void* data,int socket);
 
 
 #endif /* SRC_CAPAMEMORIA_H_ */

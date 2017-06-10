@@ -142,18 +142,16 @@ void signal(char* data,int socket){
 		}
 	}
 
-	char*buffer = serializar_respuesta_signal(&respuesta);
-	empaquetarEnviarMensaje(socket,"RES_SIGNAL",sizeof(t_respuesta_signal),buffer);
-	free(buffer);
-
 	free(pedido->semId);
 	free(pedido);
+
 }
 
 void reservar(void* data,int socket){
 	t_pedido_reservar* pedido = deserializar_pedido_reservar(data);
 
 	t_respuesta_reservar respuesta;
+	respuesta.puntero=0;
 
 	log_info(logNucleo,"Se recibio un pedido de reserva de memoria del socket:%d por el PID:%d por bytes:%d",socket,pedido->pid,pedido->bytes);
 
@@ -174,6 +172,7 @@ void reservar(void* data,int socket){
 				paginas_proceso= malloc(sizeof(t_paginas_proceso));
 				paginas_proceso->maxPaginas=pedido->paginasTotales-1;//Para incrementarlo despues (para el caso que tiene paginas o no)
 				paginas_proceso->paginas = list_create();
+				dictionary_put(paginasGlobalesHeap,pidKey,paginas_proceso);
 			}
 
 			t_pedido_inicializar pedido_memoria;
@@ -202,7 +201,7 @@ void reservar(void* data,int socket){
 				metadata.size=tamanio_pag_memoria-5;
 
 				memcpy(pedido_memoria.data,&metadata.isFree,1);
-				memcpy(pedido_memoria.data,&metadata.size,4);
+				memcpy(pedido_memoria.data+1,&metadata.size,4);
 
 				char* buffer = serializar_pedido_almacenar_bytes(&pedido_memoria);
 				empaquetarEnviarMensaje(socketMemoria,"ASIG_PAGES",sizeof(t_pedido_inicializar),buffer);
@@ -215,6 +214,11 @@ void reservar(void* data,int socket){
 				if(respuesta_alm->codigo != OK_ALMACENAR){
 					respuesta.codigo=RESERVAR_SIN_ESPACIO;
 					respuesta.puntero=-1;
+				}else{
+					t_pagina_heap* pagina = malloc(sizeof(t_pagina_heap));
+					pagina->espacioDisponible=tamanio_pag_memoria-10;
+					pagina->nroPagina=paginas_proceso->maxPaginas;
+					list_add(paginas_proceso->paginas,pagina);
 				}
 				free(respuesta_alm);
 				borrarPaquete(paquete);
@@ -223,7 +227,13 @@ void reservar(void* data,int socket){
 				respuesta.codigo=RESERVAR_SIN_ESPACIO;
 				respuesta.puntero=-1;
 			}
+
+			if(respuesta.puntero != -1){
+
+			}
+
 			borrarPaquete(paquete);
+			free(respuesta_memoria);
 		}
 
 		if(paginas_proceso!=NULL)
