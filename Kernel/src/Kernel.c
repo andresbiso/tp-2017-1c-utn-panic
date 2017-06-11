@@ -544,13 +544,13 @@ bool almacenarBytes(t_pcb* pcb,int socketMemoria,char* data){
 			for(j=nextInstruction;j<pcb->cant_instrucciones;j++){
 				nextOffset+=pcb->indice_codigo[j].size;
 				if(pcb->indice_codigo[j].pag ==i  && ((j+1>(pcb->cant_instrucciones))|| pcb->indice_codigo[j+1].pag !=i)){
-					pedido.tamanio=(offset+nextOffset)-(i==0?0:(pcb->indice_codigo[j].size));
+					pedido.tamanio=(nextOffset)-(i==0?(-offset):(pcb->indice_codigo[j].size));
 					nextInstruction=j+1;
 					break;
 				}
 			}
 		}else{
-			pedido.tamanio=(strlen(data)-offset);
+			pedido.tamanio=(strlen(data)-(paginasCodigo>1?offset:0));
 		}
 
 		pedido.offsetPagina = 0;
