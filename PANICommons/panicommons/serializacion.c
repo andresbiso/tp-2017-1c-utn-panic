@@ -705,3 +705,44 @@ t_respuesta_reservar* deserializar_respuesta_reservar(char* respuesta_serializad
 	return respuesta;
 }
 
+t_pedido_liberar_pagina* deserializar_pedido_liberar_pagina(char *pedido_serializado){
+	t_pedido_liberar_pagina* pedido = malloc(sizeof(t_pedido_liberar_pagina));
+
+	int offset=0;
+	memcpy(&pedido->pagina,pedido_serializado,sizeof(int32_t));
+	offset+=sizeof(int32_t);
+	memcpy(&pedido->pid,pedido_serializado+offset,sizeof(int32_t));
+
+	return pedido;
+}
+
+char* serializar_pedido_liberar_pagina(t_pedido_liberar_pagina *pedido){
+	char* buffer = malloc(sizeof(t_pedido_liberar_pagina));
+
+	int offset=0;
+	memcpy(buffer,&pedido->pagina,sizeof(int32_t));
+	offset+=sizeof(int32_t);
+	memcpy(buffer+offset,&pedido->pid,sizeof(int32_t));
+
+	return buffer;
+}
+
+t_respuesta_liberar_pagina* deserializar_respuesta_liberar_pagina(char *respuesta_serializado){
+	t_respuesta_liberar_pagina* respuesta = malloc(sizeof(t_respuesta_liberar_pagina));
+
+	memcpy(&respuesta->codigo,respuesta_serializado,sizeof(codigo_respuesta_reservar));
+
+	return respuesta;
+}
+
+char* serializar_respuesta_liberar_pagina(t_respuesta_liberar_pagina *respuesta){
+	char* buffer = malloc(sizeof(t_respuesta_liberar_pagina));
+
+	memcpy(buffer,&respuesta->codigo,sizeof(codigo_respuesta_reservar));
+
+	return buffer;
+}
+
+
+
+

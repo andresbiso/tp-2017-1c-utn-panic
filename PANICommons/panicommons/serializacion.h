@@ -128,6 +128,19 @@ typedef struct
 typedef struct
 {
 	int32_t pid;
+	int32_t pagina;
+} __attribute__((__packed__))t_pedido_liberar_pagina;
+
+typedef enum{OK_LIBERAR=1,ERROR_LIBERAR=-1} codigo_liberar_pagina;
+
+typedef struct
+{
+	codigo_liberar_pagina codigo;
+} __attribute__((__packed__))t_respuesta_liberar_pagina;
+
+typedef struct
+{
+	int32_t pid;
 	int32_t tamanio;
 	char* nombre_variable_compartida;
 } __attribute__((__packed__))t_pedido_obtener_variable_compartida;
@@ -245,6 +258,11 @@ t_pedido_finalizar_programa* deserializar_pedido_finalizar_programa(char *pedido
 char* serializar_pedido_finalizar_programa(t_pedido_finalizar_programa *pedido);
 t_respuesta_finalizar_programa* deserializar_respuesta_finalizar_programa(char *respuesta_serializado);
 char* serializar_respuesta_finalizar_programa(t_respuesta_finalizar_programa *respuesta);
+
+t_pedido_liberar_pagina* deserializar_pedido_liberar_pagina(char *pedido_serializado);
+char* serializar_pedido_liberar_pagina(t_pedido_liberar_pagina *pedido);
+t_respuesta_liberar_pagina* deserializar_respuesta_liberar_pagina(char *respuesta_serializado);
+char* serializar_respuesta_liberar_pagina(t_respuesta_liberar_pagina *respuesta);
 
 //Memoria
 
