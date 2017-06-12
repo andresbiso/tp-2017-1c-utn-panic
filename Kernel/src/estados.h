@@ -62,6 +62,7 @@ pthread_mutex_t mutexProgramasActuales;
 pthread_mutex_t mutexMemoria;
 sem_t stopped;
 
+int socketFS;
 int socketMemoria;
 int tamanio_pag_memoria;
 

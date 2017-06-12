@@ -13,6 +13,7 @@
 #include "inotify.h"
 
 #include "CapaMemoria.h"
+#include "CapaFS.h"
 
 int PuertoConsola;
 int PuertoCpu;
