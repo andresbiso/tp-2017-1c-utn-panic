@@ -14,7 +14,6 @@ typedef struct {
 	char* codigo;
 } __attribute__((__packed__)) threadPrograma;
 
-int socketFS;
 int socketCPU;
 int socketcpuConectadas;
 
@@ -790,6 +789,8 @@ int main(int argc, char** argv) {
 	isStopped=false;
 
 	paginasGlobalesHeap=dictionary_create();
+	tablaArchivosPorProceso=dictionary_create();
+        tablaArchivosGlobales=dictionary_create();
     t_dictionary* diccionarioFunciones = dictionary_create();
     dictionary_put(diccionarioFunciones,"ERROR_FUNC",&mostrarMensaje);
     dictionary_put(diccionarioFunciones,"NUEVO_PROG",&nuevoPrograma);
@@ -829,6 +830,8 @@ int main(int argc, char** argv) {
     crear_colas();
 
     listForFinish=list_create();
+
+    listaArchivosPorProceso = list_create();
 
     logNucleo = log_create("logNucleo.log", "nucleo.c", false, LOG_LEVEL_TRACE);
     logEstados = log_create("logEstados.log", "estados.c", false, LOG_LEVEL_TRACE);
