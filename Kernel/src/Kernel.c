@@ -470,6 +470,8 @@ t_pcb* armar_nuevo_pcb(char* codigo){
 			posicion_nueva_instruccion.offset=0;
 		}else{
 			posicion_nueva_instruccion.offset = (metadata->instrucciones_serializado[i].start%tamanio_pag_memoria);
+			if(posPag!=0 && ((posicion_nueva_instruccion.offset)<(nvopcb->indice_codigo[i-1].offset+nvopcb->indice_codigo[i-1].size)))
+				posicion_nueva_instruccion.offset=(nvopcb->indice_codigo[i-1].size+nvopcb->indice_codigo[i-1].offset);
 		}
 
 		posicion_nueva_instruccion.pag = posPag;
