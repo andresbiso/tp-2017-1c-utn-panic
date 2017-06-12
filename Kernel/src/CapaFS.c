@@ -131,4 +131,6 @@ void abrirArchivo(char* data, int socket){
 			break;
 	}
 
+	free(pidKey);
+
 }
