@@ -17,7 +17,6 @@ void getVariableCompartida(char* data, int socket){
 	log_info(logNucleo,"Se recibio un mensaje de la CPU:%d por el PID:%d para obtener la variable:%s",socket,pedido->pid,pedido->nombre_variable_compartida);
 
 	t_respuesta_obtener_variable_compartida respuesta;
-
 	if(!dictionary_has_key(variablesCompartidas,pedido->nombre_variable_compartida)){
 		log_info(logNucleo,"Variable:%s no encontrada",pedido->nombre_variable_compartida);
 		respuesta.valor_variable_compartida=-1;
@@ -142,6 +141,10 @@ void signal(char* data,int socket){
 		}
 	}
 
+	char * buffer = serializar_respuesta_signal(&respuesta);
+	empaquetarEnviarMensaje(socket,"RES_SIGNAL",sizeof(t_respuesta_signal),buffer);
+	free(buffer);
+
 	free(pedido->semId);
 	free(pedido);
 
@@ -183,8 +186,9 @@ void reservar(void* data,int socket){
 			empaquetarEnviarMensaje(socketMemoria,"ASIG_PAGES",sizeof(t_pedido_inicializar),buffer);
 			free(buffer);
 
-			t_package* paquete = recibirPaqueteMemoria();
-			t_respuesta_inicializar* respuesta_memoria = deserializar_respuesta_inicializar(paquete->datos);
+			t_package* paquete_asig = recibirPaqueteMemoria();
+			t_respuesta_inicializar* respuesta_memoria = deserializar_respuesta_inicializar(paquete_asig->datos);
+			borrarPaquete(paquete_asig);
 
 			if(respuesta_memoria->codigoRespuesta == OK_INICIALIZAR){
 				paginas_proceso->maxPaginas++;
@@ -208,8 +212,9 @@ void reservar(void* data,int socket){
 				free(buffer);
 				free(pedido_memoria.data);
 
-				t_package* paquete = recibirPaqueteMemoria();
-				t_respuesta_almacenar_bytes* respuesta_alm = deserializar_respuesta_almacenar_bytes(paquete->datos);
+				t_package* paquete_alm = recibirPaqueteMemoria();
+				t_respuesta_almacenar_bytes* respuesta_alm = deserializar_respuesta_almacenar_bytes(paquete_alm->datos);
+				borrarPaquete(paquete_alm);
 
 				if(respuesta_alm->codigo != OK_ALMACENAR){
 					respuesta.codigo=RESERVAR_SIN_ESPACIO;
@@ -221,19 +226,41 @@ void reservar(void* data,int socket){
 					list_add(paginas_proceso->paginas,pagina);
 				}
 				free(respuesta_alm);
-				borrarPaquete(paquete);
 
 			}else{
 				respuesta.codigo=RESERVAR_SIN_ESPACIO;
 				respuesta.puntero=-1;
 			}
+			free(respuesta_memoria);
+		}
 
-			if(respuesta.puntero != -1){
 
+		if(respuesta.puntero != -1){
+
+			bool pageWithSpace(void* elem){
+				return ((t_pagina_heap*)elem)->espacioDisponible>(pedido->bytes+5);
 			}
 
-			borrarPaquete(paquete);
-			free(respuesta_memoria);
+			t_pagina_heap* pag_heap = list_find(paginas_proceso->paginas,pageWithSpace);
+
+			t_pedido_solicitar_bytes pedido_sol_bytes;
+			pedido_sol_bytes.pid=pedido->pid;
+			pedido_sol_bytes.pagina=pag_heap->nroPagina;
+			pedido_sol_bytes.offsetPagina=0;
+			pedido_sol_bytes.tamanio=tamanio_pag_memoria;
+
+			char* buffer = serializar_pedido_solicitar_bytes(&pedido_sol_bytes);
+			empaquetarEnviarMensaje(socketMemoria,"SOLC_BYTES",sizeof(t_pedido_solicitar_bytes),buffer);
+			free(buffer);
+
+			t_package* paquete_sol_bytes = recibirPaqueteMemoria();
+			t_respuesta_solicitar_bytes* rta_sol_bytes = deserializar_respuesta_solicitar_bytes(paquete_sol_bytes->datos);
+			borrarPaquete(paquete_sol_bytes);
+
+			free(rta_sol_bytes->data);
+			free(rta_sol_bytes);
+
+
 		}
 
 		if(paginas_proceso!=NULL)

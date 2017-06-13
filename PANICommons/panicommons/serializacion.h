@@ -11,6 +11,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/types.h>
+#include <parser/metadata_program.h>
 
 typedef struct {
 	int32_t pag;
@@ -128,6 +129,19 @@ typedef struct
 typedef struct
 {
 	int32_t pid;
+	int32_t pagina;
+} __attribute__((__packed__))t_pedido_liberar_pagina;
+
+typedef enum{OK_LIBERAR=1,ERROR_LIBERAR=-1} codigo_liberar_pagina;
+
+typedef struct
+{
+	codigo_liberar_pagina codigo;
+} __attribute__((__packed__))t_respuesta_liberar_pagina;
+
+typedef struct
+{
+	int32_t pid;
 	int32_t tamanio;
 	char* nombre_variable_compartida;
 } __attribute__((__packed__))t_pedido_obtener_variable_compartida;
@@ -216,6 +230,26 @@ typedef struct{
 	codigo_respuesta_reservar codigo;
 }t_respuesta_reservar;
 
+typedef struct
+{
+	int32_t pid;
+	t_banderas* flags;
+	int32_t tamanio;
+	char* direccion;
+} __attribute__((__packed__))t_pedido_abrir_archivo;
+
+typedef struct
+{
+	int32_t tamanio;
+	char* direccion;
+} __attribute__((__packed__))t_pedido_validar_crear_archivo_fs;
+
+typedef enum{ABRIR_OK = 0, ERROR_ABRIR = 1} codigo_respuesta_abrir;
+
+typedef struct{
+	int32_t fd;
+	codigo_respuesta_abrir codigo;
+}t_respuesta_abrir_archivo;
 
 u_int32_t tamanio_pcb(t_pcb* pcb);
 t_pcb_serializado* serializar_pcb(t_pcb* pcb);
@@ -245,6 +279,11 @@ t_pedido_finalizar_programa* deserializar_pedido_finalizar_programa(char *pedido
 char* serializar_pedido_finalizar_programa(t_pedido_finalizar_programa *pedido);
 t_respuesta_finalizar_programa* deserializar_respuesta_finalizar_programa(char *respuesta_serializado);
 char* serializar_respuesta_finalizar_programa(t_respuesta_finalizar_programa *respuesta);
+
+t_pedido_liberar_pagina* deserializar_pedido_liberar_pagina(char *pedido_serializado);
+char* serializar_pedido_liberar_pagina(t_pedido_liberar_pagina *pedido);
+t_respuesta_liberar_pagina* deserializar_respuesta_liberar_pagina(char *respuesta_serializado);
+char* serializar_respuesta_liberar_pagina(t_respuesta_liberar_pagina *respuesta);
 
 //Memoria
 
@@ -282,6 +321,13 @@ t_pedido_reservar* deserializar_pedido_reservar(char* pedido_serializado);
 
 char* serializar_respuesta_reservar(t_respuesta_reservar* pedido);
 t_respuesta_reservar* deserializar_respuesta_reservar(char* pedido_serializado);
+
+char* serializar_pedido_validar_crear_archivo(t_pedido_validar_crear_archivo_fs* pedido);
+t_pedido_validar_crear_archivo_fs* deserializar_pedido_validar_crear_archivo(char* pedido_serializado);
+
+t_pedido_abrir_archivo* deserializar_pedido_abrir_archivo(char* pedido_serializado);
+char* serializar_respuesta_abrir_archivo(t_respuesta_abrir_archivo* respuesta);
+
 //Kernel
 
 //FS

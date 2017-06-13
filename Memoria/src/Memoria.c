@@ -108,20 +108,30 @@ t_cache_admin* findMinorEntradas(){//Si hay alguna libre le doy esa sino busco l
 
 void clearEntradasCache(int32_t pid,int32_t nroPagina,int32_t pidReplace,int32_t nroPaginaReplace){
 
-	void clearEntradas(void* entrada){
-		if( (((t_cache_admin*)entrada)->pid == pid) && (nroPagina==-1 || (((t_cache_admin*)entrada)->nroPagina==nroPagina))){
-			((t_cache_admin*)entrada)->tiempoEntrada=time(0);
-			if(pidReplace != -1 && nroPaginaReplace != -1){
-				((t_cache_admin*)entrada)->pid=pidReplace;
-				((t_cache_admin*)entrada)->nroPagina=nroPaginaReplace;
-			}else{
+	if(nroPagina == -1){
+		void clearEntradas(void* entrada){
+			if( (((t_cache_admin*)entrada)->pid == pid)){
+				((t_cache_admin*)entrada)->tiempoEntrada=time(0);
 				((t_cache_admin*)entrada)->pid=-1;
 				((t_cache_admin*)entrada)->nroPagina=0;
 			}
 		}
-	}
 
-	list_iterate(cacheEntradas,clearEntradas);
+		list_iterate(cacheEntradas,clearEntradas);
+	}else{
+
+		bool cache_PID_PAG(void* entrada){
+			return (((t_cache_admin*)entrada)->pid == pid) && (((t_cache_admin*)entrada)->nroPagina == nroPagina);
+		}
+
+		t_cache_admin* cache = list_find(cacheEntradas,cache_PID_PAG);
+
+		if(cache != NULL){
+			cache->tiempoEntrada=time(0);
+			cache->nroPagina=nroPaginaReplace;
+			cache->pid=pidReplace;
+		}
+	}
 }
 
 bool anyEntradaInCache(int32_t pid){
@@ -147,8 +157,11 @@ void findAndReplaceInCache(int32_t oldPID, int32_t oldNroPagina, int32_t pid, in
 				log_info(logFile,"Se reemplaza la cache PID:%d PAG:%d por PID:%d PAG:%d",oldPID,oldNroPagina,pid,nroPagina);
 				freeCache(cache);
 				break;
-			}else
+			}else{
 				memset(bloqueCache+offset,0,marcoSize);
+				if(oldNroPagina != -1)//Significa que mandaron a eliminar una pagina sola de cache
+					break;
+			}
 			offset+=marcoSize;
 		}else{
 			offset+=sizeof(int32_t);
@@ -203,7 +216,7 @@ void cacheMiss(int32_t pid, int32_t nroPagina,char* contenido){
 	replaceEntradaCache(menorEntradas->pid,menorEntradas->nroPagina,pid,nroPagina);
 
 	if(lista!=NULL)
-		list_clean_and_destroy_elements(lista,free);
+		list_destroy(lista);
 
 }
 
@@ -920,7 +933,44 @@ void finalizarPrograma(char* data,int socket){
 }
 
 void liberarPagina(char* data,int socket){
-	//TODO
+
+	t_pedido_liberar_pagina* pedido = deserializar_pedido_liberar_pagina(data);
+
+	t_respuesta_liberar_pagina respuesta;
+
+	log_info(logFile,"Se recibió un pedido para liberar la PAG:%d del PID:%",pedido->pagina,pedido->pid);
+
+	pthread_mutex_lock(&mutexCache);
+	if(anyEntradaInCache(pedido->pid)){
+		clearEntradasCache(pedido->pid,pedido->pagina,-1,-1);
+		findAndReplaceInCache(pedido->pid,pedido->pagina,-1,0,NULL);
+	}
+	pthread_mutex_unlock(&mutexCache);
+
+	sleep(retardoMemoria/1000);
+	pthread_mutex_lock(&mutexMemoriaPrincipal);
+
+	t_pagina* pag = encontrarPagina(pedido->pid,pedido->pagina);
+	if(pag==NULL){
+		respuesta.codigo=ERROR_LIBERAR;
+		log_info(logFile,"Pagina no encontrada PID:%d PAG:%d",pedido->pid,pedido->pagina);
+	}else{
+		respuesta.codigo=OK_LIBERAR;
+		log_info(logFile,"Pagina encontrada PID:%d PAG:%d",pedido->pid,pedido->pagina);
+
+		memset(bloqueMemoria+(marcoSize*(pag->indice)),0,marcoSize);
+
+		pag->pid=-1;
+		pag->numeroPag=0;
+		escribirPaginaEnTabla(pag);
+	}
+
+	pthread_mutex_unlock(&mutexMemoriaPrincipal);
+
+	char* buffer = serializar_respuesta_liberar_pagina(&respuesta);
+	empaquetarEnviarMensaje(socket,"RES_LIBERAR",sizeof(t_pedido_liberar_pagina),buffer);
+	free(buffer);
+	free(pedido);
 }
 
 void getMarcos(char* data,int socket){

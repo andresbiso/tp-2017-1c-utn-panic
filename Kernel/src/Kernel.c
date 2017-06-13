@@ -14,7 +14,6 @@ typedef struct {
 	char* codigo;
 } __attribute__((__packed__)) threadPrograma;
 
-int socketFS;
 int socketCPU;
 int socketcpuConectadas;
 
@@ -459,25 +458,29 @@ t_pcb* armar_nuevo_pcb(char* codigo){
 
 	nvopcb->indice_codigo=malloc(tamano_instrucciones);
 
+	int posPag=0;
+	int lastOffset=0;
 	for(i=0;i<(metadata->instrucciones_size);i++){
 		t_posMemoria posicion_nueva_instruccion;
 		posicion_nueva_instruccion.size = metadata->instrucciones_serializado[i].offset;
 
-		posicion_nueva_instruccion.pag = (metadata->instrucciones_serializado[i].start+posicion_nueva_instruccion.size)/tamanio_pag_memoria;
-
-		if (posicion_nueva_instruccion.pag !=0 && (metadata->instrucciones_serializado[i].start < (posicion_nueva_instruccion.pag*tamanio_pag_memoria)) ){
-			posicion_nueva_instruccion.offset = 0;
-		}else if (posicion_nueva_instruccion.pag !=0){
-			posicion_nueva_instruccion.offset = (metadata->instrucciones_serializado[i].start%(posicion_nueva_instruccion.pag*tamanio_pag_memoria));
-			if((posicion_nueva_instruccion.offset)<(nvopcb->indice_codigo[i-1].offset+nvopcb->indice_codigo[i-1].size))
+		if((lastOffset+posicion_nueva_instruccion.size)>tamanio_pag_memoria){
+			posPag++;
+			posicion_nueva_instruccion.offset=0;
+		}else{
+			posicion_nueva_instruccion.offset = (metadata->instrucciones_serializado[i].start%tamanio_pag_memoria);
+			if(posPag!=0 && ((posicion_nueva_instruccion.offset)<(nvopcb->indice_codigo[i-1].offset+nvopcb->indice_codigo[i-1].size)))
 				posicion_nueva_instruccion.offset=(nvopcb->indice_codigo[i-1].size+nvopcb->indice_codigo[i-1].offset);
-		}else
-			posicion_nueva_instruccion.offset = metadata->instrucciones_serializado[i].start;
+		}
+
+		posicion_nueva_instruccion.pag = posPag;
+
 		nvopcb->indice_codigo[i] = posicion_nueva_instruccion;
 
 		log_trace(logNucleo,"Instruccion %d pag %d offset %d size %d",i,posicion_nueva_instruccion.pag,posicion_nueva_instruccion.offset,posicion_nueva_instruccion.size);
 		log_trace(logNucleo,"%.*s",posicion_nueva_instruccion.size,codigo+metadata->instrucciones_serializado[i].start);
 
+		lastOffset=posicion_nueva_instruccion.offset+posicion_nueva_instruccion.size;
 	}
 
 	int result_pag = divAndRoundUp(strlen(codigo), tamanio_pag_memoria);
@@ -526,29 +529,34 @@ bool almacenarBytes(t_pcb* pcb,int socketMemoria,char* data){
 	int i;
 	t_pedido_almacenar_bytes pedido;
 
-	int offset=0;
 
 	int paginasCodigo=pcb->cant_pags_totales-StackSize;
 
 	int j;
 	int nextInstruction=0;
+	int offset=pcb->indice_codigo[0].offset;
 	for(i=0;i<paginasCodigo;i++){
+		int nextOffset=0;
+		pedido.tamanio=0;
 		pedido.pid = pcb->pid;
 		pedido.pagina = i;
 
-		for(j=nextInstruction;j<pcb->cant_instrucciones;j++){
-			if(pcb->indice_codigo[j].pag ==i  && ((j+1>=(pcb->cant_instrucciones))|| pcb->indice_codigo[j+1].pag !=i)){
-				pedido.tamanio=pcb->indice_codigo[j].size+pcb->indice_codigo[j].offset;
-				nextInstruction=j+1;
-				break;
+		if(pedido.pagina != (paginasCodigo-1)){
+			for(j=nextInstruction;j<pcb->cant_instrucciones;j++){
+				nextOffset+=pcb->indice_codigo[j].size;
+				if(pcb->indice_codigo[j].pag ==i  && ((j+1>(pcb->cant_instrucciones))|| pcb->indice_codigo[j+1].pag !=i)){
+					pedido.tamanio=(nextOffset)-(i==0?(-offset):(pcb->indice_codigo[j].size));
+					nextInstruction=j+1;
+					break;
+				}
 			}
+		}else{
+			pedido.tamanio=(strlen(data)-(paginasCodigo>1?offset:0));
 		}
 
 		pedido.offsetPagina = 0;
 		pedido.data = malloc(pedido.tamanio);
-		memcpy(pedido.data,data+offset,pedido.tamanio);
-
-		offset+=pedido.tamanio;
+		memcpy(pedido.data,data+(i==0?0:offset),pedido.tamanio);
 
 		char* buffer = serializar_pedido_almacenar_bytes(&pedido);
 		empaquetarEnviarMensaje(socketMemoria,"ALMC_BYTES",sizeof(int32_t)*4+pedido.tamanio,buffer);
@@ -575,6 +583,7 @@ bool almacenarBytes(t_pcb* pcb,int socketMemoria,char* data){
 
 		borrarPaquete(paquete);
 		free(respuesta);
+		offset+=nextOffset;
 	}
 	return true;
 }
@@ -780,6 +789,8 @@ int main(int argc, char** argv) {
 	isStopped=false;
 
 	paginasGlobalesHeap=dictionary_create();
+	tablaArchivosPorProceso=dictionary_create();
+        tablaArchivosGlobales=dictionary_create();
     t_dictionary* diccionarioFunciones = dictionary_create();
     dictionary_put(diccionarioFunciones,"ERROR_FUNC",&mostrarMensaje);
     dictionary_put(diccionarioFunciones,"NUEVO_PROG",&nuevoPrograma);
@@ -819,6 +830,8 @@ int main(int argc, char** argv) {
     crear_colas();
 
     listForFinish=list_create();
+
+    listaArchivosPorProceso = list_create();
 
     logNucleo = log_create("logNucleo.log", "nucleo.c", false, LOG_LEVEL_TRACE);
     logEstados = log_create("logEstados.log", "estados.c", false, LOG_LEVEL_TRACE);
