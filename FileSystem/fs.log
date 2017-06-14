@@ -1,0 +1,21 @@
+[INFO] 16:20:55:852 FILE SYSTEM/(26864:26864): Se intentará crear el archivo prueba.bin
+[INFO] 16:23:26:304 FILE SYSTEM/(26999:26999): Se intentará crear el archivo prueba.bin
+[INFO] 16:25:23:577 FILE SYSTEM/(27062:27062): Se intentará crear el archivo prueba.bin
+[INFO] 16:27:09:152 FILE SYSTEM/(27110:27110): Se intentará crear el archivo prueba.bin
+[INFO] 16:33:13:776 FILE SYSTEM/(27365:27365): Se intentará crear el archivo prueba.bin
+[INFO] 16:34:08:373 FILE SYSTEM/(27453:27453): Se intentará crear el archivo prueba.bin
+[INFO] 16:34:57:29 FILE SYSTEM/(27526:27526): Se intentará crear el archivo prueba.bin
+[INFO] 16:35:59:633 FILE SYSTEM/(27603:27603): Se intentará crear el archivo prueba.bin
+[INFO] 16:37:12:491 FILE SYSTEM/(27680:27680): Se intentará crear el archivo prueba.bin
+[INFO] 16:37:56:134 FILE SYSTEM/(27725:27725): Se intentará crear el archivo prueba.bin
+[INFO] 16:39:26:238 FILE SYSTEM/(27812:27812): Se intentará crear el archivo prueba.bin
+[INFO] 18:24:14:102 FILE SYSTEM/(28652:28652): Se intentará crear el archivo prueba.bin
+[ERROR] 18:25:06:778 FILE SYSTEM/(28652:28652): Error al crear el archivo
+[INFO] 18:47:21:255 FILE SYSTEM/(28807:28807): Se intentará crear el archivo prueba.bin
+[INFO] 19:14:28:736 FILE SYSTEM/(28933:28933): Se intentará crear el archivo prueba.bin
+[INFO] 19:40:09:752 FILE SYSTEM/(29303:29303): Se intentará crear el archivo prueba.bin
+[INFO] 19:40:44:165 FILE SYSTEM/(29303:29303): El archivo se creó exitosamente
+[INFO] 19:47:38:787 FILE SYSTEM/(29607:29607): Se intentará crear el archivo prueba.bin
+[INFO] 19:48:19:885 FILE SYSTEM/(29607:29607): El archivo se creó exitosamente
+[INFO] 19:49:46:744 FILE SYSTEM/(29726:29726): Se intentará crear el archivo prueba.bin
+[INFO] 19:49:48:186 FILE SYSTEM/(29726:29726): El archivo se creó exitosamente

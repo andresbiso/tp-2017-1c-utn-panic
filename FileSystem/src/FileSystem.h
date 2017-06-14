@@ -16,6 +16,9 @@
 #include <commons/bitarray.h>
 #include <commons/log.h>
 #include <sys/mman.h>
+#include <sys/stat.h>
+#include <dirent.h>
+#include <errno.h>
 
 //#define foreach(item, array) \
 //    for(int keep = 1, \
