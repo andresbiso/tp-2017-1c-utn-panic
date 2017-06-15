@@ -16,13 +16,13 @@ typedef struct {
 } t_semaforo;
 
 typedef struct{
-	uint32_t size;
+	int32_t size;
 	bool isFree;
-}t_heap_metadata;
+} __attribute__((__packed__)) t_heap_metadata;
 
 typedef struct{
 	int32_t nroPagina;
-	int32_t espacioDisponible;
+	int32_t espacioContiguoDisponible;//Es el espacio contiguo máximo disponible
 }t_pagina_heap;
 
 typedef struct {
