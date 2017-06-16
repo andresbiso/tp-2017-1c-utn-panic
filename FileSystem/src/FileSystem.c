@@ -220,7 +220,7 @@ int main(int argc, char** argv)
 
 	//pruebaBitmap();
 
-	crearArchivo("prueba.bin", 1);
+	crearArchivo("passwords/usuario/prueba.bin", 1);
 
 	printf("TAMANIO BITMAP: %d\n", bitmap->size);
 

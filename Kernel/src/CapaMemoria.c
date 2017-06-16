@@ -177,9 +177,11 @@ bool pedirPaginaHeap(t_paginas_proceso* paginas_proceso, int paginasTotales, int
 		t_pedido_almacenar_bytes pedido_memoria;
 		pedido_memoria.pid=pid;
 		pedido_memoria.offsetPagina=0;
-		pedido_memoria.tamanio=sizeof(t_heap_metadata);
+		pedido_memoria.tamanio=tamanio_pag_memoria;
 		pedido_memoria.pagina=paginas_proceso->maxPaginas;
-		pedido_memoria.data=malloc(sizeof(t_heap_metadata));
+		pedido_memoria.data=malloc(tamanio_pag_memoria);
+		memset(pedido_memoria.data,'\0',tamanio_pag_memoria);
+
 
 		t_heap_metadata metadata;
 		metadata.isFree=1;
@@ -198,10 +200,11 @@ bool pedirPaginaHeap(t_paginas_proceso* paginas_proceso, int paginasTotales, int
 		borrarPaquete(paquete_alm);
 
 		if(respuesta_alm->codigo != OK_ALMACENAR){
+			free(respuesta_alm);
 			return false;
 		}else{
 			t_pagina_heap* pagina = malloc(sizeof(t_pagina_heap));
-			pagina->espacioContiguoDisponible=tamanio_pag_memoria-sizeof(t_heap_metadata);
+			pagina->espacioDisponible=tamanio_pag_memoria-sizeof(t_heap_metadata);
 			pagina->nroPagina=paginas_proceso->maxPaginas;
 			list_add(paginas_proceso->paginas,pagina);
 		}
@@ -211,6 +214,96 @@ bool pedirPaginaHeap(t_paginas_proceso* paginas_proceso, int paginasTotales, int
 		free(respuesta_memoria);
 		return false;
 	}
+}
+
+bool tryAllocate(t_pedido_reservar* pedido,t_respuesta_reservar* respuesta,t_pagina_heap* pag_heap){
+	t_pedido_solicitar_bytes pedido_sol_bytes;
+	pedido_sol_bytes.pid=pedido->pid;
+	pedido_sol_bytes.pagina=pag_heap->nroPagina;
+	pedido_sol_bytes.offsetPagina=0;
+	pedido_sol_bytes.tamanio=tamanio_pag_memoria;
+
+	char* buffer = serializar_pedido_solicitar_bytes(&pedido_sol_bytes);
+	empaquetarEnviarMensaje(socketMemoria,"SOLC_BYTES",sizeof(t_pedido_solicitar_bytes),buffer);
+	free(buffer);
+
+	t_package* paquete_sol_bytes = recibirPaqueteMemoria();
+	t_respuesta_solicitar_bytes* rta_sol_bytes = deserializar_respuesta_solicitar_bytes(paquete_sol_bytes->datos);
+	borrarPaquete(paquete_sol_bytes);
+
+	int offset=0;
+
+	while(offset<tamanio_pag_memoria){
+		t_heap_metadata metadata;
+		memcpy(&metadata.isFree,(rta_sol_bytes->data)+offset,sizeof(bool));
+		offset+=sizeof(bool);
+		memcpy(&metadata.size,(rta_sol_bytes->data)+offset,sizeof(int32_t));
+		offset+=sizeof(int32_t);
+
+		if((metadata.size > (pedido->bytes+sizeof(t_heap_metadata)) )){
+			int oldOffset=offset-sizeof(t_heap_metadata);
+			respuesta->puntero=(pag_heap->nroPagina*tamanio_pag_memoria)+offset;
+			respuesta->puntero=RESERVAR_OK;
+
+			t_heap_metadata newMetadata;
+			newMetadata.isFree=false;
+			newMetadata.size=pedido->bytes;
+
+			memcpy((rta_sol_bytes->data)+oldOffset,&newMetadata.isFree,sizeof(bool));//Escribimos la nueva metadata
+			oldOffset+=sizeof(bool);
+			memcpy((rta_sol_bytes->data)+oldOffset,&newMetadata.size,sizeof(int32_t));
+			oldOffset+=sizeof(int32_t);
+
+			if(rta_sol_bytes->data[oldOffset+newMetadata.size]=='\0'){//Esto es para poner el flag al final
+				t_heap_metadata lastMetadata;
+				lastMetadata.isFree=true;
+				lastMetadata.size=metadata.size-newMetadata.size-sizeof(t_heap_metadata);//Se resta uno para el flag
+
+				memcpy(rta_sol_bytes+oldOffset+newMetadata.size,&lastMetadata.isFree,sizeof(bool));//Escribimos la nueva metadata
+				memcpy(rta_sol_bytes+oldOffset+1+newMetadata.size,&lastMetadata.size,sizeof(int32_t));
+
+				pag_heap->espacioDisponible-=(newMetadata.size+sizeof(t_heap_metadata));
+			}else{
+				pag_heap->espacioDisponible-=newMetadata.size;
+			}
+
+
+			t_pedido_almacenar_bytes pedido_memoria;
+			pedido_memoria.pid=pedido->pid;
+			pedido_memoria.offsetPagina=0;
+			pedido_memoria.tamanio=tamanio_pag_memoria;
+			pedido_memoria.pagina=pag_heap->nroPagina;
+			pedido_memoria.data=rta_sol_bytes->data;
+
+			char* buffer = serializar_pedido_almacenar_bytes(&pedido_memoria);
+			empaquetarEnviarMensaje(socketMemoria,"ALMC_BYTES",sizeof(int32_t)*4+pedido_memoria.tamanio,buffer);
+			free(buffer);
+			free(pedido_memoria.data);
+
+			t_package* paquete_alm = recibirPaqueteMemoria();
+			t_respuesta_almacenar_bytes* respuesta_alm = deserializar_respuesta_almacenar_bytes(paquete_alm->datos);
+			borrarPaquete(paquete_alm);
+
+			if(respuesta_alm->codigo != OK_ALMACENAR){
+				free(respuesta_alm);
+				free(rta_sol_bytes->data);
+				free(rta_sol_bytes);
+
+				return false;
+			}
+
+			free(respuesta_alm);
+			free(rta_sol_bytes->data);
+			free(rta_sol_bytes);
+
+			return true;
+		}
+
+	}
+
+	free(rta_sol_bytes->data);
+	free(rta_sol_bytes);
+	return false;
 }
 
 void reservar(void* data,int socket){
@@ -225,77 +318,57 @@ void reservar(void* data,int socket){
 		respuesta.codigo=RESERVAR_OVERFLOW;
 		respuesta.puntero=-1;
 	}else{
-		//TODO
 		char* pidKey = string_itoa(pedido->pid);
 		t_paginas_proceso* paginas_proceso = dictionary_get(paginasGlobalesHeap,pidKey);
 
 		bool pageWithNoSpace(void* elem){
-			return ((t_pagina_heap*)elem)->espacioContiguoDisponible<(pedido->bytes+5);
+			return ((t_pagina_heap*)elem)->espacioDisponible<(pedido->bytes+5);
 		}
 
 		if(paginas_proceso == NULL || list_all_satisfy(paginas_proceso->paginas,pageWithNoSpace)){//Si no hay paginas o no hay ninguna con espacio
 			if (!pedirPaginaHeap(paginas_proceso,pedido->paginasTotales, pedido->pid,pidKey)){
 				respuesta.puntero = -1;
 				respuesta.codigo = RESERVAR_SIN_ESPACIO;
-			}else if (paginas_proceso == NULL){
-				paginas_proceso = dictionary_get(paginasGlobalesHeap,pidKey);
 			}
+		}
+
+		if (paginas_proceso == NULL){
+			paginas_proceso = dictionary_get(paginasGlobalesHeap,pidKey);
 		}
 
 		if(respuesta.puntero != -1){
 
 			bool pageWithSpace(void* elem){
-				return ((t_pagina_heap*)elem)->espacioContiguoDisponible>(pedido->bytes+sizeof(t_heap_metadata));
+				return ((t_pagina_heap*)elem)->espacioDisponible>(pedido->bytes+sizeof(t_heap_metadata));
 			}
 
-			t_pagina_heap* pag_heap = list_find(paginas_proceso->paginas,pageWithSpace);
+			int index=0;
+			t_list* all_pages_with_space = list_filter(paginas_proceso->paginas,pageWithSpace);
+			t_pagina_heap* pag_heap = list_get(all_pages_with_space,index);
 
-			t_pedido_solicitar_bytes pedido_sol_bytes;
-			pedido_sol_bytes.pid=pedido->pid;
-			pedido_sol_bytes.pagina=pag_heap->nroPagina;
-			pedido_sol_bytes.offsetPagina=0;
-			pedido_sol_bytes.tamanio=tamanio_pag_memoria;
+			bool pageWrite = false;
 
-			char* buffer = serializar_pedido_solicitar_bytes(&pedido_sol_bytes);
-			empaquetarEnviarMensaje(socketMemoria,"SOLC_BYTES",sizeof(t_pedido_solicitar_bytes),buffer);
-			free(buffer);
-
-			t_package* paquete_sol_bytes = recibirPaqueteMemoria();
-			t_respuesta_solicitar_bytes* rta_sol_bytes = deserializar_respuesta_solicitar_bytes(paquete_sol_bytes->datos);
-			borrarPaquete(paquete_sol_bytes);
-
-			//En este punto ya debería haber espacio en la pagina del heap
-
-			int32_t newMaxEspacioContiguo=0;
-
-			int offset=0;
-			bool pageFound=false;
-
-			while(offset<tamanio_pag_memoria){
-				t_heap_metadata metadata;
-				memcpy(&metadata.isFree,rta_sol_bytes+offset,sizeof(bool));
-				offset+=sizeof(bool);
-				memcpy(&metadata.size,rta_sol_bytes+offset,sizeof(int32_t));
-				offset+=sizeof(int32_t);
-
-				if(!pageFound && (metadata.size > (pedido->bytes+sizeof(t_heap_metadata)) )){
-					pageFound=true;
-					respuesta.puntero=(pag_heap->nroPagina*tamanio_pag_memoria)+offset;
-					respuesta.puntero=RESERVAR_OK;
+			while(!pageWrite){
+				pageWrite = tryAllocate(pedido,&respuesta,pag_heap);
+				if(!pageWrite){
+					index++;
+					pag_heap = list_get(all_pages_with_space,index);
+					if (pag_heap==NULL && !pedirPaginaHeap(paginas_proceso,pedido->paginasTotales, pedido->pid,pidKey)){
+						respuesta.puntero = -1;
+						respuesta.codigo = RESERVAR_SIN_ESPACIO;
+						break;
+					}
 				}
-
 			}
 
-			free(rta_sol_bytes->data);
-			free(rta_sol_bytes);
-
+			list_clean(all_pages_with_space);
 		}
 
 		free(pidKey);
 	}
 
 	char* buffer = serializar_respuesta_reservar(&respuesta);
-	empaquetarEnviarMensaje(socket,"RET_RESERVAR",sizeof(t_respuesta_reservar),buffer);
+	//empaquetarEnviarMensaje(socket,"RET_RESERVAR",sizeof(t_respuesta_reservar),buffer); TODO descomentar para que responda
 	free(buffer);
 
 	free(pedido);

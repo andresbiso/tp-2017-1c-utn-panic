@@ -22,7 +22,7 @@ typedef struct{
 
 typedef struct{
 	int32_t nroPagina;
-	int32_t espacioContiguoDisponible;//Es el espacio contiguo máximo disponible
+	int32_t espacioDisponible;//Es el espacio disponible
 }t_pagina_heap;
 
 typedef struct {
