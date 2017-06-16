@@ -332,7 +332,54 @@ void restart(int size, char** functionAndParams){
 	freeElementsArray(functionAndParams,size);
 }
 
+void showTablaProceso(int size, char** functionAndParams){
+	if(size != 2){
+			printf("El comando tablaProceso solo debe recibir el PID\n\r");
+			freeElementsArray(functionAndParams,size);
+			return;
+	}
 
+	char* pid = functionAndParams[1];
+	if(!dictionary_has_key(tablaArchivosPorProceso,pid)){
+		printf("PID no encontrado\n\r");
+		freeElementsArray(functionAndParams,size);
+		return;
+	}
+
+	log_info(logNucleo,"Tabla de archivos para proceso: %s",pid);
+
+	t_list* listaPorProceso = dictionary_get(tablaArchivosPorProceso,pid);
+
+	void log(void *archivo) {
+			log_info(logNucleo,"| FD: %d | Flags: %s | GlobalFD: %d | Cursor: %d |",((t_archivos_proceso*)archivo)->fd,
+					((t_archivos_proceso*)archivo)->flags,((t_archivos_proceso*)archivo)->globalFD,((t_archivos_proceso*)archivo)->cursor);
+		}
+
+	pthread_mutex_lock(&listaArchivosPidMutex);
+	list_iterate(listaPorProceso,log);
+	pthread_mutex_unlock(&listaArchivosPidMutex);
+
+	freeElementsArray(functionAndParams,size);
+}
+
+void showTablaGlobal(int size, char** functionAndParams){
+	if(size>1){
+		printf("El comando tablaGlobal no puede recibir parametros\n\r");
+		freeElementsArray(functionAndParams,size);
+		return;
+	}
+
+	void logGlobal(void *archivo) {
+			log_info(logNucleo,"| GlobalFD: %d | File: %s | Open: %d |",((t_archivos_global*)archivo)->globalFD,
+					((t_archivos_global*)archivo)->file,((t_archivos_global*)archivo)->open);
+			}
+
+	pthread_mutex_lock(&listaArchivosGlobalMutex);
+	list_iterate(tablaArchivosGlobales,logGlobal);
+	pthread_mutex_unlock(&listaArchivosGlobalMutex);
+
+	freeElementsArray(functionAndParams,size);
+}
 
 void consolaCreate(void*args){
 	t_dictionary* commands = dictionary_create();
@@ -341,6 +388,9 @@ void consolaCreate(void*args){
 	dictionary_put(commands,"end",&end);
 	dictionary_put(commands,"stop",&stop);
 	dictionary_put(commands,"restart",&restart);
+	dictionary_put(commands,"tablaProceso",&showTablaProceso);
+	dictionary_put(commands,"tablaGlobal",&showTablaGlobal);
+
 	waitCommand(commands);
 	dictionary_destroy(commands);
 }
@@ -784,13 +834,16 @@ int main(int argc, char** argv) {
 	pthread_mutex_init(&mutexCPUConectadas,NULL);
 	pthread_mutex_init(&mutexProgramasActuales,NULL);
 	pthread_mutex_init(&mutexMemoria,NULL);
+	pthread_mutex_init(&listaArchivosGlobalMutex,NULL);
+	pthread_mutex_init(&mutexGlobalFD,NULL);
+	pthread_mutex_init(&listaArchivosPidMutex,NULL);
 	sem_init(&stopped,0,0);
 
 	isStopped=false;
 
 	paginasGlobalesHeap=dictionary_create();
 	tablaArchivosPorProceso=dictionary_create();
-        tablaArchivosGlobales=dictionary_create();
+
     t_dictionary* diccionarioFunciones = dictionary_create();
     dictionary_put(diccionarioFunciones,"ERROR_FUNC",&mostrarMensaje);
     dictionary_put(diccionarioFunciones,"NUEVO_PROG",&nuevoPrograma);
@@ -801,6 +854,8 @@ int main(int argc, char** argv) {
     dictionary_put(diccionarioFunciones,"SET_VAR_COMP",&setVariableCompartida);
     dictionary_put(diccionarioFunciones,"WAIT",&wait);
     dictionary_put(diccionarioFunciones,"SIGNAL",&signal);
+    dictionary_put(diccionarioFunciones,"ABRIR_ARCH",&abrirArchivo);
+    dictionary_put(diccionarioFunciones,"CERRAR_ARCH",&cerrarArchivo);
 
     t_dictionary* diccionarioHandshakes = dictionary_create();
     dictionary_put(diccionarioHandshakes,"HCPKE","HKECP");
@@ -832,6 +887,7 @@ int main(int argc, char** argv) {
     listForFinish=list_create();
 
     listaArchivosPorProceso = list_create();
+    tablaArchivosGlobales = list_create();
 
     logNucleo = log_create("logNucleo.log", "nucleo.c", false, LOG_LEVEL_TRACE);
     logEstados = log_create("logEstados.log", "estados.c", false, LOG_LEVEL_TRACE);
@@ -839,6 +895,7 @@ int main(int argc, char** argv) {
     sem_init(&grado, 0, GradoMultiprog);
 
     ultimoPID = 1;
+    ultimoGlobalFD = 0;
 
     if ((socketMemoria = conectar(IpMemoria,PuertoMemoria)) == -1)
     	exit(EXIT_FAILURE);

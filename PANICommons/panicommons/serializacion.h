@@ -240,6 +240,13 @@ typedef struct
 
 typedef struct
 {
+	int32_t pid;
+	int32_t tamanio;
+	char* direccion;
+} __attribute__((__packed__))t_pedido_cerrar_archivo;
+
+typedef struct
+{
 	int32_t tamanio;
 	char* direccion;
 } __attribute__((__packed__))t_pedido_validar_crear_archivo_fs;
@@ -327,6 +334,8 @@ t_pedido_validar_crear_archivo_fs* deserializar_pedido_validar_crear_archivo(cha
 
 t_pedido_abrir_archivo* deserializar_pedido_abrir_archivo(char* pedido_serializado);
 char* serializar_respuesta_abrir_archivo(t_respuesta_abrir_archivo* respuesta);
+
+t_pedido_cerrar_archivo* deserializar_pedido_cerrar_archivo(char* pedido_serializado);
 
 //Kernel
 

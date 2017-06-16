@@ -795,4 +795,17 @@ char* serializar_respuesta_abrir_archivo(t_respuesta_abrir_archivo* respuesta){
 	return buffer;
 }
 
+t_pedido_cerrar_archivo* deserializar_pedido_cerrar_archivo(char* pedido_serializado){
+	t_pedido_cerrar_archivo* pedido = malloc(sizeof(t_pedido_cerrar_archivo));
+	int offset = 0;
 
+	memcpy(&pedido->pid,pedido_serializado,sizeof(int32_t));
+	offset+=sizeof(int32_t);
+	memcpy(&pedido->tamanio,pedido_serializado+offset,sizeof(int32_t));
+	offset+=sizeof(int32_t);
+	pedido->direccion=malloc(pedido->tamanio+1);
+	pedido->direccion[pedido->tamanio]='\0';
+	memcpy(pedido->direccion,pedido_serializado+offset,pedido->tamanio);
+
+	return pedido;
+}
