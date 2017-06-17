@@ -73,23 +73,32 @@ void crearArchivo(char* archivo, int socket)
 {
 	log_info(logFS, "Se intentará crear el archivo %s", archivo);
 	int bloqueVacio = obtenerBloqueVacio();
-	t_respuesta_crear_archivo* rta;
+	t_respuesta_crear_archivo* rta = malloc(sizeof(t_respuesta_crear_archivo));
 	if (bloqueVacio >= 0)
 	{
-		t_metadata_archivo* nuevoArchivo;
+		t_metadata_archivo* nuevoArchivo = malloc(sizeof(t_metadata_archivo) + sizeof(int));
 		nuevoArchivo->bloques = malloc(sizeof(int));
 		nuevoArchivo->bloques[0] = bloqueVacio;
 		nuevoArchivo->tamanio = metadataFS.tamanioBloque;
 
 		char* ruta = concat(rutaArchivos, archivo);
 
+		DIR* dir = opendir(rutaArchivos);
+		if (dir)
+		{
+		    closedir(dir);
+		}
+		else if (ENOENT == errno)
+		{
+		    mkdir(rutaArchivos, S_IRWXU);
+		}
+
 		FILE* file = fopen(ruta, "wb");
 		if (file != NULL)
 		{
-			fwrite(&nuevoArchivo, sizeof(t_metadata_archivo),1, file);
+			fwrite(&nuevoArchivo, sizeof(t_metadata_archivo) + sizeof(nuevoArchivo->bloques),1, file);
 			fclose(file);
 			log_info(logFS, "El archivo se creó exitosamente");
-			free(nuevoArchivo->bloques);
 			marcarBloqueOcupado(bloqueVacio);
 			rta->codigoRta = CREAR_OK;
 		}
@@ -98,6 +107,7 @@ void crearArchivo(char* archivo, int socket)
 			log_error(logFS, "Error al crear el archivo");
 			rta->codigoRta = CREAR_ERROR;
 		}
+		free(nuevoArchivo->bloques);
 		free(nuevoArchivo);
 	}
 	else
@@ -106,8 +116,9 @@ void crearArchivo(char* archivo, int socket)
 		rta->codigoRta = NO_HAY_BLOQUES;
 	}
 	char* buffer = serializar_respuesta_crear_archivo(&rta);
-	empaquetarEnviarMensaje(socket, "RES_CREAR_ARCH", sizeof(t_respuesta_crear_archivo), buffer);
+	//empaquetarEnviarMensaje(socket, "RES_CREAR_ARCH", sizeof(t_respuesta_crear_archivo), buffer);
 	free(buffer);
+	free(rta);
 }
 void borrarArchivo(char* nombre, int socket)
 {
@@ -162,24 +173,26 @@ void leerDatosArchivo(char* nombre, int socket)
 }
 void leerArchivoMetadataFS()
 {
+	metadataFS.magicNumber = malloc(sizeof(char[6]));
 	char* ruta = concat(puntoMontaje, "Metadata/Metadata.bin");
 	FILE* archivo = fopen(ruta, "rb");
-	fread(&metadataFS, sizeof(t_metadata_fs) + sizeof("SADICA"), 1, archivo);
+	fread(&metadataFS, sizeof(t_metadata_fs) + sizeof(char[6]), 1, archivo);
 	fclose(archivo);
 }
 void cargarConfiguracionAdicional()
 {
+	leerArchivoMetadataFS();
 	rutaBloques = concat(puntoMontaje, "Bloques/");
 	rutaArchivos = concat(puntoMontaje, "Archivos/");
 	rutaBitmap = concat(puntoMontaje, "Metadata/Bitmap.bin");
-	leerArchivoMetadataFS();
 }
 void mapearBitmap()
 {
-	archivoBitmap = fopen(rutaBitmap, "rb");
+	archivoBitmap = fopen(rutaBitmap, "r+b");
 	char* bitmapArray = malloc(metadataFS.cantidadBloques*sizeof(int));
 	mmap(bitmapArray, metadataFS.cantidadBloques*sizeof(int), PROT_WRITE, MAP_SHARED, fileno(archivoBitmap), 0);
-	bitmap = bitarray_create_with_mode(bitmapArray, metadataFS.cantidadBloques * sizeof(int), LSB_FIRST);
+	bitmap = bitarray_create_with_mode(bitmapArray, metadataFS.cantidadBloques * sizeof(int), MSB_FIRST);
+	free(bitmapArray);
 }
 void cerrarArchivosYLiberarMemoria()
 {
@@ -187,25 +200,14 @@ void cerrarArchivosYLiberarMemoria()
 	fclose(archivoBitmap);
 	bitarray_destroy(bitmap);
 }
-void leerArchivoBitmap(t_bitarray bitmap)
-{
-	FILE* archivoBitmap = fopen(rutaBitmap, "rb");
-	fread(&bitmap, sizeof(t_bitarray), 1, archivoBitmap);
-	fclose(archivoBitmap);
-}
-void crearMetadataFS()
-{
-	t_metadata_fs asd;
-	asd.cantidadBloques = 5192;
-	asd.tamanioBloque = 64;
-	asd.magicNumber = malloc(sizeof("SADICA"));
-	asd.magicNumber = "SADICA";
-	char* ruta = concat(puntoMontaje, "Metadata/Metadata.bin");
-	FILE* file = fopen(ruta, "wb");
-	fwrite(&asd, sizeof(t_metadata_fs) + sizeof("SADICA"), 1, file);
-	fclose(file);
-	free(asd.magicNumber);
-}
+//void pruebaBitmap()
+//{
+//	bitarray_set_bit(bitmap, 1);
+//	bitarray_set_bit(bitmap, 4);
+//	bitarray_set_bit(bitmap, 9);
+//	bitarray_set_bit(bitmap, 15);
+//	bitarray_set_bit(bitmap, 20);
+//}
 int main(int argc, char** argv)
 {
 	t_config* configFile = cargarConfiguracion(argv[1]);
@@ -213,11 +215,16 @@ int main(int argc, char** argv)
 	printf("PUNTO_MONTAJE: %s\n",puntoMontaje);
 	logFS = log_create("fs.log", "FILE SYSTEM", 0, LOG_LEVEL_TRACE);
 
-	crearMetadataFS();
 	cargarConfiguracionAdicional();
 	mapearBitmap();
 
+	//pruebaBitmap();
+
+	crearArchivo("passwords/usuario/prueba.bin", 1);
+
 	printf("TAMANIO BITMAP: %d\n", bitmap->size);
+
+	cerrarArchivosYLiberarMemoria();
 
 	t_dictionary* diccionarioFunc= dictionary_create();
 	t_dictionary* diccionarioHands= dictionary_create();
@@ -233,7 +240,7 @@ int main(int argc, char** argv)
 	int sock= crearHostMultiConexion(puerto);
 	correrServidorMultiConexion(sock,NULL,NULL,NULL,diccionarioFunc,diccionarioHands);
 
-	cerrarArchivosYLiberarMemoria();
+
 	dictionary_destroy(diccionarioFunc);
 	dictionary_destroy(diccionarioHands);
 	config_destroy(configFile);

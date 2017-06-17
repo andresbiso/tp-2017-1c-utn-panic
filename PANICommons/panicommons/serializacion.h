@@ -230,6 +230,18 @@ typedef struct{
 	codigo_respuesta_reservar codigo;
 }t_respuesta_reservar;
 
+typedef struct{
+	int32_t pid;
+	int32_t pagina;
+	int32_t offset;
+}t_pedido_liberar;
+
+typedef enum{LIBERAR_OK=0,LIBERAR_ERROR=-1} codigo_respuesta_liberar;
+
+typedef struct{
+	codigo_respuesta_liberar codigo;
+}t_respuesta_liberar;
+
 typedef struct
 {
 	int32_t pid;
@@ -237,6 +249,13 @@ typedef struct
 	int32_t tamanio;
 	char* direccion;
 } __attribute__((__packed__))t_pedido_abrir_archivo;
+
+typedef struct
+{
+	int32_t pid;
+	int32_t tamanio;
+	char* direccion;
+} __attribute__((__packed__))t_pedido_cerrar_archivo;
 
 typedef struct
 {
@@ -322,11 +341,20 @@ t_pedido_reservar* deserializar_pedido_reservar(char* pedido_serializado);
 char* serializar_respuesta_reservar(t_respuesta_reservar* pedido);
 t_respuesta_reservar* deserializar_respuesta_reservar(char* pedido_serializado);
 
+char* serializar_pedido_liberar(t_pedido_liberar* pedido);
+t_pedido_liberar* deserializar_pedido_liberar(char* pedido_serializado);
+
+char* serializar_respuesta_liberar(t_respuesta_liberar* respuesta);
+t_respuesta_liberar* deserializar_respuesta_liberar(char* respuesta_serializada);
+
+
 char* serializar_pedido_validar_crear_archivo(t_pedido_validar_crear_archivo_fs* pedido);
 t_pedido_validar_crear_archivo_fs* deserializar_pedido_validar_crear_archivo(char* pedido_serializado);
 
 t_pedido_abrir_archivo* deserializar_pedido_abrir_archivo(char* pedido_serializado);
 char* serializar_respuesta_abrir_archivo(t_respuesta_abrir_archivo* respuesta);
+
+t_pedido_cerrar_archivo* deserializar_pedido_cerrar_archivo(char* pedido_serializado);
 
 //Kernel
 

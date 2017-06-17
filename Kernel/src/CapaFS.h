@@ -13,10 +13,12 @@
 #define FD_START 3
 
 t_dictionary* tablaArchivosPorProceso;
-t_dictionary* tablaArchivosGlobales;
 t_list* listaArchivosPorProceso;
-t_list* listaArchivosGlobal;
+t_list* tablaArchivosGlobales;
 
+pthread_mutex_t	mutexGlobalFD;
+pthread_mutex_t listaArchivosGlobalMutex;
+pthread_mutex_t listaArchivosPidMutex;
 int ultimoGlobalFD;
 
 typedef struct {
@@ -33,5 +35,6 @@ typedef struct {
 }t_archivos_global;
 
 void abrirArchivo(char* data, int socket);
+void cerrarArchivo(char* data, int socket);
 
 #endif /* SRC_CAPAFS_H_ */

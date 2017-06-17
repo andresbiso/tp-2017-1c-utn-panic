@@ -9,12 +9,13 @@
 
 void showCommands(t_dictionary* dicCommands){
 
-	printf("%s","Comandos disponibles:\n\r");
+	printf("%s","****Comandos disponibles****\n\r");
 	void showCommand(char* key, void* value){
 		printf("%s\n\r",key);
 	}
 
 	dictionary_iterator(dicCommands,showCommand);
+	printf("%s","****************************\n\r");
 }
 
 

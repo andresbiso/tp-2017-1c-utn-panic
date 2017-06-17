@@ -705,6 +705,52 @@ t_respuesta_reservar* deserializar_respuesta_reservar(char* respuesta_serializad
 	return respuesta;
 }
 
+char* serializar_pedido_liberar(t_pedido_liberar* pedido){
+	char* buffer = malloc(sizeof(t_pedido_liberar));
+
+	int offset=0;
+
+	memcpy(buffer,&pedido->pid,sizeof(int32_t));
+	offset+=sizeof(int32_t);
+	memcpy(buffer+offset,&pedido->pagina,sizeof(int32_t));
+	offset+=sizeof(int32_t);
+	memcpy(buffer+offset,&pedido->offset,sizeof(int32_t));
+
+	return buffer;
+}
+
+t_pedido_liberar* deserializar_pedido_liberar(char* pedido_serializado){
+
+	t_pedido_liberar* pedido = malloc(sizeof(t_pedido_liberar));
+
+	int offset=0;
+
+	memcpy(&pedido->pid,pedido_serializado,sizeof(int32_t));
+	offset+=sizeof(int32_t);
+	memcpy(&pedido->pagina,pedido_serializado+offset,sizeof(int32_t));
+	offset+=sizeof(int32_t);
+	memcpy(&pedido->offset,pedido_serializado+offset,sizeof(int32_t));
+
+	return pedido;
+}
+
+char* serializar_respuesta_liberar(t_respuesta_liberar* respuesta){
+	char* buffer = malloc(sizeof(t_respuesta_liberar));
+
+	memcpy(buffer,&respuesta->codigo,sizeof(codigo_respuesta_liberar));
+
+	return buffer;
+}
+
+t_respuesta_liberar* deserializar_respuesta_liberar(char* respuesta_serializada){
+	t_respuesta_liberar* respuesta = malloc(sizeof(t_respuesta_liberar));
+
+	memcpy(&respuesta->codigo,respuesta_serializada,sizeof(codigo_respuesta_liberar));
+
+	return respuesta;
+}
+
+
 t_pedido_liberar_pagina* deserializar_pedido_liberar_pagina(char *pedido_serializado){
 	t_pedido_liberar_pagina* pedido = malloc(sizeof(t_pedido_liberar_pagina));
 
@@ -795,4 +841,17 @@ char* serializar_respuesta_abrir_archivo(t_respuesta_abrir_archivo* respuesta){
 	return buffer;
 }
 
+t_pedido_cerrar_archivo* deserializar_pedido_cerrar_archivo(char* pedido_serializado){
+	t_pedido_cerrar_archivo* pedido = malloc(sizeof(t_pedido_cerrar_archivo));
+	int offset = 0;
 
+	memcpy(&pedido->pid,pedido_serializado,sizeof(int32_t));
+	offset+=sizeof(int32_t);
+	memcpy(&pedido->tamanio,pedido_serializado+offset,sizeof(int32_t));
+	offset+=sizeof(int32_t);
+	pedido->direccion=malloc(pedido->tamanio+1);
+	pedido->direccion[pedido->tamanio]='\0';
+	memcpy(pedido->direccion,pedido_serializado+offset,pedido->tamanio);
+
+	return pedido;
+}
