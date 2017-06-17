@@ -396,8 +396,8 @@ bool compressPageHeap(char* page,int32_t pid,int32_t pagina){//retorna un boolea
 			startMetadata=anterior_offset;
 		}
 
-		bool anterior_is_free=metadata.isFree;
-		bool anterior_offset=startMetadata;
+		anterior_is_free=metadata.isFree;
+		anterior_offset=startMetadata;
 
 		startMetadata+=(metadata.size+sizeof(t_heap_metadata));
 	}
@@ -469,7 +469,6 @@ void liberar(void* data,int socket){
 		if(rta_sol_bytes->codigo!=OK_SOLICITAR){//Por si el pedido no es correcto
 			respuesta.codigo=LIBERAR_ERROR;
 		}else{
-
 			t_heap_metadata metadata;
 			int32_t startMetadata = pedido->offset-sizeof(t_heap_metadata);
 
@@ -491,7 +490,8 @@ void liberar(void* data,int socket){
 				respuesta.codigo=LIBERAR_ERROR;//Ya estaba liberada
 			}
 		}
-
+		free(rta_sol_bytes->data);
+		free(rta_sol_bytes);
 	}else{
 		respuesta.codigo=LIBERAR_ERROR;
 	}
