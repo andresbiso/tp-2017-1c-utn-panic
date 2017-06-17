@@ -60,6 +60,7 @@ pthread_mutex_t listForFinishMutex;
 pthread_mutex_t mutexCPUConectadas;
 pthread_mutex_t mutexProgramasActuales;
 pthread_mutex_t mutexMemoria;
+pthread_mutex_t mutexRespuestaInicializar;
 sem_t stopped;
 
 int socketFS;

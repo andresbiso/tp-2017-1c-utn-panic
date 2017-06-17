@@ -483,9 +483,12 @@ void programa(void* arg){
 
 	sem_wait(&grado);
 
-	inicializar_programa(nuevo_pcb);
+	pthread_mutex_lock(&mutexRespuestaInicializar);//Sino se marea con muchos pedidos
 
+	inicializar_programa(nuevo_pcb);
 	respuesta_inicializar_programa(socket, socketMemoria, params->codigo);
+
+	pthread_mutex_unlock(&mutexRespuestaInicializar);//Sino se marea con muchos pedidos
 
 	free(params->codigo);
 	free(params);
@@ -843,6 +846,7 @@ int main(int argc, char** argv) {
 	pthread_mutex_init(&listaArchivosGlobalMutex,NULL);
 	pthread_mutex_init(&mutexGlobalFD,NULL);
 	pthread_mutex_init(&listaArchivosPidMutex,NULL);
+	pthread_mutex_init(&mutexRespuestaInicializar,NULL);
 	sem_init(&stopped,0,0);
 
 	isStopped=false;

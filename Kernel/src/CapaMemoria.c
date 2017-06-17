@@ -456,6 +456,8 @@ void liberar(void* data,int socket){
 	t_pedido_liberar* pedido = deserializar_pedido_liberar(data);
 	t_respuesta_liberar respuesta;
 
+	log_info(logNucleo,"Se recibio un pedido de liberar memoria del socket:%d por el PID:%d PAG:%d OFFSET:%d",socket,pedido->pid,pedido->pagina,pedido->offset);
+
 	if (pedido->offset<tamanio_pag_memoria){//Por si se va de offset
 		t_pedido_solicitar_bytes pedido_sol_bytes;
 		pedido_sol_bytes.pid=pedido->pid;
@@ -499,6 +501,12 @@ void liberar(void* data,int socket){
 		free(rta_sol_bytes);
 	}else{
 		respuesta.codigo=LIBERAR_ERROR;
+	}
+
+	if(respuesta.codigo==LIBERAR_ERROR){
+		log_info(logNucleo,"No se pudo liberar memoria del pedido del socket:%d por el PID:%d PAG:%d OFFSET:%d",socket,pedido->pid,pedido->pagina,pedido->offset);
+	}else{
+		log_info(logNucleo,"Memoria liberada del pedido del socket:%d por el PID:%d PAG:%d OFFSET:%d",socket,pedido->pid,pedido->pagina,pedido->offset);
 	}
 
 	char* buffer = serializar_respuesta_liberar(&respuesta);
