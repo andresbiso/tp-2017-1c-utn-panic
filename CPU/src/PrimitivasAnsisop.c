@@ -402,7 +402,7 @@ void escribir(t_descriptor_archivo descriptor_archivo, void* informacion, t_valo
 		return;
 	}
 
-	t_aviso_consola pedido;
+	t_pedido_escribir pedido;
 	pedido.idPrograma=actual_pcb->pid;
 	pedido.mensaje = malloc(tamanio);
 	pedido.tamaniomensaje = tamanio;

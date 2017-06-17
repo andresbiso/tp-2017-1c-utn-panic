@@ -170,7 +170,17 @@ typedef struct
 } __attribute__((__packed__))t_respuesta_asignar_variable_compartida;
 
 typedef enum {
-	FINALIZAR_SIN_RECURSOS=-1, FINALIZAR_EXEPCION_MEMORIA=-5, FINALIZAR_BY_CONSOLE = -7, FINALIZAR_OK = 0
+	FINALIZAR_OK = 0,
+	FINALIZAR_SIN_RECURSOS=-1,
+	FINALIZAR_ARCHIVO_NO_EXISTE=-2,
+	FINALIZAR_LEER_ARCHIVO_SIN_PERMISOS=-3,
+	FINALIZAR_ESCRIBIR_ARCHIVO_SIN_PERMISOS=-4,
+	FINALIZAR_EXEPCION_MEMORIA=-5,
+	FINALIZAR_DESCONEXION_CONSOLA=-6,
+	FINALIZAR_BY_CONSOLE =-7,
+	FINALIZAR_PAGE_OVERFLOW=-8,
+	FINALIZAR_SIN_MEMORIA=-9,
+	FINALIZAR_ERROR_SIN_DEFINICION=-20
 } exit_codes;
 
 typedef struct
@@ -241,6 +251,20 @@ typedef enum{LIBERAR_OK=0,LIBERAR_ERROR=-1} codigo_respuesta_liberar;
 typedef struct{
 	codigo_respuesta_liberar codigo;
 }t_respuesta_liberar;
+
+typedef struct{
+	int32_t pid;
+	int32_t descriptor_archivo;
+	int32_t tamanio;
+}t_pedido_leer;
+
+typedef enum{LEER_OK=0,LEER_BLOCKED=-1,LEER_NO_EXISTE=-2} codigo_respuesta_leer;
+
+typedef struct{
+	char* informacion;
+	int32_t tamanio;
+	codigo_respuesta_leer codigo;
+}t_respuesta_leer;
 
 typedef struct
 {
@@ -347,6 +371,12 @@ t_pedido_liberar* deserializar_pedido_liberar(char* pedido_serializado);
 char* serializar_respuesta_liberar(t_respuesta_liberar* respuesta);
 t_respuesta_liberar* deserializar_respuesta_liberar(char* respuesta_serializada);
 
+
+char* serializar_pedido_leer(t_pedido_leer* pedido);
+t_pedido_leer* deserializar_pedido_leer(char* pedido_serializado);
+
+char* serializar_respuesta_leer(t_respuesta_leer* pedido);
+t_respuesta_leer* deserializar_respuesta_leer(char* pedido_serializado);
 
 char* serializar_pedido_validar_crear_archivo(t_pedido_validar_crear_archivo_fs* pedido);
 t_pedido_validar_crear_archivo_fs* deserializar_pedido_validar_crear_archivo(char* pedido_serializado);
