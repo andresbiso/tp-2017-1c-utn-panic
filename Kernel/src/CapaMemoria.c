@@ -369,7 +369,7 @@ void reservar(void* data,int socket){
 	}
 
 	char* buffer = serializar_respuesta_reservar(&respuesta);
-	//empaquetarEnviarMensaje(socket,"RES_RESERVAR",sizeof(t_respuesta_reservar),buffer); TODO descomentar para que responda
+	empaquetarEnviarMensaje(socket,"RES_RESERVAR",sizeof(t_respuesta_reservar),buffer);
 	free(buffer);
 
 	free(pedido);
@@ -502,7 +502,7 @@ void liberar(void* data,int socket){
 	}
 
 	char* buffer = serializar_respuesta_liberar(&respuesta);
-	//empaquetarEnviarMensaje(socket,"RES_LIBERAR",sizeof(t_respuesta_liberar),buffer); TODO descomentar para que responda
+	empaquetarEnviarMensaje(socket,"RES_LIBERAR",sizeof(t_respuesta_liberar),buffer);
 	free(buffer);
 
 	free(pedido);
