@@ -278,7 +278,6 @@ bool tryAllocate(t_pedido_reservar* pedido,t_respuesta_reservar* respuesta,t_pag
 			char* buffer = serializar_pedido_almacenar_bytes(&pedido_memoria);
 			empaquetarEnviarMensaje(socketMemoria,"ALMC_BYTES",sizeof(int32_t)*4+pedido_memoria.tamanio,buffer);
 			free(buffer);
-			free(pedido_memoria.data);
 
 			t_package* paquete_alm = recibirPaqueteMemoria();
 			t_respuesta_almacenar_bytes* respuesta_alm = deserializar_respuesta_almacenar_bytes(paquete_alm->datos);
@@ -368,14 +367,140 @@ void reservar(void* data,int socket){
 	}
 
 	char* buffer = serializar_respuesta_reservar(&respuesta);
-	//empaquetarEnviarMensaje(socket,"RET_RESERVAR",sizeof(t_respuesta_reservar),buffer); TODO descomentar para que responda
+	//empaquetarEnviarMensaje(socket,"RES_RESERVAR",sizeof(t_respuesta_reservar),buffer); TODO descomentar para que responda
 	free(buffer);
 
 	free(pedido);
 }
 
+bool compressPageHeap(char* page,int32_t pid,int32_t pagina){//retorna un booleano si salió bien la compresion
+	t_heap_metadata metadata;
+
+	int32_t startMetadata = 0;
+	bool anterior_is_free=false;
+	int32_t anterior_offset=0;
+
+	while(startMetadata<tamanio_pag_memoria){
+		memcpy(&metadata.isFree,page+startMetadata,sizeof(bool));
+		memcpy(&metadata.size,page+1+startMetadata,sizeof(int32_t));
+
+		if(metadata.isFree && anterior_is_free){
+			metadata.isFree=true;
+			int32_t anteriorSize=0;
+			memcpy(&anteriorSize,page+1+anterior_offset,sizeof(int32_t));
+
+			metadata.size+=(anteriorSize+sizeof(t_heap_metadata));//Con el size de metadata porque junta de a dos
+
+			memset(page+anterior_offset+sizeof(t_heap_metadata),0,metadata.size);
+
+			startMetadata=anterior_offset;
+		}
+
+		bool anterior_is_free=metadata.isFree;
+		bool anterior_offset=startMetadata;
+
+		startMetadata+=(metadata.size+sizeof(t_heap_metadata));
+	}
+
+	//Me fijo si la pagina quedó totalmente libre
+	memcpy(&metadata.isFree,page,sizeof(bool));
+	memcpy(&metadata.size,page+1,sizeof(int32_t));
+
+	if(metadata.size==(tamanio_pag_memoria-sizeof(t_heap_metadata))){//Quedo toda liberada
+		t_pedido_liberar_pagina pedido_liberar;
+		pedido_liberar.pagina=pagina;
+		pedido_liberar.pid=pid;
+
+		char * buffer = serializar_pedido_liberar_pagina(&pedido_liberar);
+		empaquetarEnviarMensaje(socketMemoria,"LIBERAR_PAG",sizeof(t_pedido_liberar_pagina),buffer);
+		free(buffer);
+
+		t_package* paquete = recibirPaqueteMemoria();
+		t_respuesta_liberar_pagina* respuesta_liberar = deserializar_respuesta_liberar_pagina(paquete->datos);
+		borrarPaquete(paquete);
+
+		if(respuesta_liberar->codigo!=OK_LIBERAR){//Fallo por algo
+			free(respuesta_liberar);
+			return false;
+		}
+	}else{//Hay espacio alocado en algun lado => Escribimos la pagina a memoria
+		t_pedido_almacenar_bytes pedido_memoria;
+		pedido_memoria.pid=pid;
+		pedido_memoria.offsetPagina=0;
+		pedido_memoria.tamanio=tamanio_pag_memoria;
+		pedido_memoria.pagina=pagina;
+		pedido_memoria.data=page;
+
+		char* buffer = serializar_pedido_almacenar_bytes(&pedido_memoria);
+		empaquetarEnviarMensaje(socketMemoria,"ALMC_BYTES",sizeof(int32_t)*4+pedido_memoria.tamanio,buffer);
+		free(buffer);
+
+		t_package* paquete_alm = recibirPaqueteMemoria();
+		t_respuesta_almacenar_bytes* respuesta_alm = deserializar_respuesta_almacenar_bytes(paquete_alm->datos);
+		borrarPaquete(paquete_alm);
+
+		if(respuesta_alm->codigo != OK_ALMACENAR){
+			free(respuesta_alm);
+			return false;
+		}
+	}
+	return true;
+}
+
 void liberar(void* data,int socket){
-	//TODO
+	t_pedido_liberar* pedido = deserializar_pedido_liberar(data);
+	t_respuesta_liberar respuesta;
+
+	if (pedido->offset<tamanio_pag_memoria){//Por si se va de offset
+		t_pedido_solicitar_bytes pedido_sol_bytes;
+		pedido_sol_bytes.pid=pedido->pid;
+		pedido_sol_bytes.pagina=pedido->pagina;
+		pedido_sol_bytes.offsetPagina=0;
+		pedido_sol_bytes.tamanio=tamanio_pag_memoria;
+
+		char* buffer = serializar_pedido_solicitar_bytes(&pedido_sol_bytes);
+		empaquetarEnviarMensaje(socketMemoria,"SOLC_BYTES",sizeof(t_pedido_solicitar_bytes),buffer);
+		free(buffer);
+
+		t_package* paquete = recibirPaqueteMemoria();
+		t_respuesta_solicitar_bytes* rta_sol_bytes = deserializar_respuesta_solicitar_bytes(paquete->datos);
+		borrarPaquete(paquete);
+
+		if(rta_sol_bytes->codigo!=OK_SOLICITAR){//Por si el pedido no es correcto
+			respuesta.codigo=LIBERAR_ERROR;
+		}else{
+
+			t_heap_metadata metadata;
+			int32_t startMetadata = pedido->offset-sizeof(t_heap_metadata);
+
+			memcpy(&metadata.isFree,(rta_sol_bytes->data)+startMetadata,sizeof(bool));
+			memcpy(&metadata.size,(rta_sol_bytes->data)+1+startMetadata,sizeof(int32_t));
+
+			if(!metadata.isFree){
+				metadata.isFree=true;
+				memcpy((rta_sol_bytes->data)+startMetadata,&metadata.isFree,sizeof(bool));//No hace falta sobre-escribir el size ya que por ahora es el mismo
+				memset((rta_sol_bytes->data)+pedido->offset,0,metadata.size);
+
+				bool compressSuccess = compressPageHeap(rta_sol_bytes->data,pedido->pid,pedido->pagina);
+				if(compressSuccess){
+					respuesta.codigo=LIBERAR_OK;
+				}else{
+					respuesta.codigo=LIBERAR_ERROR;
+				}
+			}else{
+				respuesta.codigo=LIBERAR_ERROR;//Ya estaba liberada
+			}
+		}
+
+	}else{
+		respuesta.codigo=LIBERAR_ERROR;
+	}
+
+	char* buffer = serializar_respuesta_liberar(&respuesta);
+	//empaquetarEnviarMensaje(socket,"RES_LIBERAR",sizeof(t_respuesta_liberar),buffer); TODO descomentar para que responda
+	free(buffer);
+
+	free(pedido);
 }
 
 //Capa de memoria
