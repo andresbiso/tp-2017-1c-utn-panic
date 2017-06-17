@@ -38,6 +38,24 @@ char* concat(const char *s1, const char *s2)
     return result;
 }
 
+void _mkdir(const char *dir) {
+        char tmp[256];
+        char *p = NULL;
+        size_t len;
+
+        snprintf(tmp, sizeof(tmp),"%s",dir);
+        len = strlen(tmp);
+        if(tmp[len - 1] == '/')
+                tmp[len - 1] = 0;
+        for(p = tmp + 1; *p; p++)
+                if(*p == '/') {
+                        *p = 0;
+                        mkdir(tmp, S_IRWXU);
+                        *p = '/';
+                }
+        mkdir(tmp, S_IRWXU);
+}
+
 typedef struct
 {
 	int32_t tamanio;
@@ -51,12 +69,19 @@ typedef struct
 	char* magicNumber;
 } t_metadata_fs;
 
+typedef struct
+{
+	int32_t tamanio;
+	char* datos;
+} t_bloque;
+
 int puerto;
 char *puntoMontaje;
 char* rutaBloques;
 char* rutaArchivos;
 char* rutaBitmap;
-t_metadata_fs metadataFS;
+char* rutaMetadata;
+t_metadata_fs* metadataFS;
 t_bitarray* bitmap;
 FILE* archivoBitmap;
 t_log* logFS;
