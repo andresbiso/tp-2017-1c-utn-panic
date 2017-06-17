@@ -406,19 +406,51 @@ t_puntero reservar(t_valor_variable espacio) {
 	case RESERVAR_OVERFLOW:
 		log_error(cpu_log,"Error: PageOverflow", espacio);
 		error_en_ejecucion = 1;
-		actual_pcb->exit_code = -5;
+		actual_pcb->exit_code = FINALIZAR_PAGE_OVERFLOW;
 		break;
-	}
 	case RESERVAR_SIN_ESPACIO:
 		log_error(cpu_log,"Error: Sin espacio disponible", espacio);
 		error_en_ejecucion = 1;
-		actual_pcb->exit_code = -5;
+		actual_pcb->exit_code = FINALIZAR_SIN_MEMORIA;
 		break;
 	}
 
-	return respuesta;
+	return respuesta->puntero;
 }
 void liberar(t_puntero puntero) {
+	if (error_en_ejecucion) {
+		return;
+	}
+
+	t_posMemoria posFisica = pos_logica_a_fisica(puntero);
+	t_pedido_liberar pedido;
+	pedido.pid = actual_pcb->pid;
+	pedido.pagina = posFisica.pag;
+	pedido.offset = posFisica.offset;
+
+	char *buffer = serializar_pedido_liberar(&pedido);
+	empaquetarEnviarMensaje(socketKernel,"LIBERAR",sizeof(int32_t)*3,buffer);
+	free(buffer);
+
+	log_info(cpu_log,
+			"Se necesita liberar el espacio asociado a el puntero %d en memoria. Page: %d Offset: %d",
+			puntero, posFisica.pag, posFisica.offset);
+
+	t_package *paquete = recibirPaquete(socketKernel,NULL);
+
+	t_respuesta_liberar* respuesta = deserializar_respuesta_liberar(paquete->datos);
+
+	switch(respuesta->codigo) {
+	case LIBERAR_OK:
+		log_info(cpu_log,"Se libero el espacio");
+		break;
+	case LIBERAR_ERROR:
+		log_error(cpu_log,"Error: Al tratar de liberar memoria");
+		error_en_ejecucion = 1;
+		actual_pcb->exit_code = FINALIZAR_EXCEPCION_MEMORIA;
+		break;
+	}
+
 	return;
 }
 t_descriptor_archivo abrir(t_direccion_archivo direccion, t_banderas flags) {

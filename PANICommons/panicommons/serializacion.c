@@ -784,7 +784,7 @@ t_respuesta_liberar_pagina* deserializar_respuesta_liberar_pagina(char *respuest
 char* serializar_respuesta_liberar_pagina(t_respuesta_liberar_pagina *respuesta){
 	char* buffer = malloc(sizeof(t_respuesta_liberar_pagina));
 
-	memcpy(buffer,&respuesta->codigo,sizeof(codigo_respuesta_reservar));
+	memcpy(buffer,&respuesta->codigo,sizeof(codigo_respuesta_liberar));
 
 	return buffer;
 }

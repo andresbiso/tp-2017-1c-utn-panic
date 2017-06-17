@@ -240,10 +240,10 @@ bool tryAllocate(t_pedido_reservar* pedido,t_respuesta_reservar* respuesta,t_pag
 		memcpy(&metadata.size,(rta_sol_bytes->data)+offset,sizeof(int32_t));
 		offset+=sizeof(int32_t);
 
-		if((metadata.size > (pedido->bytes+sizeof(t_heap_metadata)) )){
+		if(metadata.isFree && (metadata.size > (pedido->bytes+sizeof(t_heap_metadata)) )){
 			int oldOffset=offset-sizeof(t_heap_metadata);
 			respuesta->puntero=(pag_heap->nroPagina*tamanio_pag_memoria)+offset;
-			respuesta->puntero=RESERVAR_OK;
+			respuesta->codigo=RESERVAR_OK;
 
 			t_heap_metadata newMetadata;
 			newMetadata.isFree=false;
@@ -254,13 +254,13 @@ bool tryAllocate(t_pedido_reservar* pedido,t_respuesta_reservar* respuesta,t_pag
 			memcpy((rta_sol_bytes->data)+oldOffset,&newMetadata.size,sizeof(int32_t));
 			oldOffset+=sizeof(int32_t);
 
-			if(rta_sol_bytes->data[oldOffset+newMetadata.size]=='\0'){//Esto es para poner el flag al final
+			if((oldOffset+newMetadata.size+1)<tamanio_pag_memoria && rta_sol_bytes->data[oldOffset+newMetadata.size+1]=='\0'){//Esto es para poner el flag al final
 				t_heap_metadata lastMetadata;
 				lastMetadata.isFree=true;
 				lastMetadata.size=metadata.size-newMetadata.size-sizeof(t_heap_metadata);//Se resta uno para el flag
 
-				memcpy(rta_sol_bytes+oldOffset+newMetadata.size,&lastMetadata.isFree,sizeof(bool));//Escribimos la nueva metadata
-				memcpy(rta_sol_bytes+oldOffset+1+newMetadata.size,&lastMetadata.size,sizeof(int32_t));
+				memcpy((rta_sol_bytes->data)+oldOffset+newMetadata.size,&lastMetadata.isFree,sizeof(bool));//Escribimos la nueva metadata
+				memcpy((rta_sol_bytes->data)+oldOffset+1+newMetadata.size,&lastMetadata.size,sizeof(int32_t));
 
 				pag_heap->espacioDisponible-=(newMetadata.size+sizeof(t_heap_metadata));
 			}else{
@@ -297,6 +297,8 @@ bool tryAllocate(t_pedido_reservar* pedido,t_respuesta_reservar* respuesta,t_pag
 
 			return true;
 		}
+
+		offset+=metadata.size;
 
 	}
 
@@ -367,7 +369,7 @@ void reservar(void* data,int socket){
 	}
 
 	char* buffer = serializar_respuesta_reservar(&respuesta);
-	//empaquetarEnviarMensaje(socket,"RES_RESERVAR",sizeof(t_respuesta_reservar),buffer); TODO descomentar para que responda
+	empaquetarEnviarMensaje(socket,"RES_RESERVAR",sizeof(t_respuesta_reservar),buffer);
 	free(buffer);
 
 	free(pedido);
@@ -392,6 +394,9 @@ bool compressPageHeap(char* page,int32_t pid,int32_t pagina){//retorna un boolea
 			metadata.size+=(anteriorSize+sizeof(t_heap_metadata));//Con el size de metadata porque junta de a dos
 
 			memset(page+anterior_offset+sizeof(t_heap_metadata),0,metadata.size);
+
+			memcpy(page+anterior_offset,&metadata.isFree,sizeof(bool));
+			memcpy(page+anterior_offset+1,&metadata.size,sizeof(int32_t));
 
 			startMetadata=anterior_offset;
 		}
@@ -497,7 +502,7 @@ void liberar(void* data,int socket){
 	}
 
 	char* buffer = serializar_respuesta_liberar(&respuesta);
-	//empaquetarEnviarMensaje(socket,"RES_LIBERAR",sizeof(t_respuesta_liberar),buffer); TODO descomentar para que responda
+	empaquetarEnviarMensaje(socket,"RES_LIBERAR",sizeof(t_respuesta_liberar),buffer);
 	free(buffer);
 
 	free(pedido);
