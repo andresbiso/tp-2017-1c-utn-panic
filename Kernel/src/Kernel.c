@@ -487,6 +487,23 @@ void programa(void* arg){
 
 	respuesta_inicializar_programa(socket, socketMemoria, params->codigo);
 
+	t_pedido_reservar pedido_reservar;
+	pedido_reservar.bytes=10;
+	pedido_reservar.pid=1;
+	pedido_reservar.paginasTotales=3;
+	reservar(serializar_pedido_reservar(&pedido_reservar),socket);
+
+	pedido_reservar.bytes=20;
+	pedido_reservar.pid=1;
+	pedido_reservar.paginasTotales=3;
+	reservar(serializar_pedido_reservar(&pedido_reservar),socket);
+
+	t_pedido_liberar pedido_liberar;
+	pedido_liberar.pid=1;
+	pedido_liberar.pagina=3;
+	pedido_liberar.offset=5;
+	liberar(serializar_pedido_liberar(&pedido_liberar),socket);
+
 	free(params->codigo);
 	free(params);
 }
