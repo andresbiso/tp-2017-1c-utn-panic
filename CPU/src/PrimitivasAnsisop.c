@@ -378,11 +378,48 @@ void signalAnsisop(t_nombre_semaforo identificador_semaforo) {
 	return;
 }
 t_puntero reservar(t_valor_variable espacio) {
-	t_puntero a;
-	return a;
+	if (error_en_ejecucion) {
+		return -1;
+	}
+
+	t_pedido_reservar pedido;
+	pedido.pid = actual_pcb->pid;
+	pedido.bytes = espacio;
+	pedido.paginasTotales = actual_pcb->cant_pags_totales;
+
+	char *buffer = serializar_pedido_reservar(&pedido);
+	empaquetarEnviarMensaje(socketKernel,"RESERVAR",sizeof(int32_t)*3,buffer);
+	free(buffer);
+
+	log_info(cpu_log,
+			"Se necesitan reservar %d bytes en memoria",
+			espacio);
+
+	t_package *paquete = recibirPaquete(socketKernel,NULL);
+
+	t_respuesta_reservar* respuesta = deserializar_respuesta_reservar(paquete->datos);
+
+	switch(respuesta->codigo) {
+	case RESERVAR_OK:
+		log_info(cpu_log,"Se reservaron %d bytes", espacio);
+		break;
+	case RESERVAR_OVERFLOW:
+		log_error(cpu_log,"Error: PageOverflow", espacio);
+		error_en_ejecucion = 1;
+		actual_pcb->exit_code = -5;
+		break;
+	}
+	case RESERVAR_SIN_ESPACIO:
+		log_error(cpu_log,"Error: Sin espacio disponible", espacio);
+		error_en_ejecucion = 1;
+		actual_pcb->exit_code = -5;
+		break;
+	}
+
+	return respuesta;
 }
 void liberar(t_puntero puntero) {
-
+	return;
 }
 t_descriptor_archivo abrir(t_direccion_archivo direccion, t_banderas flags) {
 	t_descriptor_archivo a;
@@ -402,7 +439,7 @@ void escribir(t_descriptor_archivo descriptor_archivo, void* informacion, t_valo
 		return;
 	}
 
-	t_pedido_escribir pedido;
+	/*t_pedido_escribir pedido;
 	pedido.idPrograma=actual_pcb->pid;
 	pedido.mensaje = malloc(tamanio);
 	pedido.tamaniomensaje = tamanio;
@@ -418,7 +455,7 @@ void escribir(t_descriptor_archivo descriptor_archivo, void* informacion, t_valo
 
 	log_info(cpu_log,
 			"Se solicito la escitura en archivo cuyo descriptor es: %d",
-			descriptor_archivo);
+			descriptor_archivo);*/
 	return;
 }
 void leer(t_descriptor_archivo descriptor_archivo, t_puntero informacion, t_valor_variable tamanio) {

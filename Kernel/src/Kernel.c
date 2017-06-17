@@ -854,6 +854,8 @@ int main(int argc, char** argv) {
     dictionary_put(diccionarioFunciones,"SET_VAR_COMP",&setVariableCompartida);
     dictionary_put(diccionarioFunciones,"WAIT",&wait);
     dictionary_put(diccionarioFunciones,"SIGNAL",&signal);
+    dictionary_put(diccionarioFunciones,"RESERVAR",&reservar);
+    dictionary_put(diccionarioFunciones,"LIBERAR",&liberar);
     dictionary_put(diccionarioFunciones,"ABRIR_ARCH",&abrirArchivo);
     dictionary_put(diccionarioFunciones,"CERRAR_ARCH",&cerrarArchivo);
 

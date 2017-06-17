@@ -371,7 +371,6 @@ t_pedido_liberar* deserializar_pedido_liberar(char* pedido_serializado);
 char* serializar_respuesta_liberar(t_respuesta_liberar* respuesta);
 t_respuesta_liberar* deserializar_respuesta_liberar(char* respuesta_serializada);
 
-
 char* serializar_pedido_leer(t_pedido_leer* pedido);
 t_pedido_leer* deserializar_pedido_leer(char* pedido_serializado);
 
