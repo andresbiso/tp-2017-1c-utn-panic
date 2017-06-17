@@ -1,0 +1,5 @@
+#!/usr/bin/ansisop
+begin
+	variables a
+	alocar a
+end
