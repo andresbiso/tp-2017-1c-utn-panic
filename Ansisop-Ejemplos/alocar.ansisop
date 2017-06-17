@@ -1,5 +1,6 @@
 #!/usr/bin/ansisop
 begin
 	variables a
-	alocar a
+	alocar a 50
+	liberar a
 end
