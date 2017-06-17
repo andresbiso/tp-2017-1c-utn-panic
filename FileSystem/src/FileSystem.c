@@ -281,6 +281,15 @@ void crearMetadataFS()
 	fclose(qwe);
 	free(asd);
 }
+void crearBitmap()
+{
+	char* bitmap;
+
+	FILE* file = fopen(rutaBitmap, "wb");
+	fwrite(&bitmap, 5192*sizeof(int), 1, file);
+	fclose(file);
+	free(bitmap);
+}
 int main(int argc, char** argv)
 {
 	t_config* configFile = cargarConfiguracion(argv[1]);
@@ -289,6 +298,7 @@ int main(int argc, char** argv)
 	logFS = log_create("fs.log", "FILE SYSTEM", 0, LOG_LEVEL_TRACE);
 
 	cargarConfiguracionAdicional();
+	crearBitmap();
 	mapearBitmap();
 
 	//pruebaBitmap();
