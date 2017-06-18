@@ -422,7 +422,9 @@ void liberar(t_puntero puntero) {
 		return;
 	}
 
-	t_posMemoria posFisica = pos_logica_a_fisica(puntero);
+	t_valor_variable puntero_heap = dereferenciar(puntero);
+
+	t_posMemoria posFisica = pos_logica_a_fisica(puntero_heap);
 	t_pedido_liberar pedido;
 	pedido.pid = actual_pcb->pid;
 	pedido.pagina = posFisica.pag;
@@ -434,7 +436,7 @@ void liberar(t_puntero puntero) {
 
 	log_info(cpu_log,
 			"Se necesita liberar el espacio asociado a el puntero %d en memoria. Page: %d Offset: %d",
-			puntero, posFisica.pag, posFisica.offset);
+			puntero_heap, posFisica.pag, posFisica.offset);
 
 	t_package *paquete = recibirPaquete(socketKernel,NULL);
 

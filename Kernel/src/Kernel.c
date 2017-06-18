@@ -87,20 +87,7 @@ void retornarPCB(char* data,int socket){
 	if(pcb->exit_code<=0){//termino el programa
 
 		log_info(logNucleo,"Programa finalizado desde el socket:%d con el PID:%d",socket,pcb->pid);
-		moverA_colaExit(pcb);
-		t_respuesta_finalizar_programa* respuesta = finalizarProcesoMemoria(pcb->pid);
-
-		if(respuesta->codigo==OK_FINALIZAR){
-			char* message = string_from_format("Proceso finalizado con exitCode: %d\0",pcb->exit_code);
-
-			pthread_mutex_lock(&mutexProgramasActuales);
-			t_consola* consola = matchear_consola_por_pid(pcb->pid);
-			enviarMensajeConsola(message,"END_PRGM",pcb->pid,consola->socket,1,0);
-			eliminarConsolaPorPID(pcb->pid);
-			pthread_mutex_unlock(&mutexProgramasActuales);
-
-			free(message);
-		}
+		finishProcess(pcb,true);
 	}else{
 		moverA_colaReady(pcb);
 		program_change_running(pcb->pid,false);
@@ -668,26 +655,15 @@ void respuesta_inicializar_programa(int socket, int socketMemoria, char* codigo)
 			}else{
 				pcb_respuesta->exit_code=FINALIZAR_SIN_RECURSOS;
 
-				t_respuesta_finalizar_programa* respuesta_fin = finalizarProcesoMemoria(pcb_respuesta->pid);
-				free(respuesta_fin);
-
-				char* message = string_from_format("Proceso finalizado con exitCode: %d\0",pcb_respuesta->exit_code);
-				enviarMensajeConsola(message,"END_PRGM",pcb_respuesta->pid,socket,1,0);
-				free(message);
-
-				moverA_colaExit(pcb_respuesta);
-				log_debug(logNucleo, "Movi a la cola Exit el PCB con PID: %d",respuesta->idPrograma);
+				finishProcess(pcb_respuesta,true);
 			}
 			break;
 		case SIN_ESPACIO_INICIALIZAR:
 			pcb_respuesta->exit_code=FINALIZAR_SIN_RECURSOS;
-			char* message = string_from_format("Proceso finalizado con exitCode: %d\0",pcb_respuesta->exit_code);
-			enviarMensajeConsola(message,"END_PRGM",pcb_respuesta->pid,socket,1,0);
-			free(message);
+
+			finishProcess(pcb_respuesta,false);
 
 			log_warning(logNucleo,"Inicializacion incorrecta del PID %d",respuesta->idPrograma);
-			moverA_colaExit(pcb_respuesta);
-			log_debug(logNucleo, "Movi a la cola Exit el PCB con PID: %d",respuesta->idPrograma);
 
 			log_info(logNucleo,"Se envia mensaje a la consola del socket %d que no se pudo poner en Ready su PCB", socket);
 			break;
@@ -751,6 +727,54 @@ void eliminar_cpu_por_socket(int socketcpu){
 
 bool esta_libre(void * unaCpu){
 	return !(((t_cpu*)unaCpu)->corriendo);
+}
+
+void finishProcess(t_pcb* pcb,bool check_memoria){
+	//TODO limpiar heap no liberado y archivos no cerrados
+
+	moverA_colaExit(pcb);
+
+	t_respuesta_finalizar_programa* respuesta=NULL;
+
+	if(check_memoria)
+		respuesta = finalizarProcesoMemoria(pcb->pid);
+
+	if(!check_memoria || respuesta->codigo==OK_FINALIZAR){
+		char* message = string_from_format("Proceso finalizado con exitCode: %d\0",pcb->exit_code);
+
+		pthread_mutex_lock(&mutexProgramasActuales);
+		t_consola* consola = matchear_consola_por_pid(pcb->pid);
+		enviarMensajeConsola(message,"END_PRGM",pcb->pid,consola->socket,1,0);
+		eliminarConsolaPorPID(pcb->pid);
+		pthread_mutex_unlock(&mutexProgramasActuales);
+
+		free(message);
+	}
+
+	if(respuesta!=NULL)
+		free(respuesta);
+}
+
+t_respuesta_finalizar_programa* finalizarProcesoMemoria(int32_t pid){
+	t_pedido_finalizar_programa pedido;
+	pedido.pid = pid;
+
+	char* buffer = serializar_pedido_finalizar_programa(&pedido);
+	empaquetarEnviarMensaje(socketMemoria,"FINZ_PROGM",sizeof(t_pedido_finalizar_programa),buffer);
+	free(buffer);
+
+	t_package* paquete = recibirPaqueteMemoria();
+	t_respuesta_finalizar_programa* respuesta = deserializar_respuesta_finalizar_programa(paquete->datos);
+	borrarPaquete(paquete);
+
+	return respuesta;
+}
+
+t_package* recibirPaqueteMemoria(){
+	pthread_mutex_lock(&mutexMemoria);
+	t_package* paquete = recibirPaquete(socketMemoria,NULL);
+	pthread_mutex_unlock(&mutexMemoria);
+	return paquete;
 }
 
 void enviar_a_cpu(){

@@ -99,5 +99,6 @@ void enviarMensajeConsola(char*mensaje,char*key,int32_t pid,int32_t socket,int32
 t_respuesta_finalizar_programa* finalizarProcesoMemoria(int32_t pid);
 t_package* recibirPaqueteMemoria();
 void enviar_a_cpu();
+void finishProcess(t_pcb* pcb,bool check_memoria);
 
 #endif /* SRC_ESTADOS_H_ */

@@ -240,21 +240,23 @@ bool tryAllocate(t_pedido_reservar* pedido,t_respuesta_reservar* respuesta,t_pag
 		memcpy(&metadata.size,(rta_sol_bytes->data)+offset,sizeof(int32_t));
 		offset+=sizeof(int32_t);
 
-		if(metadata.isFree && (metadata.size > (pedido->bytes+sizeof(t_heap_metadata)) )){
+		if(metadata.isFree && (metadata.size > pedido->bytes )){
 			int oldOffset=offset-sizeof(t_heap_metadata);
+			int diff=metadata.size-pedido->bytes;//La diferencia de bytes entre el pedido y lo disponible
+
 			respuesta->puntero=(pag_heap->nroPagina*tamanio_pag_memoria)+offset;
 			respuesta->codigo=RESERVAR_OK;
 
 			t_heap_metadata newMetadata;
 			newMetadata.isFree=false;
-			newMetadata.size=pedido->bytes;
+			newMetadata.size=(diff>=sizeof(t_heap_metadata)?pedido->bytes:metadata.size);
 
 			memcpy((rta_sol_bytes->data)+oldOffset,&newMetadata.isFree,sizeof(bool));//Escribimos la nueva metadata
 			oldOffset+=sizeof(bool);
 			memcpy((rta_sol_bytes->data)+oldOffset,&newMetadata.size,sizeof(int32_t));
 			oldOffset+=sizeof(int32_t);
 
-			if((oldOffset+newMetadata.size+1)<tamanio_pag_memoria && rta_sol_bytes->data[oldOffset+newMetadata.size+1]=='\0'){//Esto es para poner el flag al final
+			if(diff>=sizeof(t_heap_metadata)){//Esto es para poner el flag al final
 				t_heap_metadata lastMetadata;
 				lastMetadata.isFree=true;
 				lastMetadata.size=metadata.size-newMetadata.size-sizeof(t_heap_metadata);//Se resta uno para el flag
@@ -323,7 +325,7 @@ void reservar(void* data,int socket){
 		t_paginas_proceso* paginas_proceso = dictionary_get(paginasGlobalesHeap,pidKey);
 
 		bool pageWithNoSpace(void* elem){
-			return ((t_pagina_heap*)elem)->espacioDisponible<(pedido->bytes+5);
+			return ((t_pagina_heap*)elem)->espacioDisponible<pedido->bytes;
 		}
 
 		if(paginas_proceso == NULL || list_all_satisfy(paginas_proceso->paginas,pageWithNoSpace)){//Si no hay paginas o no hay ninguna con espacio
@@ -340,7 +342,7 @@ void reservar(void* data,int socket){
 		if(respuesta.puntero != -1){
 
 			bool pageWithSpace(void* elem){
-				return ((t_pagina_heap*)elem)->espacioDisponible>(pedido->bytes+sizeof(t_heap_metadata));
+				return ((t_pagina_heap*)elem)->espacioDisponible>pedido->bytes;
 			}
 
 			int index=0;
@@ -366,6 +368,12 @@ void reservar(void* data,int socket){
 		}
 
 		free(pidKey);
+	}
+
+	if(respuesta.puntero==-1){
+		log_info(logNucleo,"No se pudo reservar memoria del pedido del socket:%d por el PID:%d BYTES:%d",socket,pedido->pid,pedido->bytes);
+	}else{
+		log_info(logNucleo,"Memoria reservada del pedido del socket:%d por el PID:%d BYTES:%d",socket,pedido->pid,pedido->bytes);
 	}
 
 	char* buffer = serializar_respuesta_reservar(&respuesta);

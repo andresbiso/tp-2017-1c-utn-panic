@@ -127,20 +127,7 @@ void moverA_colaReady(t_pcb *pcb){
 
 	if(processIsForFinish(pcb->pid)){
 		pcb->exit_code=FINALIZAR_BY_CONSOLE;
-		moverA_colaExit(pcb);
-		t_respuesta_finalizar_programa* respuesta = finalizarProcesoMemoria(pcb->pid);
-
-		if(respuesta->codigo==OK_FINALIZAR){
-			char* message = string_from_format("Proceso finalizado con exitCode: %d\0",pcb->exit_code);
-
-			pthread_mutex_lock(&mutexProgramasActuales);
-			t_consola* consola = matchear_consola_por_pid(pcb->pid);
-			enviarMensajeConsola(message,"END_PRGM",pcb->pid,consola->socket,1,0);
-			eliminarConsolaPorPID(consola->pid);
-			pthread_mutex_unlock(&mutexProgramasActuales);
-
-			free(message);
-		}
+		finishProcess(pcb,true);
 	}
 
 
@@ -278,28 +265,6 @@ void program_change_running(int32_t pid, bool newState){
 	t_consola* consola = matchear_consola_por_pid(pid);
 	consola->corriendo=newState;
 	pthread_mutex_unlock(&mutexProgramasActuales);
-}
-
-t_respuesta_finalizar_programa* finalizarProcesoMemoria(int32_t pid){
-	t_pedido_finalizar_programa pedido;
-	pedido.pid = pid;
-
-	char* buffer = serializar_pedido_finalizar_programa(&pedido);
-	empaquetarEnviarMensaje(socketMemoria,"FINZ_PROGM",sizeof(t_pedido_finalizar_programa),buffer);
-	free(buffer);
-
-	t_package* paquete = recibirPaqueteMemoria();
-	t_respuesta_finalizar_programa* respuesta = deserializar_respuesta_finalizar_programa(paquete->datos);
-	borrarPaquete(paquete);
-
-	return respuesta;
-}
-
-t_package* recibirPaqueteMemoria(){
-	pthread_mutex_lock(&mutexMemoria);
-	t_package* paquete = recibirPaquete(socketMemoria,NULL);
-	pthread_mutex_unlock(&mutexMemoria);
-	return paquete;
 }
 
 
