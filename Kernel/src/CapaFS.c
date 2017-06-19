@@ -40,12 +40,12 @@ void abrirArchivo(char* data, int socket){
 		strcpy(banderas,"w");
 	}else strcpy(banderas,"r");
 
-	t_pedido_validar_crear_archivo_fs pedidoValidar;
+	t_pedido_validar_crear_borrar_archivo_fs pedidoValidar;
 	pedidoValidar.tamanio = pedido->tamanio;
 	pedidoValidar.direccion = malloc((pedido->tamanio)+1);
 	memcpy(pedidoValidar.direccion,pedido->direccion,pedidoValidar.tamanio);
 
-	char* buffer = serializar_pedido_validar_crear_archivo(&pedidoValidar);
+	char* buffer = serializar_pedido_validar_crear_borrar_archivo(&pedidoValidar);
 	empaquetarEnviarMensaje(socketFS,"VALIDAR_ARCH",sizeof(int32_t)+pedidoValidar.tamanio,buffer);
 	free(buffer);
 
@@ -101,12 +101,12 @@ void abrirArchivo(char* data, int socket){
 		case NO_EXISTE_ARCHIVO:
 			if(pedido->flags->creacion){
 				log_info(logNucleo,"No existe el archivo, se intentara crearlo");
-				t_pedido_validar_crear_archivo_fs pedidoCrear;
+				t_pedido_validar_crear_borrar_archivo_fs pedidoCrear;
 				pedidoCrear.tamanio = pedido->tamanio;
 				pedidoCrear.direccion = malloc((pedido->tamanio)+1);
 				memcpy(pedidoCrear.direccion,pedido->direccion,pedidoCrear.tamanio);
 
-				char* buffer = serializar_pedido_validar_crear_archivo(&pedidoCrear);
+				char* buffer = serializar_pedido_validar_crear_borrar_archivo(&pedidoCrear);
 				empaquetarEnviarMensaje(socketFS,"CREAR_ARCH",sizeof(int32_t)+pedidoCrear.tamanio,buffer);
 				free(buffer);
 
@@ -140,22 +140,37 @@ void abrirArchivo(char* data, int socket){
 						free(buffer);
 						break;
 					case CREAR_ERROR:
-						// TODO error
+						t_respuesta_abrir_archivo respuesta;
+						respuesta.fd = archivos_proceso->fd;
+						respuesta.codigo = ERROR_ABRIR;
+
+						char* buffer = serializar_respuesta_abrir_archivo(&respuesta);
+						empaquetarEnviarMensaje(socket,"RES_ABRIR_ARCH",sizeof(t_respuesta_abrir_archivo),buffer);
+						free(buffer);
+						log_error(logNucleo,"No se pudo crear el archivo");
 						break;
 					case NO_HAY_BLOQUES:
-						// TODO error
+						t_respuesta_abrir_archivo respuesta;
+						respuesta.fd = archivos_proceso->fd;
+						respuesta.codigo = ERROR_ABRIR;
+
+						char* buffer = serializar_respuesta_abrir_archivo(&respuesta);
+						empaquetarEnviarMensaje(socket,"RES_ABRIR_ARCH",sizeof(t_respuesta_abrir_archivo),buffer);
+						free(buffer);
+						log_error(logNucleo,"No hay bloques disponibles para crear el archivo");
 						break;
 				}
 				free(respuestaCrear);
 			}else{
-			// TODO error
+			log_error(logNucleo,"No existe el archivo solicitado");
 			}
 			break;
 	}
 
 	free(respuestaValidar);
 	free(pidKey);
-
+	free(pedido->direccion);
+	free(pedido);
 }
 
 void cerrarArchivo(char* data, int socket){
@@ -163,27 +178,84 @@ void cerrarArchivo(char* data, int socket){
 
 	char* pidKey = string_itoa(pedido->pid);
 
-	bool matchFile(void *archivoGlobal) {
-					  return ((t_archivos_global*)archivoGlobal)->file == pedido->direccion;
-					}
+	t_list* listaArchivosPorProceso = dictionary_get(tablaArchivosPorProceso,pidKey);
 
-	t_archivos_global* archivo_global = list_find(tablaArchivosGlobales,matchFile);
+	t_respuesta_cerrar_archivo respuesta;
 
-	if(archivo_global){
+	if(listaArchivosPorProceso){
+		t_archivos_proceso* archivo_proceso = list_get(listaArchivosPorProceso,pedido->fd);
+		t_archivos_global* archivo_global = list_get(tablaArchivosGlobales,archivo_proceso->globalFD);
+
 		archivo_global->open--;
 
 		pthread_mutex_lock(&listaArchivosGlobalMutex);
-		archivo_global->open == 0 ? list_remove_and_destroy_by_condition(tablaArchivosGlobales,matchFile,free) :
-				list_replace_and_destroy_element(tablaArchivosGlobales,archivo_global->globalFD,archivo_global,free);
+		archivo_global->open == 0 ? list_remove_and_destroy_element(tablaArchivosGlobales,archivo_proceso->globalFD,free) :
+				list_replace_and_destroy_element(tablaArchivosGlobales,archivo_proceso->globalFD,archivo_global,free);
 		pthread_mutex_unlock(&listaArchivosGlobalMutex);
 
-		t_list* listaArchivosPorProceso = dictionary_get(tablaArchivosPorProceso,pidKey);
+		list_remove_and_destroy_element(listaArchivosPorProceso,pedido->fd,free);
+		dictionary_put(tablaArchivosPorProceso,pidKey,listaArchivosPorProceso);
 
-		bool matchGlobalFD(void *archivo_proceso) {
-						return ((t_archivos_proceso*)archivo_proceso)->globalFD == archivo_global->globalFD;
-					 }
+		respuesta.codigoRta = CERRAR_OK;
+		log_info(logNucleo,"Se cerro el archivo abierto por el PID: %d con FD: %d",pedido->pid,pedido->fd);
+	}else{
+		respuesta.codigoRta = ERROR_CERRAR;
+		log_info(logNucleo,"El archivo a cerrar nunca fue abierto por el PID: %d",pedido->pid);
+	}
 
-		list_remove_by_condition(listaArchivosPorProceso,matchGlobalFD);
+	char* buffer = serializar_respuesta_cerrar_archivo(&respuesta);
+	empaquetarEnviarMensaje(socket,"RES_CERRAR_ARCH",sizeof(t_respuesta_cerrar_archivo),buffer);
+	free(buffer);
+
+	free(pedido);
+	free(pidKey);
+}
+
+void borrarArchivo(char* data, int socket){
+	t_pedido_borrar_archivo* pedido = deserializar_pedido_borrar_archivo(data);
+
+	char* pidKey = string_itoa(pedido->pid);
+
+	t_list* listaArchivosPorProceso = dictionary_get(tablaArchivosPorProceso,pidKey);
+
+	if(listaArchivosPorProceso){
+		t_archivos_proceso* archivo_proceso = list_get(listaArchivosPorProceso,pedido->fd);
+		t_archivos_global* archivo_global = list_get(tablaArchivosGlobales,archivo_proceso->globalFD);
+
+		if(archivo_global->globalFD == 1){
+			t_pedido_validar_crear_borrar_archivo_fs pedidoBorrar;
+			pedidoBorrar.tamanio = pedido->tamanio;
+			pedidoBorrar.direccion = malloc((pedido->tamanio)+1);
+			memcpy(pedidoBorrar.direccion,pedido->direccion,pedidoBorrar.tamanio);
+
+			char* buffer = serializar_pedido_validar_crear_borrar_archivo(&pedidoBorrar);
+			empaquetarEnviarMensaje(socketFS,"BORRAR_ARCH",sizeof(int32_t)+pedidoBorrar.tamanio,buffer);
+			free(buffer);
+
+			t_package* paqueteBorrar = recibirPaquete(socketFS,NULL);
+			t_respuesta_crear_archivo* respuestaBorrar = deserializar_respuesta_crear_archivo(paqueteBorrar->datos);
+			borrarPaquete(paqueteBorrar);
+
+			switch(respuestaBorrar->codigoRta){
+				case BORRAR_OK:
+					pthread_mutex_lock(&listaArchivosGlobalMutex);
+					list_remove_and_destroy_by_condition(tablaArchivosGlobales,archivo_proceso->globalFD,free);
+					pthread_mutex_unlock(&listaArchivosGlobalMutex);
+
+					list_remove_by_condition(listaArchivosPorProceso,pedido->fd);
+					dictionary_put(tablaArchivosPorProceso,pidKey,listaArchivosPorProceso);
+					log_info(logNucleo,"Se borro correctamente el archivo");
+					break;
+				case BORRAR_ERROR:
+					log_error(logNucleo,"No se pudo borrar el archivo");
+					break;
+			}
+			free(respuestaBorrar);
+		}else{
+			log_error(logNucleo,"El archivo se encuentra abierto por mas de un proceso");
+		}
+	}else{
+		log_error(logNucleo,"El archivo a borrar nunca fue abierto por el PID: %d",pedido->pid);
 	}
 
 	free(pedido->direccion);

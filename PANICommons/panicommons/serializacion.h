@@ -204,6 +204,20 @@ typedef struct
 	codigo_crear_archivo codigoRta;
 } __attribute__((__packed__)) t_respuesta_crear_archivo;
 
+typedef enum{CERRAR_OK=1, ERROR_CERRAR=-1} codigo_cerrar_archivo;
+
+typedef struct
+{
+	codigo_cerrar_archivo codigoRta;
+} __attribute__((__packed__)) t_respuesta_cerrar_archivo;
+
+typedef enum{BORRAR_OK=1, BORRAR_ERROR=-1} codigo_borrar_archivo;
+
+typedef struct
+{
+	codigo_borrar_archivo codigoRta;
+} __attribute__((__packed__)) t_respuesta_borrar_archivo;
+
 typedef struct{
 	int32_t tamanio;
 	char* semId;
@@ -276,16 +290,9 @@ typedef struct
 
 typedef struct
 {
-	int32_t pid;
 	int32_t tamanio;
 	char* direccion;
-} __attribute__((__packed__))t_pedido_cerrar_archivo;
-
-typedef struct
-{
-	int32_t tamanio;
-	char* direccion;
-} __attribute__((__packed__))t_pedido_validar_crear_archivo_fs;
+} __attribute__((__packed__))t_pedido_validar_crear_borrar_archivo_fs;
 
 typedef enum{ABRIR_OK = 0, ERROR_ABRIR = 1} codigo_respuesta_abrir;
 
@@ -293,6 +300,20 @@ typedef struct{
 	int32_t fd;
 	codigo_respuesta_abrir codigo;
 }t_respuesta_abrir_archivo;
+
+typedef struct
+{
+	int32_t pid;
+	int32_t fd;
+} __attribute__((__packed__))t_pedido_cerrar_archivo;
+
+typedef struct
+{
+	int32_t pid;
+	int32_t fd;
+	int32_t tamanio;
+	char* direccion;
+} __attribute__((__packed__))t_pedido_borrar_archivo;
 
 u_int32_t tamanio_pcb(t_pcb* pcb);
 t_pcb_serializado* serializar_pcb(t_pcb* pcb);
@@ -377,13 +398,26 @@ t_pedido_leer* deserializar_pedido_leer(char* pedido_serializado);
 char* serializar_respuesta_leer(t_respuesta_leer* pedido);
 t_respuesta_leer* deserializar_respuesta_leer(char* pedido_serializado);
 
-char* serializar_pedido_validar_crear_archivo(t_pedido_validar_crear_archivo_fs* pedido);
-t_pedido_validar_crear_archivo_fs* deserializar_pedido_validar_crear_archivo(char* pedido_serializado);
+char* serializar_pedido_validar_crear_borrar_archivo(t_pedido_validar_crear_borrar_archivo_fs* pedido);
+t_pedido_validar_crear_borrar_archivo_fs* deserializar_pedido_validar_crear_borrar_archivo(char* pedido_serializado);
 
 t_pedido_abrir_archivo* deserializar_pedido_abrir_archivo(char* pedido_serializado);
+char* serializar_pedido_abrir_archivo(t_pedido_abrir_archivo *pedido);
+
 char* serializar_respuesta_abrir_archivo(t_respuesta_abrir_archivo* respuesta);
+t_respuesta_abrir_archivo* deserializar_respuesta_abrir_archivo(char* rta);
+
+char* serializar_respuesta_borrar_archivo(t_respuesta_borrar_archivo* rta);
+t_respuesta_borrar_archivo* deserializar_respuesta_borrar_archivo(char* rta);
+
+char* serializar_respuesta_cerrar_archivo(t_respuesta_cerrar_archivo* rta);
+t_respuesta_cerrar_archivo* deserializar_respuesta_borrar_archivo(char* rta);
 
 t_pedido_cerrar_archivo* deserializar_pedido_cerrar_archivo(char* pedido_serializado);
+char* serializar_pedido_cerrar_archivo(t_pedido_cerrar_archivo *pedido);
+
+t_pedido_borrar_archivo* deserializar_pedido_borrar_archivo(char* pedido_serializado);
+char* serializar_pedido_borrar_archivo(t_pedido_borrar_archivo *pedido);
 
 //Kernel
 
@@ -394,6 +428,8 @@ t_respuesta_validar_archivo* deserializar_respuesta_validar_archivo(char* rta);
 
 char* serializar_respuesta_crear_archivo(t_respuesta_crear_archivo* rta);
 t_respuesta_crear_archivo* deserializar_respuesta_crear_archivo(char* rta);
+
+
 
 //FS
 
