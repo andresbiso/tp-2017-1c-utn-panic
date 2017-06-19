@@ -51,11 +51,15 @@ void validarArchivo(char* archivo, int socket)
 }
 void marcarBloqueOcupado(int bloque)
 {
+	log_trace(logFS, "Se marca el bit %d como ocupado", bloque);
 	bitarray_set_bit(bitmap, bloque);
+	printBitmap();
 }
 void marcarBloqueDesocupado(int bloque)
 {
+	log_trace(logFS, "Se marca el bit %d como desocupado", bloque);
 	bitarray_clean_bit(bitmap, bloque);
+	printBitmap();
 }
 int obtenerBloqueVacio()
 {
@@ -92,7 +96,7 @@ void crearArchivo(char* archivo, int socket)
 		{
 			fwrite(&nuevoArchivo->tamanio, sizeof(int32_t), 1, file);
 			fseek(file, sizeof(int32_t), SEEK_SET);
-			fwrite(&nuevoArchivo->bloques, sizeof(nuevoArchivo->bloques), 1, file);
+			fwrite(&nuevoArchivo->bloques, sizeof(int), 1, file);
 			fclose(file);
 			log_info(logFS, "El archivo se creó exitosamente");
 			marcarBloqueOcupado(bloqueVacio);
@@ -169,9 +173,9 @@ t_bloque* leerBloque(int numero)
 	fclose(file);
 	return bloque;
 }
-void leerDatosArchivo(char* datos, int socket)
+void leerDatosArchivo(t_pedido_lectura_datos* pedidoDeLectura, int socket)
 {
-	t_pedido_lectura_datos* pedidoDeLectura = deserializar_pedido_lectura_datos(datos);
+	//t_pedido_lectura_datos* pedidoDeLectura = deserializar_pedido_lectura_datos(datos);
 	t_respuesta_pedido_lectura* rta = malloc(sizeof(t_respuesta_pedido_lectura));
 	char* buffer;
 	int offset = 0;
@@ -181,14 +185,13 @@ void leerDatosArchivo(char* datos, int socket)
 	if (file != NULL)
 	{
 		t_metadata_archivo* archivoALeer;
-		int offset = 0;
 		fread(&(archivoALeer->tamanio), sizeof(int32_t), 1, file);
 		int cantBloques = archivoALeer->tamanio / metadataFS->tamanioBloque;
-		offset+=sizeof(archivoALeer->tamanio);
-		fseek(file, offset, SEEK_SET);
-		fread(&(archivoALeer->bloques), cantBloques, 1, file);
+		fseek(file, sizeof(int32_t), SEEK_SET);
+		fread(&(archivoALeer->bloques), cantBloques*sizeof(int), 1, file);
 
 		int i;
+		int offset = 0;
 		for (i = 0; i < cantBloques; ++i) {
 			 t_bloque* bloque = leerBloque(archivoALeer->bloques[i]);
 			 memcpy(buffer+offset, &(bloque->datos), bloque->tamanio);
@@ -235,6 +238,14 @@ void cargarConfiguracionAdicional()
 	validarDirectorio(rutaMetadata);
 	leerArchivoMetadataFS();
 }
+
+void printBitmap() {
+	int i;
+	for (i = 0; i < 9; ++i) {
+		printf("el bit %d tiene el valor %c", i, bitmap->bitarray[i]);
+	}
+}
+
 void mapearBitmap()
 {
 	archivoBitmap = fopen(rutaBitmap, "r+b");
@@ -242,6 +253,8 @@ void mapearBitmap()
 	mmap(bitmapArray, metadataFS->cantidadBloques*sizeof(int), PROT_WRITE, MAP_SHARED, fileno(archivoBitmap), 0);
 	bitmap = bitarray_create_with_mode(bitmapArray, metadataFS->cantidadBloques * sizeof(int), MSB_FIRST);
 	free(bitmapArray);
+
+	printBitmap();
 }
 void cerrarArchivosYLiberarMemoria()
 {
@@ -290,6 +303,24 @@ void crearBitmap()
 	fclose(file);
 	free(bitmap);
 }
+void crearBloque(int numero)
+{
+	t_bloque* bloque = malloc(sizeof(t_bloque));
+	bloque->datos = malloc(strlen("Esto es un bloque de prueba")+1);
+	bloque->datos = "Esto es un bloque de prueba";
+	bloque->tamanio = strlen(bloque->datos)+1;
+
+	//char* numeroBloque = itoa(numero, 10);
+	char* tmp = concat(numero, ".bin");
+	char* nombre = concat(rutaBloques, tmp);
+	FILE* file = fopen(nombre, "wb");
+
+	fwrite(&(bloque->tamanio), sizeof(int32_t), 1, file);
+	fseek(file, sizeof(int32_t), SEEK_SET);
+	fwrite(&(bloque->datos), bloque->tamanio, 1, file);
+	fclose(file);
+	free(bloque);
+}
 int main(int argc, char** argv)
 {
 	t_config* configFile = cargarConfiguracion(argv[1]);
@@ -298,12 +329,16 @@ int main(int argc, char** argv)
 	logFS = log_create("fs.log", "FILE SYSTEM", 0, LOG_LEVEL_TRACE);
 
 	cargarConfiguracionAdicional();
-	crearBitmap();
 	mapearBitmap();
 
-	//pruebaBitmap();
-
-	crearArchivo("prueba.bin", 1);
+	//crearArchivo("asd2.bin", 1);
+	t_pedido_lectura_datos* asd = malloc(sizeof(t_pedido_lectura_datos));
+	asd->ruta = malloc(strlen("prueba.bin")+1);
+	asd->offset = 0;
+	asd->ruta = "prueba.bin";
+	asd->tamanio = 0;
+	crearBloque(2);
+	leerDatosArchivo(asd,2);
 
 	printf("TAMANIO BITMAP: %d\n", bitmap->size);
 

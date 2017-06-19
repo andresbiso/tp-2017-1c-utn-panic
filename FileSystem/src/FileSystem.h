@@ -59,7 +59,7 @@ void _mkdir(const char *dir) {
 typedef struct
 {
 	int32_t tamanio;
-	char* bloques;
+	int* bloques;
 } t_metadata_archivo;
 
 typedef struct
@@ -90,6 +90,6 @@ void mostrarMensaje(char* mensajes, int socket);
 void validarArchivo(char* ruta, int socket);
 void crearArchivo(char* ruta, int socket);
 void borrarArchivo(char* ruta, int socket);
-void leerDatosArchivo(char* nombre, int socket);
+void leerDatosArchivo(t_pedido_lectura_datos* pedidoDeLectura, int socket);
 
 #endif /* FILESYSTEM_H_ */
