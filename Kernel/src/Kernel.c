@@ -988,6 +988,7 @@ int main(int argc, char** argv) {
     dictionary_put(diccionarioFunciones,"LIBERAR",&liberar);
     dictionary_put(diccionarioFunciones,"ABRIR_ARCH",&abrirArchivo);
     dictionary_put(diccionarioFunciones,"CERRAR_ARCH",&cerrarArchivo);
+    dictionary_put(diccionarioFunciones,"BORRAR_ARCH",&borrarArchivo);
 
     t_dictionary* diccionarioHandshakes = dictionary_create();
     dictionary_put(diccionarioHandshakes,"HCPKE","HKECP");
