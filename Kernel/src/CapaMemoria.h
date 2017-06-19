@@ -32,6 +32,7 @@ typedef struct {
 
 t_dictionary *semaforos;
 t_dictionary *paginasGlobalesHeap;
+pthread_mutex_t mutexMemoriaHeap;
 
 void getVariableCompartida(char* data, int socket);
 void setVariableCompartida(char* data, int socket);
@@ -39,6 +40,6 @@ void wait(char* data,int socket);
 void signal(char* data,int socket);
 void reservar(void* data,int socket);
 void liberar(void* data,int socket);
-
+void removePaginaHeap(int32_t pid, int32_t pagina);
 
 #endif /* SRC_CAPAMEMORIA_H_ */

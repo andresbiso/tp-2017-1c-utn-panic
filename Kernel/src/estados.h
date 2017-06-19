@@ -34,6 +34,16 @@ typedef struct{
 	bool corriendo;
 }t_consola;
 
+typedef struct{
+	u_int32_t cant_syscall;
+	u_int32_t rafagas;
+	u_int32_t liberar_bytes;
+	u_int32_t liberar_cant;
+	u_int32_t reservar_bytes;
+	u_int32_t reservar_cant;
+	u_int32_t cant_paginas_heap;
+}t_stats;
+
 t_queue *colaNew;
 t_queue *colaReady;
 t_queue *colaExec;
@@ -42,6 +52,7 @@ t_queue *colaExit;
 t_list *lista_programas_actuales;
 t_list *lista_cpus_conectadas;
 t_list *lista_relacion;
+t_dictionary* stats_ejecucion;
 t_log* logEstados;
 bool isStopped;
 
@@ -61,6 +72,7 @@ pthread_mutex_t mutexCPUConectadas;
 pthread_mutex_t mutexProgramasActuales;
 pthread_mutex_t mutexMemoria;
 pthread_mutex_t mutexRespuestaInicializar;
+pthread_mutex_t mutexStatsEjecucion;
 sem_t stopped;
 
 int socketFS;
@@ -100,5 +112,14 @@ t_respuesta_finalizar_programa* finalizarProcesoMemoria(int32_t pid);
 t_package* recibirPaqueteMemoria();
 void enviar_a_cpu();
 void finishProcess(t_pcb* pcb,bool check_memoria);
+
+//Stats
+
+void crearStats(int32_t pid);
+void agregarSyscall(int32_t pid);
+void agregarRafagas(int32_t pid,int32_t rafagas);
+void agregarLiberar(int32_t pid,int32_t bytes);
+void agregarReservar(int32_t pid,int32_t bytes);
+void agregarPagHeap(int32_t pid);
 
 #endif /* SRC_ESTADOS_H_ */

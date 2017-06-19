@@ -463,6 +463,8 @@ void programa(void* arg){
 
 	enviarMensajeConsola("Nuevo Proceso creado\0","NEW_PID",nuevo_pcb->pid,socket,0,0);
 
+	crearStats(nuevo_pcb->pid);
+
 	sem_getvalue(&grado,&gradoActual);
 	if(gradoActual <= 0){
 		enviarMensajeConsola("Espera por Multiprogramacion\0","LOG_MESSAGE",nuevo_pcb->pid,socket,0,0);
@@ -838,6 +840,97 @@ void enviar_a_cpu(){
 	free(serializado);
 }
 
+/* STATS */
+
+void crearStats(int32_t pid){
+	char * pidKey = string_itoa(pid);
+
+	t_stats* stats = malloc(sizeof(t_stats));
+	stats->cant_syscall=0;
+	stats->liberar_bytes=0;
+	stats->liberar_cant=0;
+	stats->reservar_bytes=0;
+	stats->reservar_cant=0;
+	stats->rafagas=0;
+	stats->cant_paginas_heap=0;
+
+	pthread_mutex_lock(&mutexStatsEjecucion);
+	dictionary_put(stats_ejecucion,pidKey,stats);
+	pthread_mutex_unlock(&mutexStatsEjecucion);
+
+	free(pidKey);
+}
+
+void agregarSyscall(int32_t pid){
+	char * pidKey = string_itoa(pid);
+
+	pthread_mutex_lock(&mutexStatsEjecucion);
+	t_stats* stats = dictionary_get(stats_ejecucion,pidKey);
+	if(stats!=NULL){
+		stats->cant_syscall++;
+	}
+	pthread_mutex_unlock(&mutexStatsEjecucion);
+
+	free(pidKey);
+}
+
+void agregarPagHeap(int32_t pid){
+	char * pidKey = string_itoa(pid);
+
+	pthread_mutex_lock(&mutexStatsEjecucion);
+	t_stats* stats = dictionary_get(stats_ejecucion,pidKey);
+	if(stats!=NULL){
+		stats->cant_paginas_heap++;
+	}
+	pthread_mutex_unlock(&mutexStatsEjecucion);
+
+	free(pidKey);
+}
+
+void agregarRafagas(int32_t pid,int32_t rafagas){
+	char * pidKey = string_itoa(pid);
+
+	pthread_mutex_lock(&mutexStatsEjecucion);
+	t_stats* stats = dictionary_get(stats_ejecucion,pidKey);
+	if(stats!=NULL){
+		stats->rafagas+=rafagas;
+	}
+	pthread_mutex_unlock(&mutexStatsEjecucion);
+
+	free(pidKey);
+}
+
+void agregarLiberar(int32_t pid,int32_t bytes){
+	char * pidKey = string_itoa(pid);
+
+	pthread_mutex_lock(&mutexStatsEjecucion);
+	t_stats* stats = dictionary_get(stats_ejecucion,pidKey);
+	if(stats!=NULL){
+		stats->liberar_bytes+=bytes;
+		stats->liberar_cant++;
+	}
+	pthread_mutex_unlock(&mutexStatsEjecucion);
+
+	free(pidKey);
+}
+
+void agregarReservar(int32_t pid,int32_t bytes){
+	char * pidKey = string_itoa(pid);
+
+	pthread_mutex_lock(&mutexStatsEjecucion);
+	t_stats* stats = dictionary_get(stats_ejecucion,pidKey);
+	if(stats!=NULL){
+		stats->reservar_bytes+=bytes;
+		stats->reservar_cant++;
+	}
+	pthread_mutex_unlock(&mutexStatsEjecucion);
+
+	free(pidKey);
+}
+
+
+/* STATS */
+
 void mostrarMensaje(char* mensaje,int socket){
 	printf("Mensaje recibido: %s \n",mensaje);
 }
@@ -871,14 +964,17 @@ int main(int argc, char** argv) {
 	pthread_mutex_init(&mutexGlobalFD,NULL);
 	pthread_mutex_init(&listaArchivosPidMutex,NULL);
 	pthread_mutex_init(&mutexRespuestaInicializar,NULL);
+	pthread_mutex_init(&mutexStatsEjecucion,NULL);
+	pthread_mutex_init(&mutexMemoriaHeap,NULL);
 	sem_init(&stopped,0,0);
 
 	isStopped=false;
 
 	paginasGlobalesHeap=dictionary_create();
+	stats_ejecucion=dictionary_create();
 	tablaArchivosPorProceso=dictionary_create();
 
-    t_dictionary* diccionarioFunciones = dictionary_create();
+	t_dictionary* diccionarioFunciones = dictionary_create();
     dictionary_put(diccionarioFunciones,"ERROR_FUNC",&mostrarMensaje);
     dictionary_put(diccionarioFunciones,"NUEVO_PROG",&nuevoPrograma);
     dictionary_put(diccionarioFunciones,"END_PROG",&finalizarProgramaConsola);

@@ -11,6 +11,8 @@
 void getVariableCompartida(char* data, int socket){
 	t_pedido_obtener_variable_compartida* pedido = deserializar_pedido_obtener_variable_compartida(data);
 
+	agregarSyscall(pedido->pid);
+
 	if(pedido->nombre_variable_compartida[pedido->tamanio]=='\n')
 		pedido->nombre_variable_compartida[pedido->tamanio]='\0';
 
@@ -38,6 +40,8 @@ void getVariableCompartida(char* data, int socket){
 
 void setVariableCompartida(char* data, int socket){
 	t_pedido_asignar_variable_compartida* pedido = deserializar_pedido_asignar_variable_compartida(data);
+
+	agregarSyscall(pedido->pid);
 
 	if(pedido->nombre_variable_compartida[pedido->tamanio]=='\n')
 		pedido->nombre_variable_compartida[pedido->tamanio]='\0';
@@ -68,6 +72,8 @@ void setVariableCompartida(char* data, int socket){
 void wait(char* data,int socket){
 	t_pedido_wait* pedido = deserializar_pedido_wait(data);
 	t_respuesta_wait respuesta;
+
+	agregarSyscall(pedido->pcb->pid);
 
 	if(pedido->semId[pedido->tamanio-1]=='\n')
 		pedido->semId[pedido->tamanio-1]='\0';
@@ -112,6 +118,8 @@ void wait(char* data,int socket){
 
 void signal(char* data,int socket){
 	t_pedido_signal* pedido = deserializar_pedido_signal(data);
+
+	//agregarSyscall(pedido->pid); TODO agregar PID al pedido!!!
 
 	t_respuesta_signal respuesta;
 
@@ -172,6 +180,7 @@ bool pedirPaginaHeap(t_paginas_proceso* paginas_proceso, int paginasTotales, int
 
 	if(respuesta_memoria->codigoRespuesta == OK_INICIALIZAR){
 		free(respuesta_memoria);
+		agregarPagHeap(pid);
 		paginas_proceso->maxPaginas++;
 
 		t_pedido_almacenar_bytes pedido_memoria;
@@ -181,7 +190,6 @@ bool pedirPaginaHeap(t_paginas_proceso* paginas_proceso, int paginasTotales, int
 		pedido_memoria.pagina=paginas_proceso->maxPaginas;
 		pedido_memoria.data=malloc(tamanio_pag_memoria);
 		memset(pedido_memoria.data,'\0',tamanio_pag_memoria);
-
 
 		t_heap_metadata metadata;
 		metadata.isFree=1;
@@ -312,6 +320,8 @@ bool tryAllocate(t_pedido_reservar* pedido,t_respuesta_reservar* respuesta,t_pag
 void reservar(void* data,int socket){
 	t_pedido_reservar* pedido = deserializar_pedido_reservar(data);
 
+	agregarSyscall(pedido->pid);
+
 	t_respuesta_reservar respuesta;
 	respuesta.puntero=0;
 
@@ -322,6 +332,8 @@ void reservar(void* data,int socket){
 		respuesta.puntero=-1;
 	}else{
 		char* pidKey = string_itoa(pedido->pid);
+
+		pthread_mutex_lock(&mutexMemoriaHeap);
 		t_paginas_proceso* paginas_proceso = dictionary_get(paginasGlobalesHeap,pidKey);
 
 		bool pageWithNoSpace(void* elem){
@@ -367,12 +379,14 @@ void reservar(void* data,int socket){
 			list_clean(all_pages_with_space);
 		}
 
+		pthread_mutex_unlock(&mutexMemoriaHeap);
 		free(pidKey);
 	}
 
 	if(respuesta.puntero==-1){
 		log_info(logNucleo,"No se pudo reservar memoria del pedido del socket:%d por el PID:%d BYTES:%d",socket,pedido->pid,pedido->bytes);
 	}else{
+		agregarReservar(pedido->pid,pedido->bytes);
 		log_info(logNucleo,"Memoria reservada del pedido del socket:%d por el PID:%d BYTES:%d",socket,pedido->pid,pedido->bytes);
 	}
 
@@ -436,6 +450,9 @@ bool compressPageHeap(char* page,int32_t pid,int32_t pagina){//retorna un boolea
 			free(respuesta_liberar);
 			return false;
 		}
+
+		removePaginaHeap(pid,pagina);
+
 	}else{//Hay espacio alocado en algun lado => Escribimos la pagina a memoria
 		t_pedido_almacenar_bytes pedido_memoria;
 		pedido_memoria.pid=pid;
@@ -464,6 +481,8 @@ void liberar(void* data,int socket){
 	t_pedido_liberar* pedido = deserializar_pedido_liberar(data);
 	t_respuesta_liberar respuesta;
 
+	agregarSyscall(pedido->pid);
+
 	log_info(logNucleo,"Se recibio un pedido de liberar memoria del socket:%d por el PID:%d PAG:%d OFFSET:%d",socket,pedido->pid,pedido->pagina,pedido->offset);
 
 	if (pedido->offset<tamanio_pag_memoria){//Por si se va de offset
@@ -491,6 +510,8 @@ void liberar(void* data,int socket){
 			memcpy(&metadata.size,(rta_sol_bytes->data)+1+startMetadata,sizeof(int32_t));
 
 			if(!metadata.isFree){
+				agregarLiberar(pedido->pid,metadata.size);
+
 				metadata.isFree=true;
 				memcpy((rta_sol_bytes->data)+startMetadata,&metadata.isFree,sizeof(bool));//No hace falta sobre-escribir el size ya que por ahora es el mismo
 				memset((rta_sol_bytes->data)+pedido->offset,0,metadata.size);
@@ -522,6 +543,30 @@ void liberar(void* data,int socket){
 	free(buffer);
 
 	free(pedido);
+}
+
+
+void removePaginaHeap(int32_t pid, int32_t pagina){
+
+	char* pidKey = string_itoa(pid);
+
+	pthread_mutex_lock(&mutexMemoriaHeap);
+
+	t_paginas_proceso* paginas_proceso = dictionary_get(paginasGlobalesHeap,pidKey);
+
+	bool findPage(void* elem){
+		return ((t_pagina_heap*)elem)->nroPagina==pagina;
+	}
+
+	list_remove_and_destroy_by_condition(paginas_proceso->paginas,findPage,free);
+
+	if(pagina==paginas_proceso->maxPaginas){
+		paginas_proceso->maxPaginas--;
+	}
+
+	pthread_mutex_unlock(&mutexMemoriaHeap);
+
+	free(pidKey);
 }
 
 //Capa de memoria
