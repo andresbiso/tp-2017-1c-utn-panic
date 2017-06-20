@@ -19,20 +19,11 @@
 #include <sys/stat.h>
 #include <dirent.h>
 #include <errno.h>
-
-//#define foreach(item, array) \
-//    for(int keep = 1, \
-//            count = 0,\
-//            size = sizeof (array) / sizeof *(array); \
-//        keep && count != size; \
-//        keep = !keep, count++) \
-//      for(item = (array) + count; keep; keep = !keep)
-
+#include <libgen.h>
 
 char* concat(const char *s1, const char *s2)
 {
-    char *result = malloc(strlen(s1)+strlen(s2)+1);//+1 for the zero-terminator
-    //in real code you would check for errors in malloc here
+    char *result = malloc(strlen(s1)+strlen(s2)+1);
     strcpy(result, s1);
     strcat(result, s2);
     return result;
@@ -59,7 +50,7 @@ void _mkdir(const char *dir) {
 typedef struct
 {
 	int32_t tamanio;
-	int* bloques;
+	char** bloques;
 } t_metadata_archivo;
 
 typedef struct
@@ -91,5 +82,7 @@ void validarArchivo(char* ruta, int socket);
 void crearArchivo(char* ruta, int socket);
 void borrarArchivo(char* ruta, int socket);
 void leerDatosArchivo(t_pedido_lectura_datos* pedidoDeLectura, int socket);
+void marcarBloqueDesocupado(char* bloque);
+void marcarBloqueOcupado(char* bloque);
 
 #endif /* FILESYSTEM_H_ */

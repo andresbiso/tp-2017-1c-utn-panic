@@ -9,12 +9,22 @@ void mostrarMensaje(char* mensajes,int socket)
  	printf("Mensaje recibido: %s \n",mensajes);
 }
 
-void printBitmap() {
+char* string_get_string_from_array(char** array,int nroBloques){
+	char* result = string_new();
+
 	int i;
-	for (i = 0; i < 5192; ++i) {
-		printf("el bit %d tiene el valor %d\n\r", i, bitarray_test_bit(bitmap,i));
+	string_append(&result,"[");
+	for(i=0;i<nroBloques;i++){
+		string_append(&result,array[i]);
+		if(i!=(nroBloques-1))
+			string_append(&result,",");
 	}
+	string_append(&result,"]");
+
+
+	return result;
 }
+
 t_config* cargarConfiguracion(char* nombreDelArchivo){
 	char* configFilePath =string_new();
 	string_append(&configFilePath,nombreDelArchivo);
@@ -55,18 +65,19 @@ void validarArchivo(char* archivo, int socket)
 	char* buffer = serializar_respuesta_validar_archivo(&respuesta);
 	empaquetarEnviarMensaje(socket, "RES_VALIDAR", sizeof(t_respuesta_validar_archivo), buffer);
 	free(buffer);
+	free(ruta);
 }
-void marcarBloqueOcupado(int bloque)
+void marcarBloqueOcupado(char* bloque)
 {
-	log_trace(logFS, "Se marca el bit %d como ocupado", bloque);
-	bitarray_set_bit(bitmap, bloque);
-	printBitmap();
+	log_trace(logFS, "Se marca el bit %s como ocupado", bloque);
+	bitarray_set_bit(bitmap, atoi(bloque));
+	msync(bitmap->bitarray,bitmap->size,MS_SYNC);
 }
-void marcarBloqueDesocupado(int bloque)
+void marcarBloqueDesocupado(char* bloque)
 {
-	log_trace(logFS, "Se marca el bit %d como desocupado", bloque);
-	bitarray_clean_bit(bitmap, bloque);
-	printBitmap();
+	log_trace(logFS, "Se marca el bit %s como desocupado", bloque);
+	bitarray_clean_bit(bitmap, atoi(bloque));
+	msync(bitmap->bitarray,bitmap->size,MS_SYNC);
 }
 int obtenerBloqueVacio()
 {
@@ -89,40 +100,56 @@ void crearArchivo(char* archivo, int socket)
 	{
 		t_metadata_archivo* nuevoArchivo = malloc(sizeof(t_metadata_archivo));
 		nuevoArchivo->bloques = malloc(sizeof(int));
-		nuevoArchivo->bloques[0] = bloqueVacio;
-		nuevoArchivo->tamanio = metadataFS->tamanioBloque;
+		nuevoArchivo->bloques[0] = string_itoa(bloqueVacio);
+		nuevoArchivo->tamanio = 0;
 
 		char* ruta = concat(rutaArchivos, archivo);
+
+		bool already_exist = fopen("r",ruta)!=NULL;
 
 		char* tmp = strdup(ruta);
 		char* dir = dirname(tmp);
 		_mkdir(dir);
 
-		FILE* file = fopen(ruta, "wb");
-		if (file != NULL)
+
+		if (!already_exist)
 		{
-			fwrite(&nuevoArchivo->tamanio, sizeof(int32_t), 1, file);
-			fseek(file, sizeof(int32_t), SEEK_SET);
-			fwrite(&nuevoArchivo->bloques, sizeof(int), 1, file);
-			fclose(file);
+			fopen(ruta,"w");
+			t_config* file =config_create(ruta);
+
+			char* tamanio_string = string_itoa(nuevoArchivo->tamanio);
+			config_set_value(file,"TAMANIO",tamanio_string);
+			free(tamanio_string);
+
+			char* string_bloques = string_get_string_from_array(nuevoArchivo->bloques,1);
+			config_set_value(file,"BLOQUES",string_bloques);
+			free(string_bloques);
+
+			config_save(file);
+			config_destroy(file);
+
 			log_info(logFS, "El archivo se creó exitosamente");
-			marcarBloqueOcupado(bloqueVacio);
+			marcarBloqueOcupado(nuevoArchivo->bloques[0]);
 			rta->codigoRta = CREAR_OK;
 		}
 		else
 		{
 			log_error(logFS, "Error al crear el archivo");
+			if(already_exist)
+				log_error(logFS, "El archivo ya existe");
 			rta->codigoRta = CREAR_ERROR;
 		}
 
+		free(nuevoArchivo->bloques);
 		free(nuevoArchivo);
+		free(ruta);
 	}
 	else
 	{
 		log_error(logFS, "No hay bloques libres disponibles");
 		rta->codigoRta = NO_HAY_BLOQUES;
 	}
-	char* buffer = serializar_respuesta_crear_archivo(&rta);
+	char* buffer = serializar_respuesta_crear_archivo(rta);
 	empaquetarEnviarMensaje(socket, "RES_CREAR_ARCH", sizeof(rta), buffer);
 	free(buffer);
 	free(rta);
@@ -132,51 +159,51 @@ void borrarArchivo(char* archivo, int socket)
 	log_info(logFS, "Se intentará borrar el archivo %s", archivo);
 	t_respuesta_borrar_archivo * rta = malloc(sizeof(t_respuesta_borrar_archivo));
 	char* ruta = concat(rutaArchivos, archivo);
-	FILE* file = fopen(ruta, "rb");
+	t_config* file = config_create(ruta);
 	if (file != NULL)
 	{
-		t_metadata_archivo* archivoABorrar;
-		fread(&archivoABorrar->tamanio, sizeof(int32_t), 1, file);
-		int cantBloques = archivoABorrar->tamanio / metadataFS->tamanioBloque;
-		fseek(file, sizeof(int32_t), SEEK_SET);
-		fread(&archivoABorrar->bloques, cantBloques, 1, file);
+		t_metadata_archivo archivoABorrar;
+		archivoABorrar.bloques=config_get_array_value(file,"BLOQUES");
+		archivoABorrar.tamanio=config_get_int_value(file,"TAMANIO");
+		int cantBloques = sizeArray(archivoABorrar.bloques);
 
 		int i;
-		for (i = 0; i < (cantBloques-1); ++i) {
-			marcarBloqueDesocupado(archivoABorrar->bloques[i]);
+		for (i = 0; i < cantBloques; ++i) {
+			marcarBloqueDesocupado(archivoABorrar.bloques[i]);
 		}
-		fclose(file);
 		remove(ruta);
-		free(archivoABorrar);
 		rta->codigoRta = BORRAR_OK;
+
+		config_destroy(file);
 	}
 	else
 	{
 		log_error(logFS, "No se pudo borrar el archivo");
 		rta->codigoRta = BORRAR_ERROR;
 	}
-	char* buffer = serializar_respuesta_borrar_archivo(&rta);
+	char* buffer = serializar_respuesta_borrar_archivo(rta);
 	empaquetarEnviarMensaje(socket, "RES_BORRAR_ARCH", sizeof(rta), buffer);
 	free(buffer);
 	free(rta);
 }
-t_bloque* leerBloque(int numero)
+t_bloque* leerBloque(char* numero)
 {
-	char* nombreBloque = concat((char*)numero, ".bin");
+	char* nombreBloque = concat(numero, ".bin");
 	char* ruta = concat(rutaBloques, nombreBloque);
 	t_bloque* bloque = malloc(sizeof(t_bloque));
-	FILE* file = fopen(ruta, "rb");
+	FILE* file = fopen(ruta, "r");
 	if (file != NULL)
 	{
-		fread(&(bloque->tamanio), sizeof(int32_t), 1, file);
-		bloque->datos = malloc(bloque->tamanio);
-		fseek(file, bloque->tamanio, SEEK_SET);
-		fread(&(bloque->datos), bloque->tamanio, 1, file);
+		bloque->tamanio=metadataFS->tamanioBloque;
+		fread(bloque->datos, bloque->tamanio, 1, file);
 	}
 	else
 	{
 		log_error(logFS, "No se pudo leer el bloque numero: %d", numero);
 	}
+	free(nombreBloque);
+	free(ruta);
+
 	fclose(file);
 	return bloque;
 }
@@ -184,27 +211,31 @@ void leerDatosArchivo(t_pedido_lectura_datos* pedidoDeLectura, int socket)
 {
 	//t_pedido_lectura_datos* pedidoDeLectura = deserializar_pedido_lectura_datos(datos);
 	t_respuesta_pedido_lectura* rta = malloc(sizeof(t_respuesta_pedido_lectura));
-	char* buffer;
-	int offset = 0;
+	char* buffer = malloc(pedidoDeLectura->tamanio);
 
 	char* ruta = concat(rutaArchivos, pedidoDeLectura->ruta);
 	FILE* file = fopen(ruta, "rb");
 	if (file != NULL)
 	{
-		t_metadata_archivo* archivoALeer;
-		fread(&(archivoALeer->tamanio), sizeof(int32_t), 1, file);
-		int cantBloques = archivoALeer->tamanio / metadataFS->tamanioBloque;
-		fseek(file, sizeof(int32_t), SEEK_SET);
-		fread(&(archivoALeer->bloques), cantBloques*sizeof(int), 1, file);
+		t_config* metadata_file = config_create(ruta);
+
+		t_metadata_archivo archivoALeer;
+		archivoALeer.bloques=config_get_array_value(metadata_file,"BLOQUES");
+		archivoALeer.tamanio=config_get_int_value(metadata_file,"TAMANIO");
+		int cantBloques = sizeArray(archivoALeer.bloques);
 
 		int i;
 		int offset = 0;
 		for (i = 0; i < cantBloques; ++i) {
-			 t_bloque* bloque = leerBloque(archivoALeer->bloques[i]);
-			 memcpy(buffer+offset, &(bloque->datos), bloque->tamanio);
+			 t_bloque* bloque = leerBloque(archivoALeer.bloques[i]);
+			 memcpy(buffer+offset, bloque->datos, bloque->tamanio);
 			 offset+=bloque->tamanio;
+			 free(bloque);
 		}
+
+		config_destroy(metadata_file);
 	}
+	free(ruta);
 }
 void leerArchivoMetadataFS()
 {
@@ -218,6 +249,7 @@ void leerArchivoMetadataFS()
 	metadataFS->cantidadBloques=config_get_int_value(metadata,"CANTIDAD_BLOQUES");
 
 	config_destroy(metadata);
+	free(ruta);
 
 }
 void validarDirectorio(char* ruta)
@@ -248,16 +280,13 @@ void mapearBitmap()
 {
 	archivoBitmap = fopen(rutaBitmap, "r+b");
 	char* bitmapArray = malloc(metadataFS->cantidadBloques);
-	mmap(bitmapArray, metadataFS->cantidadBloques*sizeof(int), PROT_WRITE, MAP_SHARED, fileno(archivoBitmap), 0);
+	mmap(bitmapArray, metadataFS->cantidadBloques, PROT_WRITE, MAP_SHARED, fileno(archivoBitmap), 0);
 	bitmap = bitarray_create_with_mode(bitmapArray, metadataFS->cantidadBloques, MSB_FIRST);
-	free(bitmapArray);
-
-	printBitmap();
 }
 
 void cerrarArchivosYLiberarMemoria()
 {
-	munmap(bitmap->bitarray, metadataFS->cantidadBloques*sizeof(int));
+	munmap(bitmap->bitarray, metadataFS->cantidadBloques);
 	fclose(archivoBitmap);
 	bitarray_destroy(bitmap);
 }
@@ -279,30 +308,22 @@ void crearBloque(int numero)
 	fseek(file, sizeof(int32_t), SEEK_SET);
 	fwrite(bloque->datos, bloque->tamanio, 1, file);
 	fclose(file);
+
 	free(bloque);
+	free(nombre);
+	free(tmp);
 }
 int main(int argc, char** argv)
 {
 	t_config* configFile = cargarConfiguracion(argv[1]);
-	printf("PUERTO: %d\n",puerto);
-	printf("PUNTO_MONTAJE: %s\n",puntoMontaje);
 	logFS = log_create("fs.log", "FILE SYSTEM", 0, LOG_LEVEL_TRACE);
 
 	cargarConfiguracionAdicional();
 	mapearBitmap();
 
-	//crearArchivo("asd2.bin", 1);
-	t_pedido_lectura_datos* asd = malloc(sizeof(t_pedido_lectura_datos));
-	asd->ruta = malloc(strlen("prueba.bin")+1);
-	asd->offset = 0;
-	asd->ruta = "prueba.bin";
-	asd->tamanio = 0;
-	crearBloque(2);
-	leerDatosArchivo(asd,2);
-
+	printf("PUERTO: %d\n",puerto);
+	printf("PUNTO_MONTAJE: %s\n",puntoMontaje);
 	printf("TAMANIO BITMAP: %d\n", bitmap->size);
-
-	cerrarArchivosYLiberarMemoria();
 
 	t_dictionary* diccionarioFunc= dictionary_create();
 	t_dictionary* diccionarioHands= dictionary_create();
@@ -318,6 +339,7 @@ int main(int argc, char** argv)
 	int sock= crearHostMultiConexion(puerto);
 	correrServidorMultiConexion(sock,NULL,NULL,NULL,diccionarioFunc,diccionarioHands);
 
+	cerrarArchivosYLiberarMemoria();
 	dictionary_destroy(diccionarioFunc);
 	dictionary_destroy(diccionarioHands);
 	config_destroy(configFile);
