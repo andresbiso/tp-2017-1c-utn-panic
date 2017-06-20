@@ -288,7 +288,16 @@ void cerrarArchivosYLiberarMemoria()
 {
 	munmap(bitmap->bitarray, metadataFS->cantidadBloques);
 	fclose(archivoBitmap);
+	free(bitmap->bitarray);
 	bitarray_destroy(bitmap);
+
+	free(metadataFS->magicNumber);
+	free(metadataFS);
+
+	free(rutaBloques);
+	free(rutaArchivos);
+	free(rutaMetadata);
+	free(rutaBitmap);
 }
 
 void crearBloque(int numero)
@@ -337,12 +346,13 @@ int main(int argc, char** argv)
 	dictionary_put(diccionarioFunc, "LEER_ARCH", &leerDatosArchivo);
 
 	int sock= crearHostMultiConexion(puerto);
-	correrServidorMultiConexion(sock,NULL,NULL,NULL,diccionarioFunc,diccionarioHands);
+	//correrServidorMultiConexion(sock,NULL,NULL,NULL,diccionarioFunc,diccionarioHands);
 
 	cerrarArchivosYLiberarMemoria();
 	dictionary_destroy(diccionarioFunc);
 	dictionary_destroy(diccionarioHands);
 	config_destroy(configFile);
+	log_destroy(logFS);
 
 	return EXIT_SUCCESS;
 }
