@@ -346,7 +346,7 @@ int main(int argc, char** argv)
 	dictionary_put(diccionarioFunc, "LEER_ARCH", &leerDatosArchivo);
 
 	int sock= crearHostMultiConexion(puerto);
-	//correrServidorMultiConexion(sock,NULL,NULL,NULL,diccionarioFunc,diccionarioHands);
+	correrServidorMultiConexion(sock,NULL,NULL,NULL,diccionarioFunc,diccionarioHands);
 
 	cerrarArchivosYLiberarMemoria();
 	dictionary_destroy(diccionarioFunc);
