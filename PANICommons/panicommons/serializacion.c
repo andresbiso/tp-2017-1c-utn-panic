@@ -867,7 +867,7 @@ t_respuesta_abrir_archivo* deserializar_respuesta_abrir_archivo(char* rta){
 	return respuesta;
 }
 
-t_pedido_cerrar_archivo* deserializar_pedido_cerrar_borrar_archivo(char* pedido_serializado){
+t_pedido_cerrar_archivo* deserializar_pedido_cerrar_archivo(char* pedido_serializado){
 	t_pedido_cerrar_archivo* pedido = malloc(sizeof(t_pedido_cerrar_archivo));
 	int offset = 0;
 
@@ -945,7 +945,7 @@ char* serializar_respuesta_cerrar_archivo(t_respuesta_cerrar_archivo* rta){
 	return buffer;
 }
 
-t_respuesta_cerrar_archivo* deserializar_respuesta_borrar_archivo(char* rta){
+t_respuesta_cerrar_archivo* deserializar_respuesta_cerrar_archivo(char* rta){
 	t_respuesta_cerrar_archivo* respuesta = malloc(sizeof(t_respuesta_cerrar_archivo));
 
 	memcpy(&respuesta->codigoRta,rta,sizeof(codigo_cerrar_archivo));

@@ -114,6 +114,8 @@ void abrirArchivo(char* data, int socket){
 				t_respuesta_crear_archivo* respuestaCrear = deserializar_respuesta_crear_archivo(paqueteCrear->datos);
 				borrarPaquete(paqueteCrear);
 
+				t_respuesta_abrir_archivo respuesta;
+
 				switch(respuestaCrear->codigoRta){
 					case CREAR_OK:
 						log_info(logNucleo,"Creacion correcta de archivo");
@@ -131,30 +133,27 @@ void abrirArchivo(char* data, int socket){
 						list_add(listaArchivosPorProceso,archivos_proceso);
 						dictionary_put(tablaArchivosPorProceso,pidKey,listaArchivosPorProceso);
 
-						t_respuesta_abrir_archivo respuesta;
 						respuesta.fd = archivos_proceso->fd;
 						respuesta.codigo = ABRIR_OK;
 
-						char* buffer = serializar_respuesta_abrir_archivo(&respuesta);
+						buffer = serializar_respuesta_abrir_archivo(&respuesta);
 						empaquetarEnviarMensaje(socket,"RES_ABRIR_ARCH",sizeof(t_respuesta_abrir_archivo),buffer);
 						free(buffer);
 						break;
 					case CREAR_ERROR:
-						t_respuesta_abrir_archivo respuesta;
 						respuesta.fd = archivos_proceso->fd;
 						respuesta.codigo = ERROR_ABRIR;
 
-						char* buffer = serializar_respuesta_abrir_archivo(&respuesta);
+						buffer = serializar_respuesta_abrir_archivo(&respuesta);
 						empaquetarEnviarMensaje(socket,"RES_ABRIR_ARCH",sizeof(t_respuesta_abrir_archivo),buffer);
 						free(buffer);
 						log_error(logNucleo,"No se pudo crear el archivo");
 						break;
 					case NO_HAY_BLOQUES:
-						t_respuesta_abrir_archivo respuesta;
 						respuesta.fd = archivos_proceso->fd;
 						respuesta.codigo = ERROR_ABRIR;
 
-						char* buffer = serializar_respuesta_abrir_archivo(&respuesta);
+						buffer = serializar_respuesta_abrir_archivo(&respuesta);
 						empaquetarEnviarMensaje(socket,"RES_ABRIR_ARCH",sizeof(t_respuesta_abrir_archivo),buffer);
 						free(buffer);
 						log_error(logNucleo,"No hay bloques disponibles para crear el archivo");
