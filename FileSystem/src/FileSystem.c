@@ -82,7 +82,7 @@ void marcarBloqueDesocupado(char* bloque)
 int obtenerBloqueVacio()
 {
 	int i = 0;
-	while(bitarray_test_bit(bitmap, i))
+	while(i<=metadataFS->cantidadBloques && bitarray_test_bit(bitmap, i))
 	{
 		i++;
 	};
@@ -279,16 +279,14 @@ void cargarConfiguracionAdicional()
 void mapearBitmap()
 {
 	archivoBitmap = fopen(rutaBitmap, "r+b");
-	char* bitmapArray = malloc(metadataFS->cantidadBloques);
-	mmap(bitmapArray, metadataFS->cantidadBloques, PROT_WRITE, MAP_SHARED, fileno(archivoBitmap), 0);
-	bitmap = bitarray_create_with_mode(bitmapArray, metadataFS->cantidadBloques, MSB_FIRST);
+	char* bitArrayMap = mmap(0, metadataFS->cantidadBloques, PROT_WRITE, MAP_SHARED, fileno(archivoBitmap), 0);
+	bitmap = bitarray_create_with_mode(bitArrayMap, metadataFS->cantidadBloques, MSB_FIRST);
 }
 
 void cerrarArchivosYLiberarMemoria()
 {
 	munmap(bitmap->bitarray, metadataFS->cantidadBloques);
 	fclose(archivoBitmap);
-	free(bitmap->bitarray);
 	bitarray_destroy(bitmap);
 
 	free(metadataFS->magicNumber);
