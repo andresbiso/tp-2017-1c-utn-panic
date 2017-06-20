@@ -8,6 +8,13 @@ void mostrarMensaje(char* mensajes,int socket)
 {
  	printf("Mensaje recibido: %s \n",mensajes);
 }
+
+void printBitmap() {
+	int i;
+	for (i = 0; i < 5192; ++i) {
+		printf("el bit %d tiene el valor %d\n\r", i, bitarray_test_bit(bitmap,i));
+	}
+}
 t_config* cargarConfiguracion(char* nombreDelArchivo){
 	char* configFilePath =string_new();
 	string_append(&configFilePath,nombreDelArchivo);
@@ -201,19 +208,17 @@ void leerDatosArchivo(t_pedido_lectura_datos* pedidoDeLectura, int socket)
 }
 void leerArchivoMetadataFS()
 {
-	metadataFS = malloc(sizeof(metadataFS));
-	int tamanioString;
+	metadataFS = malloc(sizeof(t_metadata_fs));
 	char* ruta = concat(rutaMetadata, "Metadata.bin");
-	FILE* archivo = fopen(ruta, "rb");
-	fread(&tamanioString, sizeof(int), 1, archivo);
-	metadataFS->magicNumber = malloc(tamanioString);
-	fseek(archivo, sizeof(int), SEEK_SET);
-	fread(&(metadataFS->cantidadBloques), sizeof(int32_t), 1, archivo);
-	fseek(archivo, sizeof(int32_t), SEEK_CUR);
-	fread(&(metadataFS->tamanioBloque), sizeof(int32_t), 1, archivo);
-	fseek(archivo, sizeof(int32_t), SEEK_CUR);
-	fread(&(metadataFS->magicNumber), tamanioString, 1, archivo);
-	fclose(archivo);
+	t_config* metadata = config_create(ruta);
+
+	metadataFS->tamanioBloque=config_get_int_value(metadata,"TAMANIO_BLOQUES");
+	metadataFS->magicNumber=string_new();
+	string_append(&metadataFS->magicNumber,config_get_string_value(metadata,"MAGIC_NUMBER"));
+	metadataFS->cantidadBloques=config_get_int_value(metadata,"CANTIDAD_BLOQUES");
+
+	config_destroy(metadata);
+
 }
 void validarDirectorio(char* ruta)
 {
@@ -239,85 +244,40 @@ void cargarConfiguracionAdicional()
 	leerArchivoMetadataFS();
 }
 
-void printBitmap() {
-	int i;
-	for (i = 0; i < 9; ++i) {
-		printf("el bit %d tiene el valor %c", i, bitmap->bitarray[i]);
-	}
-}
-
 void mapearBitmap()
 {
 	archivoBitmap = fopen(rutaBitmap, "r+b");
-	char* bitmapArray = malloc(metadataFS->cantidadBloques*sizeof(int));
+	char* bitmapArray = malloc(metadataFS->cantidadBloques);
 	mmap(bitmapArray, metadataFS->cantidadBloques*sizeof(int), PROT_WRITE, MAP_SHARED, fileno(archivoBitmap), 0);
-	bitmap = bitarray_create_with_mode(bitmapArray, metadataFS->cantidadBloques * sizeof(int), MSB_FIRST);
+	bitmap = bitarray_create_with_mode(bitmapArray, metadataFS->cantidadBloques, MSB_FIRST);
 	free(bitmapArray);
 
 	printBitmap();
 }
+
 void cerrarArchivosYLiberarMemoria()
 {
 	munmap(bitmap->bitarray, metadataFS->cantidadBloques*sizeof(int));
 	fclose(archivoBitmap);
 	bitarray_destroy(bitmap);
 }
-//void pruebaBitmap()
-//{
-//	bitarray_set_bit(bitmap, 1);
-//	bitarray_set_bit(bitmap, 4);
-//	bitarray_set_bit(bitmap, 9);
-//	bitarray_set_bit(bitmap, 15);
-//	bitarray_set_bit(bitmap, 20);
-//}
-void crearMetadataFS()
-{
-	char*dir = concat(puntoMontaje, "Metadata/");
-	validarDirectorio(dir);
-	t_metadata_fs* asd = malloc(sizeof(t_metadata_fs));
-	asd->magicNumber = malloc(strlen("SADICA")+1);
-	asd->cantidadBloques = 5192;
-	asd->magicNumber = "SADICA";
-	asd->tamanioBloque = 64;
 
-	char*ruta = concat(puntoMontaje, "Metadata/Metadata.bin");
-
-	FILE* qwe = fopen(ruta, "wb");
-	int tamanioString = strlen(asd->magicNumber) + 1;
-	fwrite(&tamanioString, sizeof(int), 1, qwe);
-	fseek(qwe, sizeof(int), SEEK_SET);
-	fwrite(&(asd->cantidadBloques), sizeof(int32_t), 1, qwe);
-	fseek(qwe, sizeof(int32_t), SEEK_CUR);
-	fwrite(&(asd->tamanioBloque), sizeof(int32_t), 1, qwe);
-	fseek(qwe, sizeof(int32_t), SEEK_CUR);
-	fwrite(&(asd->magicNumber), tamanioString, 1, qwe);
-	fclose(qwe);
-	free(asd);
-}
-void crearBitmap()
-{
-	char* bitmap;
-
-	FILE* file = fopen(rutaBitmap, "wb");
-	fwrite(&bitmap, 5192*sizeof(int), 1, file);
-	fclose(file);
-	free(bitmap);
-}
 void crearBloque(int numero)
 {
 	t_bloque* bloque = malloc(sizeof(t_bloque));
 	bloque->datos = malloc(strlen("Esto es un bloque de prueba")+1);
-	bloque->datos = "Esto es un bloque de prueba";
+	bloque->datos = "Esto es un bloque de prueba\0";
 	bloque->tamanio = strlen(bloque->datos)+1;
 
-	//char* numeroBloque = itoa(numero, 10);
-	char* tmp = concat(numero, ".bin");
+	char* numeroBloque = string_itoa(numero);
+	char* tmp = concat(numeroBloque, ".bin");
+	free(numeroBloque);
 	char* nombre = concat(rutaBloques, tmp);
 	FILE* file = fopen(nombre, "wb");
 
 	fwrite(&(bloque->tamanio), sizeof(int32_t), 1, file);
 	fseek(file, sizeof(int32_t), SEEK_SET);
-	fwrite(&(bloque->datos), bloque->tamanio, 1, file);
+	fwrite(bloque->datos, bloque->tamanio, 1, file);
 	fclose(file);
 	free(bloque);
 }
@@ -357,7 +317,6 @@ int main(int argc, char** argv)
 
 	int sock= crearHostMultiConexion(puerto);
 	correrServidorMultiConexion(sock,NULL,NULL,NULL,diccionarioFunc,diccionarioHands);
-
 
 	dictionary_destroy(diccionarioFunc);
 	dictionary_destroy(diccionarioHands);
