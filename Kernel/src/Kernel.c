@@ -1042,12 +1042,12 @@ int main(int argc, char** argv) {
     	exit(EXIT_FAILURE);
     	}
 
-    if ((socketFS = conectar(IpFS,PuertoFS)) == -1)
+    /*if ((socketFS = conectar(IpFS,PuertoFS)) == -1)
         exit(EXIT_FAILURE);
     if(handshake(socketFS,"HKEFS","HFSKE")){
      		puts("Se pudo realizar handshake");
 	}else
-		puts("No se pudo realizar handshake");
+		puts("No se pudo realizar handshake");*/
 
     if (pthread_create(&thread_consola, NULL, (void*)correrServidor, &parametrosCpu)){
     		        perror("Error el crear el thread consola.");

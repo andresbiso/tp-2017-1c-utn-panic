@@ -199,6 +199,8 @@ typedef struct
 
 typedef enum{CREAR_OK=1, NO_HAY_BLOQUES=-1, CREAR_ERROR=-2} codigo_crear_archivo;
 
+typedef enum{BORRAR_OK=1, BORRAR_ERROR=-1} codigo_borrar_archivo;
+
 typedef struct
 {
 	codigo_crear_archivo codigoRta;
@@ -210,8 +212,6 @@ typedef struct
 {
 	codigo_cerrar_archivo codigoRta;
 } __attribute__((__packed__)) t_respuesta_cerrar_archivo;
-
-typedef enum{BORRAR_OK=1, BORRAR_ERROR=-1} codigo_borrar_archivo;
 
 typedef struct
 {
@@ -316,6 +316,20 @@ typedef struct
 } __attribute__((__packed__))t_pedido_borrar_archivo;
 
 u_int32_t tamanio_pcb(t_pcb* pcb);
+
+typedef struct
+{
+	char* datos;
+	int32_t tamanio;
+} __attribute__((__packed__)) t_respuesta_pedido_lectura;
+
+typedef struct
+{
+	char* ruta;
+	int32_t offset;
+	int32_t tamanio;
+} __attribute__((__packed__)) t_pedido_lectura_datos;
+
 t_pcb_serializado* serializar_pcb(t_pcb* pcb);
 t_pcb* deserializar_pcb(char* pcbs);
 
@@ -428,6 +442,13 @@ t_respuesta_validar_archivo* deserializar_respuesta_validar_archivo(char* rta);
 
 char* serializar_respuesta_crear_archivo(t_respuesta_crear_archivo* rta);
 t_respuesta_crear_archivo* deserializar_respuesta_crear_archivo(char* rta);
+char* serializar_respuesta_borrar_archivo(t_respuesta_borrar_archivo* rta);
+t_respuesta_borrar_archivo* deserializar_respuesta_borrar_archivo(char* rta);
+char* serializar_respuesta_pedido_lectura(t_respuesta_pedido_lectura* rta);
+t_respuesta_pedido_lectura* deserializar_respuesta_pedido_lectura(char* rta);
+
+char*serializar_pedido_lectura_datos(t_pedido_lectura_datos* pedido);
+t_pedido_lectura_datos* deserializar_pedido_lectura_datos(char* pedido);
 
 
 

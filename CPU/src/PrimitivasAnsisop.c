@@ -473,7 +473,7 @@ void escribir(t_descriptor_archivo descriptor_archivo, void* informacion, t_valo
 		return;
 	}
 
-	/*t_pedido_escribir pedido;
+	t_aviso_consola pedido;
 	pedido.idPrograma=actual_pcb->pid;
 	pedido.mensaje = malloc(tamanio);
 	pedido.tamaniomensaje = tamanio;
@@ -489,7 +489,7 @@ void escribir(t_descriptor_archivo descriptor_archivo, void* informacion, t_valo
 
 	log_info(cpu_log,
 			"Se solicito la escitura en archivo cuyo descriptor es: %d",
-			descriptor_archivo);*/
+			descriptor_archivo);
 	return;
 }
 void leer(t_descriptor_archivo descriptor_archivo, t_puntero informacion, t_valor_variable tamanio) {
