@@ -119,7 +119,7 @@ void wait(char* data,int socket){
 void signal(char* data,int socket){
 	t_pedido_signal* pedido = deserializar_pedido_signal(data);
 
-	//agregarSyscall(pedido->pid); TODO agregar PID al pedido!!!
+	agregarSyscall(pedido->pid);
 
 	t_respuesta_signal respuesta;
 
@@ -381,7 +381,7 @@ void reservar(void* data,int socket){
 		log_info(logNucleo,"No se pudo reservar memoria del pedido del socket:%d por el PID:%d BYTES:%d",socket,pedido->pid,pedido->bytes);
 	}else{
 		agregarReservar(pedido->pid,pedido->bytes);
-		log_info(logNucleo,"Memoria reservada del pedido del socket:%d por el PID:%d BYTES:%d",socket,pedido->pid,pedido->bytes);
+		log_info(logNucleo,"Memoria reservada del pedido del socket:%d por el PID:%d BYTES:%d PUNTERO:%d",socket,pedido->pid,pedido->bytes,respuesta.puntero);
 	}
 
 	char* buffer = serializar_respuesta_reservar(&respuesta);

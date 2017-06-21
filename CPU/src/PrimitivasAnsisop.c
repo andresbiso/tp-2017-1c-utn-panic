@@ -347,12 +347,13 @@ void signalAnsisop(t_nombre_semaforo identificador_semaforo) {
 	}
 
 	t_pedido_signal pedido;
+	pedido.pid=actual_pcb->pid;
 	pedido.tamanio=strlen(identificador_semaforo);
 	pedido.semId=malloc(strlen(identificador_semaforo));
 	memcpy(pedido.semId,identificador_semaforo,strlen(identificador_semaforo));
 
 	char *buffer = serializar_pedido_signal(&pedido);
-	empaquetarEnviarMensaje(socketKernel,"SIGNAL",sizeof(int32_t)+pedido.tamanio,buffer);
+	empaquetarEnviarMensaje(socketKernel,"SIGNAL",(sizeof(int32_t)*2)+pedido.tamanio,buffer);
 	free(buffer);
 	free(pedido.semId);
 
@@ -422,9 +423,7 @@ void liberar(t_puntero puntero) {
 		return;
 	}
 
-	t_valor_variable puntero_heap = dereferenciar(puntero);
-
-	t_posMemoria posFisica = pos_logica_a_fisica(puntero_heap);
+	t_posMemoria posFisica = pos_logica_a_fisica(puntero);
 	t_pedido_liberar pedido;
 	pedido.pid = actual_pcb->pid;
 	pedido.pagina = posFisica.pag;
@@ -436,7 +435,7 @@ void liberar(t_puntero puntero) {
 
 	log_info(cpu_log,
 			"Se necesita liberar el espacio asociado a el puntero %d en memoria. Page: %d Offset: %d",
-			puntero_heap, posFisica.pag, posFisica.offset);
+			puntero, posFisica.pag, posFisica.offset);
 
 	t_package *paquete = recibirPaquete(socketKernel,NULL);
 

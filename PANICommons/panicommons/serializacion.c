@@ -577,10 +577,12 @@ t_respuesta_crear_archivo* deserializar_respuesta_crear_archivo(char* rta)
 }
 
 char* serializar_pedido_signal(t_pedido_signal* pedido_deserializado){
-	char *buffer = malloc(sizeof(int32_t)+pedido_deserializado->tamanio);
+	char *buffer = malloc((sizeof(int32_t)*2)+pedido_deserializado->tamanio);
 	int offset =0;
 
-	memcpy(buffer,&(pedido_deserializado->tamanio),sizeof(int32_t));
+	memcpy(buffer,&(pedido_deserializado->pid),sizeof(int32_t));
+	offset+=sizeof(int32_t);
+	memcpy(buffer+offset,&(pedido_deserializado->tamanio),sizeof(int32_t));
 	offset+=sizeof(int32_t);
 	memcpy(buffer+offset,pedido_deserializado->semId,pedido_deserializado->tamanio);
 
@@ -591,7 +593,9 @@ t_pedido_signal* deserializar_pedido_signal(char* pedido_serializado){
 	t_pedido_signal* pedido = malloc(sizeof(t_pedido_signal));
 	int offset =0;
 
-	memcpy(&(pedido->tamanio),pedido_serializado,sizeof(int32_t));
+	memcpy(&(pedido->pid),pedido_serializado,sizeof(int32_t));
+	offset+=sizeof(int32_t);
+	memcpy(&(pedido->tamanio),pedido_serializado+offset,sizeof(int32_t));
 	offset+=sizeof(int32_t);
 	pedido->semId=malloc(pedido->tamanio+1);
 	pedido->semId[pedido->tamanio]='\0';

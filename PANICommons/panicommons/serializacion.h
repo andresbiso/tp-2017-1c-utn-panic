@@ -231,6 +231,7 @@ typedef struct{
 }t_respuesta_wait;
 
 typedef struct{
+	int32_t pid;
 	int32_t tamanio;
 	char* semId;
 }t_pedido_signal;

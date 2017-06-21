@@ -368,6 +368,36 @@ void showTablaGlobal(int size, char** functionAndParams){
 	freeElementsArray(functionAndParams,size);
 }
 
+void showStats(int size, char** functionAndParams){
+	if(size!=2){
+		printf("El comando stats debe recibir el PID del proceso\n\r");
+		freeElementsArray(functionAndParams,size);
+		return;
+	}
+
+	pthread_mutex_lock(&mutexStatsEjecucion);
+
+	t_stats* stats = dictionary_get(stats_ejecucion,functionAndParams[1]);
+
+	if(stats!=NULL){
+		log_info(logNucleo,"*****STATS PID %s*****",functionAndParams[1]);
+		log_info(logNucleo,"Syscalls:%d",stats->cant_syscall);
+		log_info(logNucleo,"Paginas Heap utilizadas:%d",stats->cant_paginas_heap);
+		log_info(logNucleo,"Liberar (bytes):%d",stats->liberar_bytes);
+		log_info(logNucleo,"Liberar (cantidad):%d",stats->liberar_cant);
+		log_info(logNucleo,"Reservar (bytes):%d",stats->reservar_bytes);
+		log_info(logNucleo,"Reservar (cantidad):%d",stats->reservar_cant);
+		log_info(logNucleo,"Rafagas CPU:%d",stats->rafagas);
+		log_info(logNucleo,"*****END STATS PID %s*****",functionAndParams[1]);
+	}else{
+		printf("PID no encontrado\n\r");
+	}
+
+	pthread_mutex_unlock(&mutexStatsEjecucion);
+
+	freeElementsArray(functionAndParams,size);
+}
+
 void consolaCreate(void*args){
 	t_dictionary* commands = dictionary_create();
 	dictionary_put(commands,"multiprog",&changeMultiprogramacion);
@@ -377,6 +407,7 @@ void consolaCreate(void*args){
 	dictionary_put(commands,"restart",&restart);
 	dictionary_put(commands,"tablaProceso",&showTablaProceso);
 	dictionary_put(commands,"tablaGlobal",&showTablaGlobal);
+	dictionary_put(commands,"stats",&showStats);
 
 	waitCommand(commands);
 	dictionary_destroy(commands);
