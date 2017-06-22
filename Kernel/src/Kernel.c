@@ -584,29 +584,34 @@ bool almacenarBytes(t_pcb* pcb,int socketMemoria,char* data){
 
 	int j;
 	int nextInstruction=0;
-	int offset=pcb->indice_codigo[0].offset;
+	int offset=0;
+
+	t_metadata_program* metadata = metadata_desde_literal(data);
 	for(i=0;i<paginasCodigo;i++){
-		int nextOffset=0;
+		int tamanio =0;
 		pedido.tamanio=0;
 		pedido.pid = pcb->pid;
 		pedido.pagina = i;
 
 		if(pedido.pagina != (paginasCodigo-1)){
 			for(j=nextInstruction;j<pcb->cant_instrucciones;j++){
-				nextOffset+=pcb->indice_codigo[j].size;
 				if(pcb->indice_codigo[j].pag ==i  && ((j+1>(pcb->cant_instrucciones))|| pcb->indice_codigo[j+1].pag !=i)){
-					pedido.tamanio=(nextOffset)-(i==0?(-offset):(pcb->indice_codigo[j].size));
+					tamanio=(metadata->instrucciones_serializado[j].start%tamanio_pag_memoria)+metadata->instrucciones_serializado[j].offset;
 					nextInstruction=j+1;
 					break;
 				}
 			}
 		}else{
-			pedido.tamanio=(strlen(data)-(paginasCodigo>1?offset:0));
+			tamanio=(strlen(data)-offset);
 		}
 
+		log_info(logNucleo,"Tamanio pedido: %d",tamanio);
+
 		pedido.offsetPagina = 0;
-		pedido.data = malloc(pedido.tamanio);
-		memcpy(pedido.data,data+(i==0?0:offset),pedido.tamanio);
+		pedido.tamanio=tamanio_pag_memoria;
+		pedido.data = malloc(tamanio_pag_memoria);
+		memset(pedido.data,0,tamanio_pag_memoria);
+		memcpy(pedido.data,data+offset,tamanio);
 
 		char* buffer = serializar_pedido_almacenar_bytes(&pedido);
 		empaquetarEnviarMensaje(socketMemoria,"ALMC_BYTES",sizeof(int32_t)*4+pedido.tamanio,buffer);
@@ -631,10 +636,11 @@ bool almacenarBytes(t_pcb* pcb,int socketMemoria,char* data){
 				break;
 		}
 
+		offset+=tamanio;
 		borrarPaquete(paquete);
 		free(respuesta);
-		offset+=nextOffset;
 	}
+	metadata_destruir(metadata);
 	return true;
 }
 
