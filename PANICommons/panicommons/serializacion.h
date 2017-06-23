@@ -318,10 +318,13 @@ typedef struct
 
 u_int32_t tamanio_pcb(t_pcb* pcb);
 
+typedef enum {LECTURA_OK=0,LECTURA_ERROR=-1}codigo_respuesta_pedido_lectura;
+
 typedef struct
 {
 	char* datos;
 	int32_t tamanio;
+	codigo_respuesta_pedido_lectura codigo;
 } __attribute__((__packed__)) t_respuesta_pedido_lectura;
 
 typedef struct
