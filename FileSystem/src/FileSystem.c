@@ -74,13 +74,13 @@ void marcarBloqueOcupado(char* bloque)
 	string_append(&rutaBloque,bloque);
 	string_append(&rutaBloque,".bin");
 
-	fopen(rutaBloque,"w");
+	FILE* file = fopen(rutaBloque,"w");
+	fclose(file);
 	free(rutaBloque);
 
 	log_trace(logFS, "Se marca el bit %s como ocupado", bloque);
 	bitarray_set_bit(bitmap, atoi(bloque));
 	msync(bitmap->bitarray,bitmap->size,MS_SYNC);
-
 }
 void marcarBloqueDesocupado(char* bloque)
 {
@@ -276,10 +276,140 @@ void leerDatosArchivo(char* datos, int socket)
 
 	char* respuestaBuffer = serializar_respuesta_pedido_lectura(&rta);
 	empaquetarEnviarMensaje(socket, "RES_LEER_DATOS", (sizeof(int32_t)+sizeof(codigo_respuesta_pedido_lectura)+rta.tamanio), respuestaBuffer);
+	free(respuestaBuffer);
 	free(buffer);
 
 	free(pedidoDeLectura);
 	free(ruta);
+}
+void escribirBloque(char* bloque, char* buffer, int tamanio, int offset)
+{
+	char* nombre = concat(bloque, ".bin");
+	char* ruta = concat(rutaBloques, nombre);
+	FILE* file = fopen(ruta, "r+b");
+	if (file != NULL)
+	{
+		fseek(file, offset, SEEK_SET);
+		fwrite(buffer, tamanio, 1, file);
+	};
+}
+void eliminarBloque(char* bloque)
+{
+	char* nombreBloque = concat(bloque, ".bin");
+	char* ruta = concat(rutaBloques, nombreBloque);
+
+	remove(ruta);
+	free(nombreBloque);
+	free(ruta);
+}
+bool hayXBloquesLibres(int cantidad)
+{
+	int i;
+	char** array = malloc(sizeof(int)*cantidad);
+	for(i = 0; i < cantidad; i++)
+	{
+		int bloque = obtenerBloqueVacio();
+		if(bloque<0)
+		{
+			break;
+		}
+		array[i] = string_itoa(bloque);
+		marcarBloqueOcupado(array[i]);
+	}
+	int n;
+	for(n = 0; n<i; n++)
+	{
+		marcarBloqueDesocupado(array[n]);
+		eliminarBloque(array[n]);
+	}
+	int libres = sizeArray(array);
+	free(array);
+
+	return libres >= cantidad;
+}
+void escribirDatosArchivo(char* datos, int socket)
+{
+	t_pedido_escritura_datos* pedidoEscritura = deserializar_pedido_escritura_datos(datos);
+	t_respuesta_pedido_escritura* rta = malloc(sizeof(t_respuesta_pedido_escritura));
+	t_metadata_archivo archivoAEscribir;
+
+	char* ruta = concat(rutaArchivos, pedidoEscritura->ruta);
+	FILE* file = fopen(ruta, "r");
+	if (file != NULL)
+	{
+		t_config* metadata_file = config_create(ruta);
+
+		archivoAEscribir.bloques=config_get_array_value(metadata_file,"BLOQUES");
+		archivoAEscribir.tamanio=config_get_int_value(metadata_file,"TAMANIO");
+
+		int cantBloques = sizeArray(archivoAEscribir.bloques);
+
+		int nroBloque;
+		int offset = 0;
+		int tamanioAEscribir = pedidoEscritura->tamanio;
+		int offsetBloque=pedidoEscritura->offset%metadataFS->tamanioBloque;
+		int startBlockIndex=((pedidoEscritura->offset)/metadataFS->tamanioBloque);
+
+		int totalBloques = (startBlockIndex >= cantBloques)?(startBlockIndex + 1 + ((offsetBloque + tamanioAEscribir)/metadataFS->tamanioBloque)):cantBloques;
+		int cantNuevosBloques = totalBloques - cantBloques;
+		if(hayXBloquesLibres(cantNuevosBloques))
+		{
+			for (nroBloque = startBlockIndex; nroBloque < totalBloques; nroBloque++)
+			{
+				if(nroBloque >= cantBloques)
+				{
+					int bloqueNuevo = obtenerBloqueVacio();
+					if(bloqueNuevo<0)
+					{
+						rta->codigoRta = NO_HAY_ESPACIO;
+					}
+					archivoAEscribir.bloques[nroBloque] = string_itoa(bloqueNuevo);
+					marcarBloqueOcupado(archivoAEscribir.bloques[nroBloque]);
+				}
+				int tamanio = ((offsetBloque + tamanioAEscribir)>metadataFS->tamanioBloque)?(metadataFS->tamanioBloque-offsetBloque):tamanioAEscribir;
+				char* buffer = malloc(tamanio);
+				memcpy(buffer, (void*)pedidoEscritura->buffer+offset, tamanio);
+				escribirBloque(archivoAEscribir.bloques[nroBloque], buffer, tamanio, offsetBloque);
+				free(buffer);
+
+				offset+=tamanio;
+				tamanioAEscribir-=tamanio;
+
+				offsetBloque = 0;
+
+				if(tamanioAEscribir==0)
+					break;
+			}
+			int nuevoTamanio = pedidoEscritura->offset + pedidoEscritura->tamanio;
+			int tamanioGuardar = (nuevoTamanio > archivoAEscribir.tamanio)?nuevoTamanio:archivoAEscribir.tamanio;
+
+			char* tamanioAGuardar = string_itoa(tamanioGuardar);
+			config_set_value(metadata_file, "TAMANIO", tamanioAGuardar);
+			free(tamanioAGuardar);
+
+			char* array = string_get_string_from_array(archivoAEscribir.bloques, totalBloques);
+			config_set_value(metadata_file, "BLOQUES", array);
+			free(array);
+
+			config_save(metadata_file);
+			config_destroy(metadata_file);
+
+			rta->codigoRta= ESCRIBIR_OK;
+
+		}else
+		{
+			rta->codigoRta = NO_HAY_ESPACIO;
+		}
+	}else
+	{
+		rta->codigoRta = ESCRIBIR_ERROR;
+	}
+	fclose(file);
+	free(ruta);
+
+	char* respuestaBuffer = serializar_respuesta_pedido_escritura(&rta);
+	empaquetarEnviarMensaje(socket, "RES_ESCR_DATOS", sizeof(t_respuesta_pedido_escritura), respuestaBuffer);
+	free(respuestaBuffer);
 }
 void leerArchivoMetadataFS()
 {

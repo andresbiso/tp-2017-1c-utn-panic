@@ -344,6 +344,13 @@ typedef struct
 	char* buffer;
 } __attribute__((__packed__)) t_pedido_escritura_datos;
 
+typedef enum{ESCRIBIR_OK=1, NO_HAY_ESPACIO=-1, ESCRIBIR_ERROR=-2} codigo_escribir_archivo;
+
+typedef struct
+{
+	codigo_escribir_archivo codigoRta;
+} __attribute__((__packed__)) t_respuesta_pedido_escritura;
+
 t_pcb_serializado* serializar_pcb(t_pcb* pcb);
 t_pcb* deserializar_pcb(char* pcbs);
 
@@ -466,6 +473,8 @@ char* serializar_respuesta_borrar_archivo(t_respuesta_borrar_archivo* rta);
 t_respuesta_borrar_archivo* deserializar_respuesta_borrar_archivo(char* rta);
 char* serializar_respuesta_pedido_lectura(t_respuesta_pedido_lectura* rta);
 t_respuesta_pedido_lectura* deserializar_respuesta_pedido_lectura(char* rta);
+char* serializar_respuesta_pedido_escritura(t_respuesta_pedido_escritura* rta);
+t_respuesta_pedido_escritura* deserializar_respuesta_pedido_escritura(char* rta);
 
 char*serializar_pedido_lectura_datos(t_pedido_lectura_datos* pedido);
 t_pedido_lectura_datos* deserializar_pedido_lectura_datos(char* pedido);
