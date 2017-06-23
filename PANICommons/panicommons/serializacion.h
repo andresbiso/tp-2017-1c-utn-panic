@@ -11,6 +11,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/types.h>
+#include <parser/metadata_program.h>
 
 typedef struct {
 	int32_t pag;
@@ -61,9 +62,10 @@ typedef struct
 typedef struct
 {
 	char* mensaje;
-	int32_t tamanomensaje;
+	int32_t tamaniomensaje;
 	int32_t idPrograma;
 	int32_t terminoProceso;
+	int32_t mostrarPorPantalla;
 } __attribute__((__packed__)) t_aviso_consola;
 
 typedef enum{OK_INICIALIZAR=1,SIN_ESPACIO_INICIALIZAR=-1} codigo_respuesta_inicializar;
@@ -124,8 +126,61 @@ typedef struct
 	codigo_finalizar_programa codigo;
 } __attribute__((__packed__))t_respuesta_finalizar_programa;
 
+typedef struct
+{
+	int32_t pid;
+	int32_t pagina;
+} __attribute__((__packed__))t_pedido_liberar_pagina;
+
+typedef enum{OK_LIBERAR=1,ERROR_LIBERAR=-1} codigo_liberar_pagina;
+
+typedef struct
+{
+	codigo_liberar_pagina codigo;
+} __attribute__((__packed__))t_respuesta_liberar_pagina;
+
+typedef struct
+{
+	int32_t pid;
+	int32_t tamanio;
+	char* nombre_variable_compartida;
+} __attribute__((__packed__))t_pedido_obtener_variable_compartida;
+
+typedef enum{OK_VARIABLE=1,ERROR_VARIABLE=-1} codigo_variable_compartida;
+
+typedef struct
+{
+	int32_t valor_variable_compartida;
+	codigo_variable_compartida codigo;
+} __attribute__((__packed__))t_respuesta_obtener_variable_compartida;
+
+typedef struct
+{
+	int32_t pid;
+	int32_t tamanio;
+	char* nombre_variable_compartida;
+	int32_t valor_variable_compartida;
+} __attribute__((__packed__))t_pedido_asignar_variable_compartida;
+
+typedef enum{OK_ASIGNAR_VARIABLE=1,ERROR_ASIGNAR_VARIABLE=-1} codigo_asignar_variable_compartida;
+
+typedef struct
+{
+	codigo_asignar_variable_compartida codigo;
+} __attribute__((__packed__))t_respuesta_asignar_variable_compartida;
+
 typedef enum {
-	FINALIZAR_BY_CONSOLE = -7, FINALIZAR_OK = 0
+	FINALIZAR_OK = 0,
+	FINALIZAR_SIN_RECURSOS=-1,
+	FINALIZAR_ARCHIVO_NO_EXISTE=-2,
+	FINALIZAR_LEER_ARCHIVO_SIN_PERMISOS=-3,
+	FINALIZAR_ESCRIBIR_ARCHIVO_SIN_PERMISOS=-4,
+	FINALIZAR_EXCEPCION_MEMORIA=-5,
+	FINALIZAR_DESCONEXION_CONSOLA=-6,
+	FINALIZAR_BY_CONSOLE =-7,
+	FINALIZAR_PAGE_OVERFLOW=-8,
+	FINALIZAR_SIN_MEMORIA=-9,
+	FINALIZAR_ERROR_SIN_DEFINICION=-20
 } exit_codes;
 
 typedef struct
@@ -151,15 +206,125 @@ typedef struct
 	codigo_crear_archivo codigoRta;
 } __attribute__((__packed__)) t_respuesta_crear_archivo;
 
+typedef enum{CERRAR_OK=1, ERROR_CERRAR=-1} codigo_cerrar_archivo;
+
+typedef struct
+{
+	codigo_cerrar_archivo codigoRta;
+} __attribute__((__packed__)) t_respuesta_cerrar_archivo;
+
 typedef struct
 {
 	codigo_borrar_archivo codigoRta;
 } __attribute__((__packed__)) t_respuesta_borrar_archivo;
 
+typedef struct{
+	int32_t tamanio;
+	char* semId;
+	t_pcb* pcb;
+}t_pedido_wait;
+
+typedef enum{WAIT_OK=1,WAIT_BLOCKED=-1,WAIT_NOT_EXIST=-2} codigo_respuesta_wait;
+
+typedef struct{
+	codigo_respuesta_wait respuesta;
+}t_respuesta_wait;
+
+typedef struct{
+	int32_t pid;
+	int32_t tamanio;
+	char* semId;
+}t_pedido_signal;
+
+typedef enum{SIGNAL_OK=1,SIGNAL_NOT_EXIST=-1} codigo_respuesta_signal;
+
+typedef struct{
+	codigo_respuesta_signal respuesta;
+}t_respuesta_signal;
+
+typedef struct{
+	int32_t pid;
+	int32_t bytes;
+	int32_t paginasTotales;
+}t_pedido_reservar;
+
+typedef enum{RESERVAR_OK=0,RESERVAR_OVERFLOW=-1,RESERVAR_SIN_ESPACIO=-2} codigo_respuesta_reservar;
+
+typedef struct{
+	int32_t puntero;
+	codigo_respuesta_reservar codigo;
+}t_respuesta_reservar;
+
+typedef struct{
+	int32_t pid;
+	int32_t pagina;
+	int32_t offset;
+}t_pedido_liberar;
+
+typedef enum{LIBERAR_OK=0,LIBERAR_ERROR=-1} codigo_respuesta_liberar;
+
+typedef struct{
+	codigo_respuesta_liberar codigo;
+}t_respuesta_liberar;
+
+typedef struct{
+	int32_t pid;
+	int32_t descriptor_archivo;
+	int32_t tamanio;
+}t_pedido_leer;
+
+typedef enum{LEER_OK=0,LEER_BLOCKED=-1,LEER_NO_EXISTE=-2} codigo_respuesta_leer;
+
+typedef struct{
+	char* informacion;
+	int32_t tamanio;
+	codigo_respuesta_leer codigo;
+}t_respuesta_leer;
+
+typedef struct
+{
+	int32_t pid;
+	t_banderas* flags;
+	int32_t tamanio;
+	char* direccion;
+} __attribute__((__packed__))t_pedido_abrir_archivo;
+
+typedef struct
+{
+	int32_t tamanio;
+	char* direccion;
+} __attribute__((__packed__))t_pedido_validar_crear_borrar_archivo_fs;
+
+typedef enum{ABRIR_OK = 0, ERROR_ABRIR = 1} codigo_respuesta_abrir;
+
+typedef struct{
+	int32_t fd;
+	codigo_respuesta_abrir codigo;
+}t_respuesta_abrir_archivo;
+
+typedef struct
+{
+	int32_t pid;
+	int32_t fd;
+} __attribute__((__packed__))t_pedido_cerrar_archivo;
+
+typedef struct
+{
+	int32_t pid;
+	int32_t fd;
+	int32_t tamanio;
+	char* direccion;
+} __attribute__((__packed__))t_pedido_borrar_archivo;
+
+u_int32_t tamanio_pcb(t_pcb* pcb);
+
+typedef enum {LECTURA_OK=0,LECTURA_ERROR=-1}codigo_respuesta_pedido_lectura;
+
 typedef struct
 {
 	char* datos;
 	int32_t tamanio;
+	codigo_respuesta_pedido_lectura codigo;
 } __attribute__((__packed__)) t_respuesta_pedido_lectura;
 
 typedef struct
@@ -197,12 +362,94 @@ char* serializar_pedido_finalizar_programa(t_pedido_finalizar_programa *pedido);
 t_respuesta_finalizar_programa* deserializar_respuesta_finalizar_programa(char *respuesta_serializado);
 char* serializar_respuesta_finalizar_programa(t_respuesta_finalizar_programa *respuesta);
 
+t_pedido_liberar_pagina* deserializar_pedido_liberar_pagina(char *pedido_serializado);
+char* serializar_pedido_liberar_pagina(t_pedido_liberar_pagina *pedido);
+t_respuesta_liberar_pagina* deserializar_respuesta_liberar_pagina(char *respuesta_serializado);
+char* serializar_respuesta_liberar_pagina(t_respuesta_liberar_pagina *respuesta);
+
 //Memoria
+
+//Kernel
+
+t_respuesta_obtener_variable_compartida* deserializar_respuesta_obtener_variable_compartida(char* pedido_serializado);
+char* serializar_respuesta_obtener_variable_compartida(t_respuesta_obtener_variable_compartida* respuesta);
+
+t_pedido_obtener_variable_compartida* deserializar_pedido_obtener_variable_compartida(char* pedido_serializado);
+char* serializar_pedido_obtener_variable_compartida(t_pedido_obtener_variable_compartida* pedido);
+
+t_respuesta_asignar_variable_compartida* deserializar_respuesta_asignar_variable_compartida(char* pedido_serializado);
+char* serializar_respuesta_asignar_variable_compartida(t_respuesta_asignar_variable_compartida* respuesta);
+
+t_pedido_asignar_variable_compartida* deserializar_pedido_asignar_variable_compartida(char* pedido_serializado);
+char* serializar_pedido_asignar_variable_compartida(t_pedido_asignar_variable_compartida* pedido);
+
 
 void destruir_pcb (t_pcb *pcbADestruir);
 
+char* serializar_pedido_signal(t_pedido_signal* pedido_deserializado);
+t_pedido_signal* deserializar_pedido_signal(char* pedido_serializado);
+
+char* serializar_respuesta_signal(t_respuesta_signal* respuesta_deserializada);
+t_respuesta_signal* deserializar_respuesta_signal(char* respuesta_serializada);
+
+char* serializar_pedido_wait(t_pedido_wait* pedido_deserializado);
+t_pedido_wait* deserializar_pedido_wait(char* pedido_serializado);
+
+char* serializar_respuesta_wait(t_respuesta_wait* respuesta_deserializada);
+t_respuesta_wait* deserializar_respuesta_wait(char* respuesta_serializada);
+
+char* serializar_pedido_reservar(t_pedido_reservar* pedido);
+t_pedido_reservar* deserializar_pedido_reservar(char* pedido_serializado);
+
+char* serializar_respuesta_reservar(t_respuesta_reservar* pedido);
+t_respuesta_reservar* deserializar_respuesta_reservar(char* pedido_serializado);
+
+char* serializar_pedido_liberar(t_pedido_liberar* pedido);
+t_pedido_liberar* deserializar_pedido_liberar(char* pedido_serializado);
+
+char* serializar_respuesta_liberar(t_respuesta_liberar* respuesta);
+t_respuesta_liberar* deserializar_respuesta_liberar(char* respuesta_serializada);
+
+char* serializar_pedido_abrir_archivo(t_pedido_abrir_archivo* pedido);
+t_pedido_abrir_archivo* deserializar_pedido_abrir_archivo(char* pedido_serializado);
+
+char* serializar_respuesta_abrir_archivo(t_respuesta_abrir_archivo* respuesta);
+t_respuesta_abrir_archivo* deserializar_respuesta_abrir_archivo(char* respuesta_serializada);
+
+char* serializar_pedido_validar_crear_borrar_archivo(t_pedido_validar_crear_borrar_archivo_fs* pedido);
+t_pedido_validar_crear_borrar_archivo_fs* deserializar_pedido_validar_crear_borrar_archivo(char* pedido_serializado);
+
+t_pedido_abrir_archivo* deserializar_pedido_abrir_archivo(char* pedido_serializado);
+char* serializar_pedido_abrir_archivo(t_pedido_abrir_archivo *pedido);
+
+char* serializar_respuesta_abrir_archivo(t_respuesta_abrir_archivo* respuesta);
+t_respuesta_abrir_archivo* deserializar_respuesta_abrir_archivo(char* rta);
+
+char* serializar_respuesta_borrar_archivo(t_respuesta_borrar_archivo* rta);
+t_respuesta_borrar_archivo* deserializar_respuesta_borrar_archivo(char* rta);
+
+char* serializar_respuesta_cerrar_archivo(t_respuesta_cerrar_archivo* rta);
+t_respuesta_cerrar_archivo* deserializar_respuesta_cerrar_archivo(char* rta);
+
+char* serializar_pedido_leer_archivo(t_pedido_leer* pedido);
+t_pedido_leer* deserializar_pedido_leer_archivo(char* pedido_serializado);
+
+char* serializar_respuesta_leer_archivo(t_respuesta_leer* respuesta);
+t_respuesta_leer* deserializar_respuesta_leer_archivo(char* respuesta_serializada);
+
+t_pedido_cerrar_archivo* deserializar_pedido_cerrar_archivo(char* pedido_serializado);
+char* serializar_pedido_cerrar_archivo(t_pedido_cerrar_archivo *pedido);
+
+t_pedido_borrar_archivo* deserializar_pedido_borrar_archivo(char* pedido_serializado);
+char* serializar_pedido_borrar_archivo(t_pedido_borrar_archivo *pedido);
+
+//Kernel
+
+//FS
+
 char* serializar_respuesta_validar_archivo(t_respuesta_validar_archivo* rta);
 t_respuesta_validar_archivo* deserializar_respuesta_validar_archivo(char* rta);
+
 char* serializar_respuesta_crear_archivo(t_respuesta_crear_archivo* rta);
 t_respuesta_crear_archivo* deserializar_respuesta_crear_archivo(char* rta);
 char* serializar_respuesta_borrar_archivo(t_respuesta_borrar_archivo* rta);
@@ -212,5 +459,9 @@ t_respuesta_pedido_lectura* deserializar_respuesta_pedido_lectura(char* rta);
 
 char*serializar_pedido_lectura_datos(t_pedido_lectura_datos* pedido);
 t_pedido_lectura_datos* deserializar_pedido_lectura_datos(char* pedido);
+
+
+
+//FS
 
 #endif /* PANICOMMONS_SERIALIZACION_H_ */

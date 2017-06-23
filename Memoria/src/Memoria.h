@@ -35,6 +35,7 @@ t_log* logDumpFile;
 pthread_mutex_t mutexCache;
 pthread_mutex_t mutexMemoriaPrincipal;
 
+
 typedef struct{
 	int32_t pid;
 	int32_t nroPagina;

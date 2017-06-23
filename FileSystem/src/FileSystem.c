@@ -69,9 +69,18 @@ void validarArchivo(char* archivo, int socket)
 }
 void marcarBloqueOcupado(char* bloque)
 {
+	char*rutaBloque=string_new();
+	string_append(&rutaBloque,rutaBloques);
+	string_append(&rutaBloque,bloque);
+	string_append(&rutaBloque,".bin");
+
+	fopen(rutaBloque,"w");
+	free(rutaBloque);
+
 	log_trace(logFS, "Se marca el bit %s como ocupado", bloque);
 	bitarray_set_bit(bitmap, atoi(bloque));
 	msync(bitmap->bitarray,bitmap->size,MS_SYNC);
+
 }
 void marcarBloqueDesocupado(char* bloque)
 {
@@ -139,7 +148,6 @@ void crearArchivo(char* archivo, int socket)
 				log_error(logFS, "El archivo ya existe");
 			rta->codigoRta = CREAR_ERROR;
 		}
-
 		free(nuevoArchivo->bloques);
 		free(nuevoArchivo);
 		free(ruta);
@@ -195,6 +203,7 @@ t_bloque* leerBloque(char* numero)
 	if (file != NULL)
 	{
 		bloque->tamanio=metadataFS->tamanioBloque;
+		bloque->datos=malloc(metadataFS->tamanioBloque);
 		fread(bloque->datos, bloque->tamanio, 1, file);
 	}
 	else
@@ -207,16 +216,16 @@ t_bloque* leerBloque(char* numero)
 	fclose(file);
 	return bloque;
 }
-void leerDatosArchivo(t_pedido_lectura_datos* pedidoDeLectura, int socket)
+void leerDatosArchivo(char* datos, int socket)
 {
-	//t_pedido_lectura_datos* pedidoDeLectura = deserializar_pedido_lectura_datos(datos);
-	t_respuesta_pedido_lectura* rta = malloc(sizeof(t_respuesta_pedido_lectura));
+	t_pedido_lectura_datos* pedidoDeLectura = deserializar_pedido_lectura_datos(datos);
+	t_respuesta_pedido_lectura rta;
+
 	char* buffer = malloc(pedidoDeLectura->tamanio);
 
 	char* ruta = concat(rutaArchivos, pedidoDeLectura->ruta);
-	FILE* file = fopen(ruta, "rb");
-	if (file != NULL)
-	{
+	FILE* file = fopen(ruta, "r");
+	if (file != NULL){
 		t_config* metadata_file = config_create(ruta);
 
 		t_metadata_archivo archivoALeer;
@@ -224,18 +233,59 @@ void leerDatosArchivo(t_pedido_lectura_datos* pedidoDeLectura, int socket)
 		archivoALeer.tamanio=config_get_int_value(metadata_file,"TAMANIO");
 		int cantBloques = sizeArray(archivoALeer.bloques);
 
-		int i;
-		int offset = 0;
-		for (i = 0; i < cantBloques; ++i) {
-			 t_bloque* bloque = leerBloque(archivoALeer.bloques[i]);
-			 memcpy(buffer+offset, bloque->datos, bloque->tamanio);
-			 offset+=bloque->tamanio;
-			 free(bloque);
+		if((pedidoDeLectura->offset < archivoALeer.tamanio) && (pedidoDeLectura->offset+pedidoDeLectura->tamanio)<archivoALeer.tamanio ){
+
+			int nroBloque;
+			int offset = 0;
+			int tamanioAleer = archivoALeer.tamanio;
+			int offsetBloque=pedidoDeLectura->offset%metadataFS->tamanioBloque;
+			int startBlock=((pedidoDeLectura->offset)/metadataFS->tamanioBloque);
+
+			if(pedidoDeLectura->offset!=0 && (pedidoDeLectura->offset%metadataFS->tamanioBloque==0))//Esta en un limite y corresponde a la pagina sgte
+				startBlock++;
+
+			for (nroBloque = startBlock; nroBloque < cantBloques; nroBloque++) {
+				 int tamanio = (tamanioAleer>metadataFS->tamanioBloque)?(metadataFS->tamanioBloque-offsetBloque):tamanioAleer;
+
+				 t_bloque* bloque = leerBloque(archivoALeer.bloques[nroBloque]);
+
+				 memcpy(buffer+offset, bloque->datos+offsetBloque, tamanio);
+				 offset+=tamanio;
+				 tamanioAleer-=tamanio;
+
+				 free(bloque->datos);
+				 free(bloque);
+
+				 offsetBloque=0;//solo cuenta para el primero
+
+				 if(tamanioAleer==0)
+					 break;
+			}
+
+			rta.datos=buffer;
+			rta.tamanio=pedidoDeLectura->tamanio;
+			rta.codigo=LECTURA_OK;
+
+		}else{
+			rta.tamanio=5;
+			rta.datos="ERROR";
+			rta.codigo=LECTURA_ERROR;
 		}
 
 		config_destroy(metadata_file);
+	}else{
+		rta.tamanio=5;
+		rta.datos="ERROR";
+		rta.codigo=LECTURA_ERROR;
 	}
+
+	char* respuestaBuffer = serializar_respuesta_pedido_lectura(&rta);
+	empaquetarEnviarMensaje(socket, "RES_LEER_DATOS", (sizeof(int32_t)+sizeof(codigo_respuesta_pedido_lectura)+rta.tamanio), respuestaBuffer);
+	free(buffer);
+
+	free(pedidoDeLectura);
 	free(ruta);
+	free(buffer);
 }
 void leerArchivoMetadataFS()
 {
@@ -279,8 +329,11 @@ void cargarConfiguracionAdicional()
 void mapearBitmap()
 {
 	archivoBitmap = fopen(rutaBitmap, "r+b");
-	char* bitArrayMap = mmap(0, metadataFS->cantidadBloques, PROT_WRITE, MAP_SHARED, fileno(archivoBitmap), 0);
-	bitmap = bitarray_create_with_mode(bitArrayMap, metadataFS->cantidadBloques, MSB_FIRST);
+	int32_t fd = fileno(archivoBitmap);
+	struct stat buf;
+	fstat(fd,&buf);
+	char* bitArrayMap = mmap(0, buf.st_size, PROT_WRITE | PROT_READ, MAP_SHARED, fd, 0);
+	bitmap = bitarray_create_with_mode(bitArrayMap, buf.st_size, MSB_FIRST);
 }
 
 void cerrarArchivosYLiberarMemoria()
@@ -327,10 +380,21 @@ int main(int argc, char** argv)
 
 	cargarConfiguracionAdicional();
 	mapearBitmap();
-
+	marcarBloqueDesocupado("0");
+	marcarBloqueDesocupado("1");
 	printf("PUERTO: %d\n",puerto);
 	printf("PUNTO_MONTAJE: %s\n",puntoMontaje);
 	printf("TAMANIO BITMAP: %d\n", bitmap->size);
+
+	crearArchivo("pepe.bin",4);
+
+	t_pedido_lectura_datos pedido;
+	pedido.ruta="pepe.bin";
+	pedido.tamanio=10;
+	pedido.offset=5;
+
+	char* data = serializar_pedido_lectura_datos(&pedido);
+	leerDatosArchivo(data,5);
 
 	t_dictionary* diccionarioFunc= dictionary_create();
 	t_dictionary* diccionarioHands= dictionary_create();

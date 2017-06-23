@@ -81,7 +81,7 @@ void mostrarMensaje(char* mensajes, int socket);
 void validarArchivo(char* ruta, int socket);
 void crearArchivo(char* ruta, int socket);
 void borrarArchivo(char* ruta, int socket);
-void leerDatosArchivo(t_pedido_lectura_datos* pedidoDeLectura, int socket);
+void leerDatosArchivo(char* datos, int socket);
 void marcarBloqueDesocupado(char* bloque);
 void marcarBloqueOcupado(char* bloque);
 

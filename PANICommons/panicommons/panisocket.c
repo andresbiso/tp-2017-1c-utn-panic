@@ -142,17 +142,20 @@ t_package crearPaqueteDeError(){
 }
 
 t_package* recibirPaquete(int socket, void (*desconexion) (int)){
-	t_package *paquete = malloc(sizeof(t_package));
-	*paquete = crearPaqueteDeError();
-	ssize_t recibidos;
 	uint32_t longitud;
+	ssize_t recibidos;
 
 	recibidos = recv(socket,&longitud,sizeof(uint32_t),MSG_WAITALL);
 
+	t_package *paquete = malloc(sizeof(t_package));
+	*paquete = crearPaqueteDeError();
+
 	if(recibidos <= 0){
-			if(recibidos == -1)
-				perror("Error al recibir la longitud del paquete");
-			else{
+			if(recibidos == -1){
+				close(socket);
+				if (desconexion != NULL)
+					desconexion(socket);
+			}else{
 				close(socket);
 				if (desconexion != NULL)
 					desconexion(socket);
@@ -204,13 +207,13 @@ void recibirMensajesThread(void* paramsServidor){
 	while(1){
 		t_package* paquete = recibirPaquete(threadSocket->socket,threadSocket->desconexion);
 		int error = strcmp(paquete->key,"ERROR_FUNC")==0;
-		procesarPaquete(paquete,threadSocket->socket,threadSocket->funciones,threadSocket->handshakes,NULL);//Hay que ver si memoria precisa el ultimo parametro
 		if(error){
 			if(threadSocket->desconexion != NULL)
 				threadSocket->desconexion(threadSocket->socket);
 			close(threadSocket->socket);
 			break;
 		}
+		procesarPaquete(paquete,threadSocket->socket,threadSocket->funciones,threadSocket->handshakes,NULL);//Hay que ver si memoria precisa el ultimo parametro
 	}
 	free(threadSocket);
 }
@@ -229,6 +232,7 @@ void correrServidorThreads(int socket, void (*nuevaConexion)(int), void (*descon
 
 			pthread_t hiloMensajes;
 			pthread_create(&hiloMensajes,NULL,(void *) recibirMensajesThread, threadSocket);
+			pthread_detach(hiloMensajes);
 	}
 
 }

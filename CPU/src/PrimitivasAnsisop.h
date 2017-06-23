@@ -41,6 +41,7 @@ t_pcb* actual_pcb;
 FuncionesAnsisop* funcionesParser;
 
 int error_en_ejecucion;
+int proceso_bloqueado;
 int pagesize;
 
 t_log* cpu_log;
@@ -67,7 +68,7 @@ void signalAnsisop(t_nombre_semaforo identificador_semaforo);
 t_puntero reservar(t_valor_variable espacio);
 void liberar(t_puntero puntero);
 t_descriptor_archivo abrir(t_direccion_archivo direccion, t_banderas flags);
-void borrar(t_descriptor_archivo direccion);
+void borrar(t_descriptor_archivo descriptor_archivo);
 void cerrar(t_descriptor_archivo descriptor_archivo);
 void moverCursor(t_descriptor_archivo descriptor_archivo, t_valor_variable posicion);
 void escribir(t_descriptor_archivo descriptor_archivo, void* informacion, t_valor_variable tamanio);
