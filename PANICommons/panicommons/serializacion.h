@@ -332,6 +332,7 @@ typedef struct
 	char* ruta;
 	int32_t offset;
 	int32_t tamanio;
+	int32_t tamanioRuta
 } __attribute__((__packed__)) t_pedido_lectura_datos;
 
 t_pcb_serializado* serializar_pcb(t_pcb* pcb);

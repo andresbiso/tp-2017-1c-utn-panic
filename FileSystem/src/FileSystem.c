@@ -194,17 +194,16 @@ void borrarArchivo(char* archivo, int socket)
 	free(buffer);
 	free(rta);
 }
-t_bloque* leerBloque(char* numero)
+char* leerBloque(char* numero, int tamanio, int offset)
 {
 	char* nombreBloque = concat(numero, ".bin");
 	char* ruta = concat(rutaBloques, nombreBloque);
-	t_bloque* bloque = malloc(sizeof(t_bloque));
+	char* bloque = malloc(tamanio);
 	FILE* file = fopen(ruta, "r");
 	if (file != NULL)
 	{
-		bloque->tamanio=metadataFS->tamanioBloque;
-		bloque->datos=malloc(metadataFS->tamanioBloque);
-		fread(bloque->datos, bloque->tamanio, 1, file);
+		fseek(file, offset, SEEK_SET);
+		fread(bloque, tamanio, 1, file);
 	}
 	else
 	{
@@ -212,8 +211,8 @@ t_bloque* leerBloque(char* numero)
 	}
 	free(nombreBloque);
 	free(ruta);
-
 	fclose(file);
+
 	return bloque;
 }
 void leerDatosArchivo(char* datos, int socket)
@@ -233,30 +232,26 @@ void leerDatosArchivo(char* datos, int socket)
 		archivoALeer.tamanio=config_get_int_value(metadata_file,"TAMANIO");
 		int cantBloques = sizeArray(archivoALeer.bloques);
 
-		if((pedidoDeLectura->offset < archivoALeer.tamanio) && (pedidoDeLectura->offset+pedidoDeLectura->tamanio)<archivoALeer.tamanio ){
+		if((pedidoDeLectura->offset < archivoALeer.tamanio) && (pedidoDeLectura->offset+pedidoDeLectura->tamanio)<=archivoALeer.tamanio ){
 
 			int nroBloque;
 			int offset = 0;
-			int tamanioAleer = archivoALeer.tamanio;
+			int tamanioAleer = pedidoDeLectura->tamanio;
 			int offsetBloque=pedidoDeLectura->offset%metadataFS->tamanioBloque;
 			int startBlock=((pedidoDeLectura->offset)/metadataFS->tamanioBloque);
 
-			if(pedidoDeLectura->offset!=0 && (pedidoDeLectura->offset%metadataFS->tamanioBloque==0))//Esta en un limite y corresponde a la pagina sgte
-				startBlock++;
-
 			for (nroBloque = startBlock; nroBloque < cantBloques; nroBloque++) {
-				 int tamanio = (tamanioAleer>metadataFS->tamanioBloque)?(metadataFS->tamanioBloque-offsetBloque):tamanioAleer;
+				 int tamanio = ((offsetBloque + tamanioAleer)>metadataFS->tamanioBloque)?(metadataFS->tamanioBloque-offsetBloque):tamanioAleer;
 
-				 t_bloque* bloque = leerBloque(archivoALeer.bloques[nroBloque]);
+				 char* bloque = leerBloque(archivoALeer.bloques[nroBloque], tamanio, offsetBloque);
 
-				 memcpy(buffer+offset, bloque->datos+offsetBloque, tamanio);
+				 memcpy(buffer+offset, bloque, tamanio);
 				 offset+=tamanio;
 				 tamanioAleer-=tamanio;
 
-				 free(bloque->datos);
 				 free(bloque);
 
-				 offsetBloque=0;//solo cuenta para el primero
+				 offsetBloque=0;//a partir del segundo lee desde el comienzo
 
 				 if(tamanioAleer==0)
 					 break;
@@ -285,7 +280,6 @@ void leerDatosArchivo(char* datos, int socket)
 
 	free(pedidoDeLectura);
 	free(ruta);
-	free(buffer);
 }
 void leerArchivoMetadataFS()
 {
@@ -351,23 +345,43 @@ void cerrarArchivosYLiberarMemoria()
 	free(rutaBitmap);
 }
 
-void crearBloque(int numero)
+void crearBloqueDePrueba(int numero)
 {
-	t_bloque* bloque = malloc(sizeof(t_bloque));
-	bloque->datos = malloc(strlen("Esto es un bloque de prueba")+1);
-	bloque->datos = "Esto es un bloque de prueba\0";
-	bloque->tamanio = strlen(bloque->datos)+1;
+	int tamanio = string_length("Esto es un bloque de prueba")+1;
+	char* bloque = malloc(tamanio);
+	strcpy(bloque, "Esto es un bloque de prueba");
 
 	char* numeroBloque = string_itoa(numero);
 	char* tmp = concat(numeroBloque, ".bin");
 	free(numeroBloque);
 	char* nombre = concat(rutaBloques, tmp);
 	FILE* file = fopen(nombre, "wb");
+	if(file != NULL)
+	{
+		fwrite(bloque, tamanio, 1, file);
+		fclose(file);
+	}
 
-	fwrite(&(bloque->tamanio), sizeof(int32_t), 1, file);
-	fseek(file, sizeof(int32_t), SEEK_SET);
-	fwrite(bloque->datos, bloque->tamanio, 1, file);
-	fclose(file);
+	free(bloque);
+	free(nombre);
+	free(tmp);
+}
+void crearBloqueDePruebaLleno(int numero)
+{
+	int tamanio = string_length("Esto es un bloque de prueba que va a estar lleno. ASDFGHJKLÑQW")+1;
+	char* bloque = malloc(tamanio);
+	bloque = strdup("Esto es un bloque de prueba que va a estar lleno. ASDFGHJKLÑQWE");
+
+	char* numeroBloque = string_itoa(numero);
+	char* tmp = concat(numeroBloque, ".bin");
+	free(numeroBloque);
+	char* nombre = concat(rutaBloques, tmp);
+	FILE* file = fopen(nombre, "w");
+	if(file != NULL)
+	{
+		fwrite(bloque, tamanio, 1, file);
+		fclose(file);
+	}
 
 	free(bloque);
 	free(nombre);
