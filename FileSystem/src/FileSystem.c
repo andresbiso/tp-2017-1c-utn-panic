@@ -345,15 +345,13 @@ void cerrarArchivosYLiberarMemoria()
 	free(rutaBitmap);
 }
 
-void crearBloqueDePrueba(int numero)
+void crearBloqueDePrueba(char* numero)
 {
 	int tamanio = string_length("Esto es un bloque de prueba")+1;
 	char* bloque = malloc(tamanio);
 	strcpy(bloque, "Esto es un bloque de prueba");
 
-	char* numeroBloque = string_itoa(numero);
-	char* tmp = concat(numeroBloque, ".bin");
-	free(numeroBloque);
+	char* tmp = concat(numero, ".bin");
 	char* nombre = concat(rutaBloques, tmp);
 	FILE* file = fopen(nombre, "wb");
 	if(file != NULL)
@@ -366,15 +364,13 @@ void crearBloqueDePrueba(int numero)
 	free(nombre);
 	free(tmp);
 }
-void crearBloqueDePruebaLleno(int numero)
+void crearBloqueDePruebaLleno(char* numero)
 {
 	int tamanio = string_length("Esto es un bloque de prueba que va a estar lleno. ASDFGHJKLÑQW")+1;
 	char* bloque = malloc(tamanio);
 	bloque = strdup("Esto es un bloque de prueba que va a estar lleno. ASDFGHJKLÑQWE");
 
-	char* numeroBloque = string_itoa(numero);
-	char* tmp = concat(numeroBloque, ".bin");
-	free(numeroBloque);
+	char* tmp = concat(numero, ".bin");
 	char* nombre = concat(rutaBloques, tmp);
 	FILE* file = fopen(nombre, "w");
 	if(file != NULL)
