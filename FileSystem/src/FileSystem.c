@@ -380,21 +380,10 @@ int main(int argc, char** argv)
 
 	cargarConfiguracionAdicional();
 	mapearBitmap();
-	marcarBloqueDesocupado("0");
-	marcarBloqueDesocupado("1");
+
 	printf("PUERTO: %d\n",puerto);
 	printf("PUNTO_MONTAJE: %s\n",puntoMontaje);
 	printf("TAMANIO BITMAP: %d\n", bitmap->size);
-
-	crearArchivo("pepe.bin",4);
-
-	t_pedido_lectura_datos pedido;
-	pedido.ruta="pepe.bin";
-	pedido.tamanio=10;
-	pedido.offset=5;
-
-	char* data = serializar_pedido_lectura_datos(&pedido);
-	leerDatosArchivo(data,5);
 
 	t_dictionary* diccionarioFunc= dictionary_create();
 	t_dictionary* diccionarioHands= dictionary_create();
