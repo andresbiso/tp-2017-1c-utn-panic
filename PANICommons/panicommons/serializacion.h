@@ -407,11 +407,11 @@ t_pedido_liberar* deserializar_pedido_liberar(char* pedido_serializado);
 char* serializar_respuesta_liberar(t_respuesta_liberar* respuesta);
 t_respuesta_liberar* deserializar_respuesta_liberar(char* respuesta_serializada);
 
-char* serializar_pedido_leer(t_pedido_leer* pedido);
-t_pedido_leer* deserializar_pedido_leer(char* pedido_serializado);
+char* serializar_pedido_abrir_archivo(t_pedido_abrir_archivo* pedido);
+t_pedido_abrir_archivo* deserializar_pedido_abrir_archivo(char* pedido_serializado);
 
-char* serializar_respuesta_leer(t_respuesta_leer* pedido);
-t_respuesta_leer* deserializar_respuesta_leer(char* pedido_serializado);
+char* serializar_respuesta_abrir_archivo(t_respuesta_abrir_archivo* respuesta);
+t_respuesta_abrir_archivo* deserializar_respuesta_abrir_archivo(char* respuesta_serializada);
 
 char* serializar_pedido_validar_crear_borrar_archivo(t_pedido_validar_crear_borrar_archivo_fs* pedido);
 t_pedido_validar_crear_borrar_archivo_fs* deserializar_pedido_validar_crear_borrar_archivo(char* pedido_serializado);
@@ -427,6 +427,12 @@ t_respuesta_borrar_archivo* deserializar_respuesta_borrar_archivo(char* rta);
 
 char* serializar_respuesta_cerrar_archivo(t_respuesta_cerrar_archivo* rta);
 t_respuesta_cerrar_archivo* deserializar_respuesta_cerrar_archivo(char* rta);
+
+char* serializar_pedido_leer_archivo(t_pedido_leer* pedido);
+t_pedido_leer* deserializar_pedido_leer_archivo(char* pedido_serializado);
+
+char* serializar_respuesta_leer_archivo(t_respuesta_leer* respuesta);
+t_respuesta_leer* deserializar_respuesta_leer_archivo(char* respuesta_serializada);
 
 t_pedido_cerrar_archivo* deserializar_pedido_cerrar_archivo(char* pedido_serializado);
 char* serializar_pedido_cerrar_archivo(t_pedido_cerrar_archivo *pedido);

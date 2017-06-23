@@ -455,9 +455,44 @@ void liberar(t_puntero puntero) {
 	return;
 }
 t_descriptor_archivo abrir(t_direccion_archivo direccion, t_banderas flags) {
-	t_descriptor_archivo a;
-	return a;
+	if (error_en_ejecucion) {
+		return -1;
+	}
+
+	t_pedido_abrir_archivo pedido;
+	pedido.pid=actual_pcb->pid;
+	pedido.flags = malloc(sizeof(bool)*3);
+	memcpy(pedido.flags,&flags,sizeof(bool)*3);
+	pedido.tamanio = strlen(direccion);
+	pedido.direccion = malloc(strlen(direccion));;
+	memcpy(pedido.direccion,direccion,strlen(direccion));
+
+	char *buffer = serializar_pedido_abrir_archivo(&pedido);
+	empaquetarEnviarMensaje(socketKernel,"ABRIR_ARCH",(sizeof(int32_t)*2)+(sizeof(bool)*3)+pedido.tamanio,buffer);
+	free(buffer);
+	free(pedido.flags);
+	free(pedido.direccion);
+
+	log_info(cpu_log,
+			"Se solicita abrir archivo en la direccion %s con los permisos lectura: %d, escritura: %d, creacion: %d",
+			direccion, flags.lectura, flags.escritura, flags.creacion);
+
+	t_package *paquete = recibirPaquete(socketKernel,NULL);
+
+	t_respuesta_abrir_archivo* respuesta = deserializar_respuesta_abrir_archivo(paquete->datos);
+
+	if(respuesta->codigo == ABRIR_OK){
+		log_info(cpu_log,"Se ha abierto el archivo correctamente");
+	}else{
+		log_error(cpu_log,"Error al intentar abrir el archivo");
+		error_en_ejecucion = 1;
+		actual_pcb->exit_code = -2;
+		return -1;
+	}
+
+	return respuesta->fd;
 }
+
 void borrar(t_descriptor_archivo direccion) {
 
 }

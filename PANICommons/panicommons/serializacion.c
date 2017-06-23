@@ -839,7 +839,7 @@ t_pedido_abrir_archivo* deserializar_pedido_abrir_archivo(char* pedido_serializa
 	offset+=sizeof(int32_t);
 	pedido->direccion=malloc(pedido->tamanio+1);
 	pedido->direccion[pedido->tamanio]='\0';
-	memcpy(pedido->direccion,pedido_serializado+offset,pedido->tamanio);
+	memcpy(&pedido->direccion,pedido_serializado+offset,pedido->tamanio);
 
 	return pedido;
 }
