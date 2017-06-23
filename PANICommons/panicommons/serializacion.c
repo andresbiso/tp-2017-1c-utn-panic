@@ -833,8 +833,12 @@ t_pedido_abrir_archivo* deserializar_pedido_abrir_archivo(char* pedido_serializa
 
 	memcpy(&pedido->pid,pedido_serializado,sizeof(int32_t));
 	offset+=sizeof(int32_t);
-	memcpy(&pedido->flags,pedido_serializado+offset,sizeof(t_banderas));
-	offset+=sizeof(t_banderas);
+	memcpy(&pedido->flags->creacion,pedido_serializado+offset,sizeof(bool));
+	offset+=sizeof(bool);
+	memcpy(&pedido->flags->escritura,pedido_serializado+offset,sizeof(bool));
+	offset+=sizeof(bool);
+	memcpy(&pedido->flags->lectura,pedido_serializado+offset,sizeof(bool));
+	offset+=sizeof(bool);
 	memcpy(&pedido->tamanio,pedido_serializado+offset,sizeof(int32_t));
 	offset+=sizeof(int32_t);
 	pedido->direccion=malloc(pedido->tamanio+1);
@@ -845,13 +849,17 @@ t_pedido_abrir_archivo* deserializar_pedido_abrir_archivo(char* pedido_serializa
 }
 
 char* serializar_pedido_abrir_archivo(t_pedido_abrir_archivo *pedido){
-	char* buffer = malloc(sizeof(int32_t)+sizeof(t_banderas)+pedido->tamanio);
+	char* buffer = malloc(sizeof(int32_t)*2+sizeof(t_banderas)+pedido->tamanio);
 	int offset = 0;
 
 	memcpy(buffer,&pedido->pid,sizeof(int32_t));
 	offset+=sizeof(int32_t);
-	memcpy(buffer+offset,&pedido->flags,sizeof(t_banderas));
-	offset+=sizeof(t_banderas);
+	memcpy(buffer+offset,&pedido->flags->creacion,sizeof(bool));
+	offset+=sizeof(bool);
+	memcpy(buffer+offset,&pedido->flags->escritura,sizeof(bool));
+	offset+=sizeof(bool);
+	memcpy(buffer+offset,&pedido->flags->lectura,sizeof(bool));
+	offset+=sizeof(bool);
 	memcpy(buffer+offset,&(pedido->tamanio),sizeof(int32_t));
 	offset+=sizeof(int32_t);
 	memcpy(buffer+offset,pedido->direccion,pedido->tamanio);

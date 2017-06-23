@@ -22,6 +22,8 @@ int obtenerEIncrementarGlobalFD()
 void abrirArchivo(char* data, int socket){
 	t_pedido_abrir_archivo* pedido = deserializar_pedido_abrir_archivo(data);
 
+	agregarSyscall(pedido->pid);
+
 	t_archivos_proceso* archivos_proceso;
 	archivos_proceso = malloc(sizeof(t_archivos_proceso));
 
@@ -175,6 +177,8 @@ void abrirArchivo(char* data, int socket){
 void cerrarArchivo(char* data, int socket){
 	t_pedido_cerrar_archivo* pedido = deserializar_pedido_cerrar_archivo(data);
 
+	agregarSyscall(pedido->pid);
+
 	char* pidKey = string_itoa(pedido->pid);
 
 	t_list* listaArchivosPorProceso = dictionary_get(tablaArchivosPorProceso,pidKey);
@@ -212,6 +216,8 @@ void cerrarArchivo(char* data, int socket){
 
 void borrarArchivo(char* data, int socket){
 	t_pedido_borrar_archivo* pedido = deserializar_pedido_borrar_archivo(data);
+
+	agregarSyscall(pedido->pid);
 
 	char* pidKey = string_itoa(pedido->pid);
 
