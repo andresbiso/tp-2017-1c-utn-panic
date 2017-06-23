@@ -480,16 +480,22 @@ t_descriptor_archivo abrir(t_direccion_archivo direccion, t_banderas flags) {
 
 	t_respuesta_abrir_archivo* respuesta = deserializar_respuesta_abrir_archivo(paquete->datos);
 
+	borrarPaquete(paquete);
+
 	if(respuesta->codigo == ABRIR_OK){
 		log_info(cpu_log,"Se ha abierto el archivo correctamente");
 	}else{
 		log_error(cpu_log,"Error al intentar abrir el archivo");
 		error_en_ejecucion = 1;
 		actual_pcb->exit_code = -2;
+		free(respuesta);
 		return -1;
 	}
 
-	return respuesta->fd;
+	int32_t fd = respuesta->fd;
+	free(respuesta);
+
+	return fd;
 }
 
 void borrar(t_descriptor_archivo direccion) {
