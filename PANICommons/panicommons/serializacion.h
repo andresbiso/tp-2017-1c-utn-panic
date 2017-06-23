@@ -332,8 +332,17 @@ typedef struct
 	char* ruta;
 	int32_t offset;
 	int32_t tamanio;
-	int32_t tamanioRuta
+	int32_t tamanioRuta;
 } __attribute__((__packed__)) t_pedido_lectura_datos;
+
+typedef struct
+{
+	char* ruta;
+	int32_t offset;
+	int32_t tamanio;
+	int32_t tamanioRuta;
+	char* buffer;
+} __attribute__((__packed__)) t_pedido_escritura_datos;
 
 t_pcb_serializado* serializar_pcb(t_pcb* pcb);
 t_pcb* deserializar_pcb(char* pcbs);
@@ -460,7 +469,8 @@ t_respuesta_pedido_lectura* deserializar_respuesta_pedido_lectura(char* rta);
 
 char*serializar_pedido_lectura_datos(t_pedido_lectura_datos* pedido);
 t_pedido_lectura_datos* deserializar_pedido_lectura_datos(char* pedido);
-
+char*serializar_pedido_escritura_datos(t_pedido_escritura_datos* pedido);
+t_pedido_escritura_datos* deserializar_pedido_escritura_datos(char* pedido);
 
 
 //FS
