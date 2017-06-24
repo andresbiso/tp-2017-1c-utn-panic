@@ -74,13 +74,13 @@ void marcarBloqueOcupado(char* bloque)
 	string_append(&rutaBloque,bloque);
 	string_append(&rutaBloque,".bin");
 
-	fopen(rutaBloque,"w");
+	FILE* file = fopen(rutaBloque,"w");
+	fclose(file);
 	free(rutaBloque);
 
 	log_trace(logFS, "Se marca el bit %s como ocupado", bloque);
 	bitarray_set_bit(bitmap, atoi(bloque));
 	msync(bitmap->bitarray,bitmap->size,MS_SYNC);
-
 }
 void marcarBloqueDesocupado(char* bloque)
 {
@@ -91,10 +91,9 @@ void marcarBloqueDesocupado(char* bloque)
 int obtenerBloqueVacio()
 {
 	int i = 0;
-	while(i<=metadataFS->cantidadBloques && bitarray_test_bit(bitmap, i))
-	{
+	while(i<=metadataFS->cantidadBloques && bitarray_test_bit(bitmap, i)){
 		i++;
-	};
+	}
 	if (i <= metadataFS->cantidadBloques)
 		return i;
 	else
@@ -194,26 +193,22 @@ void borrarArchivo(char* archivo, int socket)
 	free(buffer);
 	free(rta);
 }
-t_bloque* leerBloque(char* numero)
+char* leerBloque(char* numero, int tamanio, int offset)
 {
 	char* nombreBloque = concat(numero, ".bin");
 	char* ruta = concat(rutaBloques, nombreBloque);
-	t_bloque* bloque = malloc(sizeof(t_bloque));
+	char* bloque = malloc(tamanio);
 	FILE* file = fopen(ruta, "r");
-	if (file != NULL)
-	{
-		bloque->tamanio=metadataFS->tamanioBloque;
-		bloque->datos=malloc(metadataFS->tamanioBloque);
-		fread(bloque->datos, bloque->tamanio, 1, file);
-	}
-	else
-	{
+	if (file != NULL){
+		fseek(file, offset, SEEK_SET);
+		fread(bloque, tamanio, 1, file);
+	}else{
 		log_error(logFS, "No se pudo leer el bloque numero: %d", numero);
 	}
 	free(nombreBloque);
 	free(ruta);
-
 	fclose(file);
+
 	return bloque;
 }
 void leerDatosArchivo(char* datos, int socket)
@@ -233,30 +228,26 @@ void leerDatosArchivo(char* datos, int socket)
 		archivoALeer.tamanio=config_get_int_value(metadata_file,"TAMANIO");
 		int cantBloques = sizeArray(archivoALeer.bloques);
 
-		if((pedidoDeLectura->offset < archivoALeer.tamanio) && (pedidoDeLectura->offset+pedidoDeLectura->tamanio)<archivoALeer.tamanio ){
+		if((pedidoDeLectura->offset < archivoALeer.tamanio) && (pedidoDeLectura->offset+pedidoDeLectura->tamanio)<=archivoALeer.tamanio ){
 
 			int nroBloque;
 			int offset = 0;
-			int tamanioAleer = archivoALeer.tamanio;
+			int tamanioAleer = pedidoDeLectura->tamanio;
 			int offsetBloque=pedidoDeLectura->offset%metadataFS->tamanioBloque;
 			int startBlock=((pedidoDeLectura->offset)/metadataFS->tamanioBloque);
 
-			if(pedidoDeLectura->offset!=0 && (pedidoDeLectura->offset%metadataFS->tamanioBloque==0))//Esta en un limite y corresponde a la pagina sgte
-				startBlock++;
-
 			for (nroBloque = startBlock; nroBloque < cantBloques; nroBloque++) {
-				 int tamanio = (tamanioAleer>metadataFS->tamanioBloque)?(metadataFS->tamanioBloque-offsetBloque):tamanioAleer;
+				 int tamanio = ((offsetBloque + tamanioAleer)>metadataFS->tamanioBloque)?(metadataFS->tamanioBloque-offsetBloque):tamanioAleer;
 
-				 t_bloque* bloque = leerBloque(archivoALeer.bloques[nroBloque]);
+				 char* bloque = leerBloque(archivoALeer.bloques[nroBloque], tamanio, offsetBloque);
 
-				 memcpy(buffer+offset, bloque->datos+offsetBloque, tamanio);
+				 memcpy(buffer+offset, bloque, tamanio);
 				 offset+=tamanio;
 				 tamanioAleer-=tamanio;
 
-				 free(bloque->datos);
 				 free(bloque);
 
-				 offsetBloque=0;//solo cuenta para el primero
+				 offsetBloque=0;//a partir del segundo lee desde el comienzo
 
 				 if(tamanioAleer==0)
 					 break;
@@ -281,11 +272,126 @@ void leerDatosArchivo(char* datos, int socket)
 
 	char* respuestaBuffer = serializar_respuesta_pedido_lectura(&rta);
 	empaquetarEnviarMensaje(socket, "RES_LEER_DATOS", (sizeof(int32_t)+sizeof(codigo_respuesta_pedido_lectura)+rta.tamanio), respuestaBuffer);
+	free(respuestaBuffer);
 	free(buffer);
 
 	free(pedidoDeLectura);
 	free(ruta);
-	free(buffer);
+}
+void escribirBloque(char* bloque, char* buffer, int tamanio, int offset)
+{
+	char* nombre = concat(bloque, ".bin");
+	char* ruta = concat(rutaBloques, nombre);
+	FILE* file = fopen(ruta, "r");
+	if (file != NULL){
+		fseek(file, offset, SEEK_SET);
+		fwrite(buffer, tamanio, 1, file);
+	}
+}
+void eliminarBloque(char* bloque)
+{
+	char* nombreBloque = concat(bloque, ".bin");
+	char* ruta = concat(rutaBloques, nombreBloque);
+
+	remove(ruta);
+	free(nombreBloque);
+	free(ruta);
+}
+bool hayXBloquesLibres(int cantidad){
+
+	int libres = 0;
+	while(libres<=metadataFS->cantidadBloques && bitarray_test_bit(bitmap, libres)){
+		libres++;
+		if(libres>=cantidad)
+			break;
+	}
+
+	return libres>=cantidad;
+}
+void escribirDatosArchivo(char* datos, int socket)
+{
+	t_pedido_escritura_datos* pedidoEscritura = deserializar_pedido_escritura_datos(datos);
+	t_respuesta_pedido_escritura rta;
+	t_metadata_archivo archivoAEscribir;
+
+	char* ruta = concat(rutaArchivos, pedidoEscritura->ruta);
+	FILE* file = fopen(ruta, "r");
+	if (file != NULL){
+		t_config* metadata_file = config_create(ruta);
+
+		archivoAEscribir.bloques=config_get_array_value(metadata_file,"BLOQUES");
+		archivoAEscribir.tamanio=config_get_int_value(metadata_file,"TAMANIO");
+
+		int cantBloques = sizeArray(archivoAEscribir.bloques);
+
+		int nroBloque;
+		int offset = 0;
+		int tamanioAEscribir = pedidoEscritura->tamanio;
+		int offsetBloque=pedidoEscritura->offset%metadataFS->tamanioBloque;
+		int startBlockIndex=((pedidoEscritura->offset)/metadataFS->tamanioBloque);
+
+		if(pedidoEscritura->offset!=0 && offsetBloque==0){
+			startBlockIndex++;//Esta en un extremo de un bloque
+		}
+
+		int bloquesNewSize = ((pedidoEscritura->offset+tamanioAEscribir)/metadataFS->tamanioBloque)+1;
+		int totalBloques = bloquesNewSize>cantBloques?bloquesNewSize:cantBloques;
+
+		int cantNuevosBloques = totalBloques - cantBloques;
+		archivoAEscribir.bloques = realloc(archivoAEscribir.bloques, sizeof(char*) * totalBloques);
+		if(hayXBloquesLibres(cantNuevosBloques)){
+			for (nroBloque = startBlockIndex; nroBloque < totalBloques; nroBloque++){
+				if(nroBloque > (cantBloques-1)){
+					int bloqueNuevo = obtenerBloqueVacio();
+					archivoAEscribir.bloques[nroBloque] = string_itoa(bloqueNuevo);
+					marcarBloqueOcupado(archivoAEscribir.bloques[nroBloque]);
+				}
+				int tamanio = ((offsetBloque + tamanioAEscribir)>metadataFS->tamanioBloque)?(metadataFS->tamanioBloque-offsetBloque):tamanioAEscribir;
+				char* buffer = malloc(tamanio);
+				memcpy(buffer, (void*)pedidoEscritura->buffer+offset, tamanio);
+				escribirBloque(archivoAEscribir.bloques[nroBloque], buffer, tamanio, offsetBloque);
+				free(buffer);
+
+				offset+=tamanio;
+				tamanioAEscribir-=tamanio;
+
+				offsetBloque = 0;
+
+				if(tamanioAEscribir==0)
+					break;
+			}
+			int nuevoTamanio = pedidoEscritura->offset + pedidoEscritura->tamanio;
+			int tamanioGuardar = (nuevoTamanio > archivoAEscribir.tamanio)?nuevoTamanio:archivoAEscribir.tamanio;
+
+			char* tamanioAGuardar = string_itoa(tamanioGuardar);
+			config_set_value(metadata_file, "TAMANIO", tamanioAGuardar);
+			free(tamanioAGuardar);
+
+			char* array = string_get_string_from_array(archivoAEscribir.bloques, totalBloques);
+			config_set_value(metadata_file, "BLOQUES", array);
+			free(array);
+
+			config_save(metadata_file);
+			config_destroy(metadata_file);
+
+			rta.codigoRta= ESCRIBIR_OK;
+
+		}else{
+			rta.codigoRta = NO_HAY_ESPACIO;
+		}
+	}else{
+		rta.codigoRta = ESCRIBIR_ERROR;
+	}
+	fclose(file);
+	free(ruta);
+
+	free(pedidoEscritura->ruta);
+	free(pedidoEscritura->buffer);
+	free(pedidoEscritura);
+
+	char* respuestaBuffer = serializar_respuesta_pedido_escritura(&rta);
+	empaquetarEnviarMensaje(socket, "RES_ESCR_DATOS", sizeof(t_respuesta_pedido_escritura), respuestaBuffer);
+	free(respuestaBuffer);
 }
 void leerArchivoMetadataFS()
 {
@@ -351,30 +457,7 @@ void cerrarArchivosYLiberarMemoria()
 	free(rutaBitmap);
 }
 
-void crearBloque(int numero)
-{
-	t_bloque* bloque = malloc(sizeof(t_bloque));
-	bloque->datos = malloc(strlen("Esto es un bloque de prueba")+1);
-	bloque->datos = "Esto es un bloque de prueba\0";
-	bloque->tamanio = strlen(bloque->datos)+1;
-
-	char* numeroBloque = string_itoa(numero);
-	char* tmp = concat(numeroBloque, ".bin");
-	free(numeroBloque);
-	char* nombre = concat(rutaBloques, tmp);
-	FILE* file = fopen(nombre, "wb");
-
-	fwrite(&(bloque->tamanio), sizeof(int32_t), 1, file);
-	fseek(file, sizeof(int32_t), SEEK_SET);
-	fwrite(bloque->datos, bloque->tamanio, 1, file);
-	fclose(file);
-
-	free(bloque);
-	free(nombre);
-	free(tmp);
-}
-int main(int argc, char** argv)
-{
+int main(int argc, char** argv){
 	t_config* configFile = cargarConfiguracion(argv[1]);
 	logFS = log_create("fs.log", "FILE SYSTEM", 0, LOG_LEVEL_TRACE);
 
@@ -384,6 +467,15 @@ int main(int argc, char** argv)
 	printf("PUERTO: %d\n",puerto);
 	printf("PUNTO_MONTAJE: %s\n",puntoMontaje);
 	printf("TAMANIO BITMAP: %d\n", bitmap->size);
+
+	t_pedido_escritura_datos pedido;
+	pedido.buffer="holaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaholaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+	pedido.offset=0;
+	pedido.ruta="pepe.bin";
+	pedido.tamanio=106;
+	pedido.tamanioRuta=8;
+
+	escribirDatosArchivo(serializar_pedido_escritura_datos(&pedido),4);
 
 	t_dictionary* diccionarioFunc= dictionary_create();
 	t_dictionary* diccionarioHands= dictionary_create();

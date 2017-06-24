@@ -60,12 +60,6 @@ typedef struct
 	char* magicNumber;
 } t_metadata_fs;
 
-typedef struct
-{
-	int32_t tamanio;
-	char* datos;
-} t_bloque;
-
 int puerto;
 char *puntoMontaje;
 char* rutaBloques;
