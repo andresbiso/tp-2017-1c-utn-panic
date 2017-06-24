@@ -468,15 +468,6 @@ int main(int argc, char** argv){
 	printf("PUNTO_MONTAJE: %s\n",puntoMontaje);
 	printf("TAMANIO BITMAP: %d\n", bitmap->size);
 
-	t_pedido_escritura_datos pedido;
-	pedido.buffer="holaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaholaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
-	pedido.offset=0;
-	pedido.ruta="pepe.bin";
-	pedido.tamanio=106;
-	pedido.tamanioRuta=8;
-
-	escribirDatosArchivo(serializar_pedido_escritura_datos(&pedido),4);
-
 	t_dictionary* diccionarioFunc= dictionary_create();
 	t_dictionary* diccionarioHands= dictionary_create();
 
