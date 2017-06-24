@@ -1029,9 +1029,10 @@ t_pedido_escritura_datos* deserializar_pedido_escritura_datos(char *pedidoSerial
 	offset+=sizeof(int32_t);
 	memcpy(&pedido->tamanioRuta, (void*)pedidoSerializado+offset, sizeof(int32_t));
 	offset+=sizeof(int32_t);
-	pedido->ruta = malloc(pedido->tamanioRuta);
+	pedido->ruta = malloc(pedido->tamanioRuta+1);
+	pedido->ruta[pedido->tamanioRuta]='\0';
 	memcpy(pedido->ruta, (void*)pedidoSerializado+offset, pedido->tamanioRuta);
-	offset+=sizeof(pedido->tamanioRuta);
+	offset+=pedido->tamanioRuta;
 	pedido->buffer = malloc(pedido->tamanio);
 	memcpy(pedido->buffer, (void*)pedidoSerializado+offset, pedido->tamanio);
 
