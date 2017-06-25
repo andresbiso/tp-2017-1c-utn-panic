@@ -324,16 +324,15 @@ void showTablaProceso(int size, char** functionAndParams){
 
 	log_info(logNucleo,"Tabla de archivos para proceso: %s",pid);
 
-	t_list* listaPorProceso = dictionary_get(tablaArchivosPorProceso,pid);
-
 	void log(void *archivo) {
 			log_info(logNucleo,"| FD: %d | Flags: %s | GlobalFD: %d | Cursor: %d |",((t_archivos_proceso*)archivo)->fd,
 					((t_archivos_proceso*)archivo)->flags,((t_archivos_proceso*)archivo)->globalFD,((t_archivos_proceso*)archivo)->cursor);
-		}
+	}
 
-	pthread_mutex_lock(&listaArchivosPidMutex);
+	pthread_mutex_lock(&capaFSMutex);
+	t_list* listaPorProceso = dictionary_get(tablaArchivosPorProceso,pid);
 	list_iterate(listaPorProceso,log);
-	pthread_mutex_unlock(&listaArchivosPidMutex);
+	pthread_mutex_unlock(&capaFSMutex);
 
 	freeElementsArray(functionAndParams,size);
 }
@@ -348,11 +347,11 @@ void showTablaGlobal(int size, char** functionAndParams){
 	void logGlobal(void *archivo) {
 			log_info(logNucleo,"| GlobalFD: %d | File: %s | Open: %d |",((t_archivos_global*)archivo)->globalFD,
 					((t_archivos_global*)archivo)->file,((t_archivos_global*)archivo)->open);
-			}
+	}
 
-	pthread_mutex_lock(&listaArchivosGlobalMutex);
+	pthread_mutex_lock(&capaFSMutex);
 	list_iterate(tablaArchivosGlobales,logGlobal);
-	pthread_mutex_unlock(&listaArchivosGlobalMutex);
+	pthread_mutex_unlock(&capaFSMutex);
 
 	freeElementsArray(functionAndParams,size);
 }
@@ -986,9 +985,8 @@ int main(int argc, char** argv) {
 	pthread_mutex_init(&mutexCPUConectadas,NULL);
 	pthread_mutex_init(&mutexProgramasActuales,NULL);
 	pthread_mutex_init(&mutexMemoria,NULL);
-	pthread_mutex_init(&listaArchivosGlobalMutex,NULL);
 	pthread_mutex_init(&mutexGlobalFD,NULL);
-	pthread_mutex_init(&listaArchivosPidMutex,NULL);
+	pthread_mutex_init(&capaFSMutex,NULL);
 	pthread_mutex_init(&mutexRespuestaInicializar,NULL);
 	pthread_mutex_init(&mutexStatsEjecucion,NULL);
 	pthread_mutex_init(&mutexMemoriaHeap,NULL);
@@ -1044,8 +1042,6 @@ int main(int argc, char** argv) {
     crear_colas();
 
     listForFinish=list_create();
-
-    listaArchivosPorProceso = list_create();
     tablaArchivosGlobales = list_create();
 
     logNucleo = log_create("logNucleo.log", "nucleo.c", false, LOG_LEVEL_TRACE);
@@ -1054,7 +1050,7 @@ int main(int argc, char** argv) {
     sem_init(&grado, 0, GradoMultiprog);
 
     ultimoPID = 1;
-    ultimoGlobalFD = 0;
+    ultimoGlobalFD = 4;
 
     if ((socketMemoria = conectar(IpMemoria,PuertoMemoria)) == -1)
     	exit(EXIT_FAILURE);

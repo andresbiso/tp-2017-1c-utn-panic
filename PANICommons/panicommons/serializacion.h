@@ -312,8 +312,6 @@ typedef struct
 {
 	int32_t pid;
 	int32_t fd;
-	int32_t tamanio;
-	char* direccion;
 } __attribute__((__packed__))t_pedido_borrar_archivo;
 
 u_int32_t tamanio_pcb(t_pcb* pcb);
@@ -426,9 +424,6 @@ t_pedido_liberar* deserializar_pedido_liberar(char* pedido_serializado);
 
 char* serializar_respuesta_liberar(t_respuesta_liberar* respuesta);
 t_respuesta_liberar* deserializar_respuesta_liberar(char* respuesta_serializada);
-
-char* serializar_pedido_abrir_archivo(t_pedido_abrir_archivo* pedido);
-t_pedido_abrir_archivo* deserializar_pedido_abrir_archivo(char* pedido_serializado);
 
 char* serializar_respuesta_abrir_archivo(t_respuesta_abrir_archivo* respuesta);
 t_respuesta_abrir_archivo* deserializar_respuesta_abrir_archivo(char* respuesta_serializada);

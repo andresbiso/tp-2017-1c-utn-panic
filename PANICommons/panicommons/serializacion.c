@@ -957,29 +957,17 @@ t_pedido_borrar_archivo* deserializar_pedido_borrar_archivo(char* pedido_seriali
 	memcpy(&pedido->pid,pedido_serializado,sizeof(int32_t));
 	offset+=sizeof(int32_t);
 	memcpy(&pedido->fd,pedido_serializado+offset,sizeof(int32_t));
-	offset+=sizeof(int32_t);
-	memcpy(&(pedido->tamanio),pedido_serializado+offset,sizeof(int32_t));
-	offset+=sizeof(int32_t);
-	pedido->direccion=malloc(pedido->tamanio+1);
-	pedido->direccion[pedido->tamanio]='\0';
-	memcpy(pedido->direccion,pedido_serializado+offset,pedido->tamanio);
-
 	return pedido;
 }
 
 
 char* serializar_pedido_borrar_archivo(t_pedido_borrar_archivo *pedido){
-	char *buffer = malloc((sizeof(int32_t)*3)+pedido->tamanio);
+	char *buffer = malloc((sizeof(t_pedido_borrar_archivo)));
 	int offset =0;
 
 	memcpy(buffer,&pedido->pid,sizeof(int32_t));
 	offset+=sizeof(int32_t);
 	memcpy(buffer+offset,&pedido->fd,sizeof(int32_t));
-	offset+=sizeof(int32_t);
-	memcpy(buffer+offset,&(pedido->tamanio),sizeof(int32_t));
-	offset+=sizeof(int32_t);
-	memcpy(buffer+offset,pedido->direccion,pedido->tamanio);
-
 	return buffer;
 }
 
