@@ -277,14 +277,27 @@ t_valor_variable asignarValorCompartida(t_nombre_compartida	variable, t_valor_va
 	}else{
 		log_error(cpu_log,"Error al intentar obtener valor variable compartida");
 		error_en_ejecucion = 1;
-		actual_pcb->exit_code = -5;
+		actual_pcb->exit_code = FINALIZAR_EXCEPCION_MEMORIA;
 		return -1;
 	}
 
 	return valor;
 }
 void irAlLabel(t_nombre_etiqueta t_nombre_etiqueta) {
+	if (error_en_ejecucion) {
+		return;
+	}
 
+	t_puntero_instruccion puntero_instruccion = metadata_buscar_etiqueta(t_nombre_etiqueta, actual_pcb->indice_etiquetas, actual_pcb->tamano_etiquetas);
+	if (puntero_instruccion == -1) {
+		error_en_ejecucion = 1;
+		actual_pcb->exit_code = FINALIZAR_ERROR_SIN_DEFINICION;
+		log_info(cpu_log,"Error al intentar econtrar el label: %s", t_nombre_etiqueta);
+		return;
+	}
+	actual_pcb->pc = puntero_instruccion;
+	log_info(cpu_log,"Yendo al label: %s", t_nombre_etiqueta);
+	return;
 }
 void llamarSinRetorno(t_nombre_etiqueta etiqueta) {
 
