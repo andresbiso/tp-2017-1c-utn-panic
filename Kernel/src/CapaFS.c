@@ -24,23 +24,12 @@ void abrirArchivo(char* data, int socket){
 
 	agregarSyscall(pedido->pid);
 
-	t_archivos_proceso* archivos_proceso;
-	archivos_proceso = malloc(sizeof(t_archivos_proceso));
-
-	t_archivos_global* archivos_global;
-	archivos_global = malloc(sizeof(t_archivos_global));
-
 	char* pidKey = string_itoa(pedido->pid);
 
 	t_list* listaArchivos = dictionary_get(tablaArchivosPorProceso,pidKey);
-	int posinicial = listaArchivos == NULL ? 0 : list_size(listaArchivosPorProceso);
+	int32_t posinicial = listaArchivos == NULL ? 0 : list_size(listaArchivosPorProceso);
 
-    char banderas[2];
-	if(pedido->flags->lectura && pedido->flags->escritura){
-		strcpy(banderas,"rw");
-	}else if(pedido->flags->escritura){
-		strcpy(banderas,"w");
-	}else strcpy(banderas,"r");
+	free(pidKey);
 
 	t_pedido_validar_crear_borrar_archivo_fs pedidoValidar;
 	pedidoValidar.tamanio = pedido->tamanio;
@@ -62,17 +51,36 @@ void abrirArchivo(char* data, int socket){
 							  return ((t_archivos_global*)archivoGlobal)->file == pedido->direccion;
 							}
 
+			char* pid = string_itoa(pedido->pid);
+
+			char banderas[2];
+			if(pedido->flags->lectura && pedido->flags->escritura){
+				strcpy(banderas,"rw");
+			}else if(pedido->flags->escritura){
+				strcpy(banderas,"w");
+			}else strcpy(banderas,"r");
+
 			t_archivos_global* archivoGlobal = list_find(tablaArchivosGlobales,matchFile);
+
+			t_archivos_global* archivos_global;
+			archivos_global = malloc(sizeof(t_archivos_global));
+
+			t_archivos_proceso* archivos_proceso;
+			archivos_proceso = malloc(sizeof(t_archivos_proceso));
+
+			t_respuesta_abrir_archivo respuesta;
 
 			if(archivoGlobal){
 				archivoGlobal->open++;
 
 				archivos_proceso->fd = posinicial + FD_START;
-				archivos_proceso->flags = banderas;
+				archivos_proceso->flags = malloc(sizeof(banderas)+1);
+				archivos_proceso->flags[sizeof(banderas)] = '\0';
+				memcpy(archivos_proceso->flags,banderas,sizeof(banderas));
 				archivos_proceso->globalFD = archivoGlobal->globalFD;
 				archivos_proceso->cursor = 0;
 				list_add(listaArchivosPorProceso,archivos_proceso);
-				dictionary_put(tablaArchivosPorProceso,pidKey,listaArchivosPorProceso);
+				dictionary_put(tablaArchivosPorProceso,pid,listaArchivosPorProceso);
 				pthread_mutex_lock(&listaArchivosGlobalMutex);
 				list_add(tablaArchivosGlobales,archivoGlobal);
 				pthread_mutex_unlock(&listaArchivosGlobalMutex);
@@ -80,21 +88,24 @@ void abrirArchivo(char* data, int socket){
 				archivos_global->globalFD = obtenerEIncrementarGlobalFD();
 				archivos_global->file = pedido->direccion;
 				archivos_global->open = 1;
+
+				archivos_proceso->fd = posinicial + FD_START;
+				archivos_proceso->flags = malloc(sizeof(banderas)+1);
+				archivos_proceso->flags[sizeof(banderas)] = '\0';
+				memcpy(archivos_proceso->flags,banderas,sizeof(banderas));
+				archivos_proceso->globalFD = archivos_global->globalFD;
+				archivos_proceso->cursor = 0;
 				pthread_mutex_lock(&listaArchivosGlobalMutex);
 				list_add(tablaArchivosGlobales,archivos_global);
 				pthread_mutex_unlock(&listaArchivosGlobalMutex);
 
-				archivos_proceso->fd = posinicial + FD_START;
-				archivos_proceso->flags = banderas;
-				archivos_proceso->globalFD = archivos_global->globalFD;
-				archivos_proceso->cursor = 0;
+				respuesta.fd = archivos_proceso->fd;
+				respuesta.codigo = ABRIR_OK;
 				list_add(listaArchivosPorProceso,archivos_proceso);
-				dictionary_put(tablaArchivosPorProceso,pidKey,listaArchivosPorProceso);
+				dictionary_put(tablaArchivosPorProceso,pid,listaArchivosPorProceso);
 			}
 
-			t_respuesta_abrir_archivo respuesta;
-			respuesta.fd = archivos_proceso->fd;
-			respuesta.codigo = ABRIR_OK;
+			free(pid);
 
 			char* buffer = serializar_respuesta_abrir_archivo(&respuesta);
 			empaquetarEnviarMensaje(socket,"RES_ABRIR_ARCH",sizeof(t_respuesta_abrir_archivo),buffer);
@@ -116,6 +127,21 @@ void abrirArchivo(char* data, int socket){
 				t_respuesta_crear_archivo* respuestaCrear = deserializar_respuesta_crear_archivo(paqueteCrear->datos);
 				borrarPaquete(paqueteCrear);
 
+				char* pid = string_itoa(pedido->pid);
+
+				char banderas[2];
+				if(pedido->flags->lectura && pedido->flags->escritura){
+					strcpy(banderas,"rw");
+				}else if(pedido->flags->escritura){
+					strcpy(banderas,"w");
+				}else strcpy(banderas,"r");
+
+				t_archivos_global* archivos_global;
+				archivos_global = malloc(sizeof(t_archivos_global));
+
+				t_archivos_proceso* archivos_proceso;
+				archivos_proceso = malloc(sizeof(t_archivos_proceso));
+
 				t_respuesta_abrir_archivo respuesta;
 
 				switch(respuestaCrear->codigoRta){
@@ -124,16 +150,18 @@ void abrirArchivo(char* data, int socket){
 						archivos_global->globalFD = obtenerEIncrementarGlobalFD();
 						archivos_global->file = pedido->direccion;
 						archivos_global->open = 1;
+
+						archivos_proceso->fd = posinicial + FD_START;
+						archivos_proceso->flags = malloc(sizeof(banderas)+1);
+						archivos_proceso->flags[sizeof(banderas)] = '\0';
+						memcpy(archivos_proceso->flags,banderas,sizeof(banderas));
+						archivos_proceso->globalFD = archivos_global->globalFD;
+						archivos_proceso->cursor = 0;
 						pthread_mutex_lock(&listaArchivosGlobalMutex);
 						list_add(tablaArchivosGlobales,archivos_global);
 						pthread_mutex_unlock(&listaArchivosGlobalMutex);
-
-						archivos_proceso->fd = posinicial + FD_START;
-						archivos_proceso->flags = banderas;
-						archivos_proceso->globalFD = archivos_global->globalFD;
-						archivos_proceso->cursor = 0;
 						list_add(listaArchivosPorProceso,archivos_proceso);
-						dictionary_put(tablaArchivosPorProceso,pidKey,listaArchivosPorProceso);
+						dictionary_put(tablaArchivosPorProceso,pid,listaArchivosPorProceso);
 
 						respuesta.fd = archivos_proceso->fd;
 						respuesta.codigo = ABRIR_OK;
@@ -161,6 +189,7 @@ void abrirArchivo(char* data, int socket){
 						log_error(logNucleo,"No hay bloques disponibles para crear el archivo");
 						break;
 				}
+				free(pid);
 				free(respuestaCrear);
 			}else{
 			log_error(logNucleo,"No existe el archivo solicitado");
@@ -169,7 +198,6 @@ void abrirArchivo(char* data, int socket){
 	}
 
 	free(respuestaValidar);
-	free(pidKey);
 	free(pedido->direccion);
 	free(pedido);
 }
@@ -238,16 +266,16 @@ void borrarArchivo(char* data, int socket){
 			free(buffer);
 
 			t_package* paqueteBorrar = recibirPaquete(socketFS,NULL);
-			t_respuesta_crear_archivo* respuestaBorrar = deserializar_respuesta_crear_archivo(paqueteBorrar->datos);
+			t_respuesta_borrar_archivo* respuestaBorrar = deserializar_respuesta_borrar_archivo(paqueteBorrar->datos);
 			borrarPaquete(paqueteBorrar);
 
 			switch(respuestaBorrar->codigoRta){
 				case BORRAR_OK:
 					pthread_mutex_lock(&listaArchivosGlobalMutex);
-					list_remove_and_destroy_by_condition(tablaArchivosGlobales,archivo_proceso->globalFD,free);
+					list_remove_and_destroy_element(tablaArchivosGlobales,archivo_proceso->globalFD,free);
 					pthread_mutex_unlock(&listaArchivosGlobalMutex);
 
-					list_remove_by_condition(listaArchivosPorProceso,pedido->fd);
+					list_remove_and_destroy_element(listaArchivosPorProceso,pedido->fd,free);
 					dictionary_put(tablaArchivosPorProceso,pidKey,listaArchivosPorProceso);
 					log_info(logNucleo,"Se borro correctamente el archivo");
 					break;
