@@ -202,6 +202,7 @@ void abrirArchivo(char* data, int socket){
 
 	free(respuestaValidar);
 	free(pedido->direccion);
+	free(pedido->flags);
 	free(pedido);
 }
 

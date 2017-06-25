@@ -127,7 +127,7 @@ void moverA_colaReady(t_pcb *pcb){
 
 	if(processIsForFinish(pcb->pid)){
 		pcb->exit_code=FINALIZAR_BY_CONSOLE;
-		finishProcess(pcb,true);
+		finishProcess(pcb,true,true);
 	}
 
 

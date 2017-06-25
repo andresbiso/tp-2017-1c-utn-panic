@@ -25,7 +25,7 @@ void finalizarProgramaConsola(char*data,int socket){
 	int32_t* pid = malloc(sizeof(int32_t));
 	*pid=atoi(data);
 
-	log_info(logNucleo,"Consola pide terminar el proceso con el PID:%d",pid);
+	log_info(logNucleo,"Consola pide terminar el proceso con el PID:%d",*pid);
 
 	pthread_t hilo;//Se hace con un hilo por si se pausa la planificacion
 	pthread_create(&hilo,NULL,(void*)&finalizarProceso,pid);
@@ -87,14 +87,13 @@ void retornarPCB(char* data,int socket){
 	if(pcb->exit_code<=0){//termino el programa
 
 		log_info(logNucleo,"Programa finalizado desde el socket:%d con el PID:%d",socket,pcb->pid);
-		finishProcess(pcb,true);
+		finishProcess(pcb,true,true);
 	}else{
 		moverA_colaReady(pcb);
 		program_change_running(pcb->pid,false);
 	}
 
 	enviar_a_cpu();
-
 }
 
 void finalizarProceso(void* pidArg){
@@ -112,19 +111,9 @@ void finalizarProceso(void* pidArg){
 
 			pcb = sacarDe_colaReady(*pid);
 			if(pcb!=NULL){//Esta en ready
-				log_info(logNucleo,"Finalizando proceso con PID:%d, que estaba en READY",*pid);
-
-				t_respuesta_finalizar_programa* respuesta = finalizarProcesoMemoria(*pid);
+				log_info(logNucleo,"Finalizando proceso con PID:%d ",*pid);
 				pcb->exit_code=FINALIZAR_BY_CONSOLE;
-				if(respuesta->codigo==OK_FINALIZAR){
-					char* message=string_from_format("Proceso finalizado con exitCode: %d\0",pcb->exit_code);
-					enviarMensajeConsola(message,"LOG_MESSAGE",pcb->pid,consola->socket,1,0);
-					free(message);
-				}
-				eliminarConsolaPorPID(pcb->pid);
-				moverA_colaExit(pcb);
-
-				free(respuesta);
+				finishProcess(pcb,true,false);
 			}else{//Esta bloqueado
 				addForFinishIfNotContains(pid);
 			}
@@ -688,13 +677,13 @@ void respuesta_inicializar_programa(int socket, int socketMemoria, char* codigo)
 			}else{
 				pcb_respuesta->exit_code=FINALIZAR_SIN_RECURSOS;
 
-				finishProcess(pcb_respuesta,true);
+				finishProcess(pcb_respuesta,true,true);
 			}
 			break;
 		case SIN_ESPACIO_INICIALIZAR:
 			pcb_respuesta->exit_code=FINALIZAR_SIN_RECURSOS;
 
-			finishProcess(pcb_respuesta,false);
+			finishProcess(pcb_respuesta,false,true);
 
 			log_warning(logNucleo,"Inicializacion incorrecta del PID %d",respuesta->idPrograma);
 
@@ -762,7 +751,7 @@ bool esta_libre(void * unaCpu){
 	return !(((t_cpu*)unaCpu)->corriendo);
 }
 
-void finishProcess(t_pcb* pcb,bool check_memoria){
+void finishProcess(t_pcb* pcb,bool check_memoria,bool lock){
 	//TODO limpiar heap no liberado y archivos no cerrados
 
 	moverA_colaExit(pcb);
@@ -775,11 +764,17 @@ void finishProcess(t_pcb* pcb,bool check_memoria){
 	if(!check_memoria || respuesta->codigo==OK_FINALIZAR){
 		char* message = string_from_format("Proceso finalizado con exitCode: %d\0",pcb->exit_code);
 
-		pthread_mutex_lock(&mutexProgramasActuales);
+		if(lock){
+			pthread_mutex_lock(&mutexProgramasActuales);
+		}
+
 		t_consola* consola = matchear_consola_por_pid(pcb->pid);
 		enviarMensajeConsola(message,"END_PRGM",pcb->pid,consola->socket,1,0);
 		eliminarConsolaPorPID(pcb->pid);
-		pthread_mutex_unlock(&mutexProgramasActuales);
+
+		if(lock){
+			pthread_mutex_unlock(&mutexProgramasActuales);
+		}
 
 		free(message);
 	}

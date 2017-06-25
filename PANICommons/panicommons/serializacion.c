@@ -833,6 +833,7 @@ t_pedido_abrir_archivo* deserializar_pedido_abrir_archivo(char* pedido_serializa
 
 	memcpy(&pedido->pid,pedido_serializado,sizeof(int32_t));
 	offset+=sizeof(int32_t);
+	pedido->flags=malloc(sizeof(t_banderas));
 	memcpy(&pedido->flags->creacion,pedido_serializado+offset,sizeof(bool));
 	offset+=sizeof(bool);
 	memcpy(&pedido->flags->escritura,pedido_serializado+offset,sizeof(bool));
