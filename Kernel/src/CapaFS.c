@@ -82,6 +82,9 @@ void abrirArchivo(char* data, int socket){
 				list_add(listaArchivosPorProceso,archivos_proceso);
 				dictionary_put(tablaArchivosPorProceso,pid,listaArchivosPorProceso);
 				pthread_mutex_lock(&listaArchivosGlobalMutex);
+
+				respuesta.fd = archivos_proceso->fd;
+				respuesta.codigo = ABRIR_OK;
 				list_add(tablaArchivosGlobales,archivoGlobal);
 				pthread_mutex_unlock(&listaArchivosGlobalMutex);
 			}else{
@@ -160,11 +163,11 @@ void abrirArchivo(char* data, int socket){
 						pthread_mutex_lock(&listaArchivosGlobalMutex);
 						list_add(tablaArchivosGlobales,archivos_global);
 						pthread_mutex_unlock(&listaArchivosGlobalMutex);
-						list_add(listaArchivosPorProceso,archivos_proceso);
-						dictionary_put(tablaArchivosPorProceso,pid,listaArchivosPorProceso);
 
 						respuesta.fd = archivos_proceso->fd;
 						respuesta.codigo = ABRIR_OK;
+						list_add(listaArchivosPorProceso,archivos_proceso);
+						dictionary_put(tablaArchivosPorProceso,pid,listaArchivosPorProceso);
 
 						buffer = serializar_respuesta_abrir_archivo(&respuesta);
 						empaquetarEnviarMensaje(socket,"RES_ABRIR_ARCH",sizeof(t_respuesta_abrir_archivo),buffer);
