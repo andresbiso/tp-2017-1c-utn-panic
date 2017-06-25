@@ -442,9 +442,6 @@ char* serializar_pedido_abrir_archivo(t_pedido_abrir_archivo *pedido);
 char* serializar_respuesta_abrir_archivo(t_respuesta_abrir_archivo* respuesta);
 t_respuesta_abrir_archivo* deserializar_respuesta_abrir_archivo(char* rta);
 
-char* serializar_respuesta_borrar_archivo(t_respuesta_borrar_archivo* rta);
-t_respuesta_borrar_archivo* deserializar_respuesta_borrar_archivo(char* rta);
-
 char* serializar_respuesta_cerrar_archivo(t_respuesta_cerrar_archivo* rta);
 t_respuesta_cerrar_archivo* deserializar_respuesta_cerrar_archivo(char* rta);
 
