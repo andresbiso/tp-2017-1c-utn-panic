@@ -288,6 +288,12 @@ void irAlLabel(t_nombre_etiqueta t_nombre_etiqueta) {
 		return;
 	}
 
+	int tamanioLabel = strlen(t_nombre_etiqueta);
+
+	if(t_nombre_etiqueta[tamanioLabel-1]=='\n'){
+		t_nombre_etiqueta[tamanioLabel-1]='\0';
+	}
+
 	t_puntero_instruccion puntero_instruccion = metadata_buscar_etiqueta(t_nombre_etiqueta, actual_pcb->indice_etiquetas, actual_pcb->tamano_etiquetas);
 	if (puntero_instruccion == -1) {
 		error_en_ejecucion = 1;
