@@ -264,42 +264,50 @@ void borrarArchivo(char* data, int socket){
 
 	if(listaArchivosPorProceso){
 		t_archivos_proceso* archivo_proceso = list_get(listaArchivosPorProceso,pedido->fd);
-		t_archivos_global* archivo_global = list_get(tablaArchivosGlobales,archivo_proceso->globalFD);
 
-		if(archivo_global->open == 1){
-			t_pedido_validar_crear_borrar_archivo_fs pedidoBorrar;
-			pedidoBorrar.tamanio = strlen(archivo_global->file);
-			pedidoBorrar.direccion = malloc(pedidoBorrar.tamanio);
-			memcpy(pedidoBorrar.direccion,archivo_global->file,pedidoBorrar.tamanio);
+		if(archivo_proceso != NULL){
 
-			char* buffer = serializar_pedido_validar_crear_borrar_archivo(&pedidoBorrar);
-			empaquetarEnviarMensaje(socketFS,"BORRAR_ARCH",sizeof(int32_t)+pedidoBorrar.tamanio,buffer);
-			free(buffer);
+			t_archivos_global* archivo_global = list_get(tablaArchivosGlobales,archivo_proceso->globalFD);
+			if(archivo_global->open == 1){
+				t_pedido_validar_crear_borrar_archivo_fs pedidoBorrar;
+				pedidoBorrar.tamanio = strlen(archivo_global->file);
+				pedidoBorrar.direccion = malloc(pedidoBorrar.tamanio);
+				memcpy(pedidoBorrar.direccion,archivo_global->file,pedidoBorrar.tamanio);
 
-			t_package* paqueteBorrar = recibirPaquete(socketFS,NULL);
-			t_respuesta_borrar_archivo* respuestaBorrar = deserializar_respuesta_borrar_archivo(paqueteBorrar->datos);
-			borrarPaquete(paqueteBorrar);
+				char* buffer = serializar_pedido_validar_crear_borrar_archivo(&pedidoBorrar);
+				empaquetarEnviarMensaje(socketFS,"BORRAR_ARCH",sizeof(int32_t)+pedidoBorrar.tamanio,buffer);
+				free(buffer);
 
-			switch(respuestaBorrar->codigoRta){
-				case BORRAR_OK:
+				t_package* paqueteBorrar = recibirPaquete(socketFS,NULL);
+				t_respuesta_borrar_archivo* respuestaBorrar = deserializar_respuesta_borrar_archivo(paqueteBorrar->datos);
+				borrarPaquete(paqueteBorrar);
 
-					list_remove_and_destroy_element(tablaArchivosGlobales,archivo_proceso->globalFD,free);
-					list_remove_and_destroy_element(listaArchivosPorProceso,pedido->fd,free);
+				switch(respuestaBorrar->codigoRta){
+					case BORRAR_OK:
 
-					log_info(logNucleo,"Se borro correctamente el archivo");
-					break;
-				case BORRAR_ERROR:
-					log_error(logNucleo,"No se pudo borrar el archivo");
-					break;
+						list_remove_and_destroy_element(tablaArchivosGlobales,archivo_proceso->globalFD,free);
+						log_info(logNucleo,"Se borro correctamente el archivo GLOBAL FD:%d ",archivo_proceso->globalFD);
+
+						list_remove_and_destroy_element(listaArchivosPorProceso,pedido->fd,free);
+
+						break;
+					case BORRAR_ERROR:
+						log_error(logNucleo,"No se pudo borrar el archivo GLOBAL FD:%d",archivo_global->globalFD);
+						break;
+				}
+				free(respuestaBorrar);
+			}else{
+				log_error(logNucleo,"El archivo GLOBAL FD:%d se encuentra abierto por mas de un proceso",archivo_global->globalFD);
 			}
-			free(respuestaBorrar);
 		}else{
-			log_error(logNucleo,"El archivo se encuentra abierto por mas de un proceso");
+			log_error(logNucleo,"El archivo a borrar nunca fue abierto por el PID: %d",pedido->pid);
 		}
 	}else{
 		log_error(logNucleo,"El archivo a borrar nunca fue abierto por el PID: %d",pedido->pid);
 	}
 	pthread_mutex_unlock(&capaFSMutex);
+
+	//TODO respuesta a CPU
 
 	free(pedido);
 	free(pidKey);
