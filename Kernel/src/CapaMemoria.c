@@ -248,7 +248,7 @@ bool tryAllocate(t_pedido_reservar* pedido,t_respuesta_reservar* respuesta,t_pag
 		memcpy(&metadata.size,(rta_sol_bytes->data)+offset,sizeof(int32_t));
 		offset+=sizeof(int32_t);
 
-		if(metadata.isFree && (metadata.size > pedido->bytes +sizeof(t_heap_metadata))){
+		if(metadata.isFree && (metadata.size >= (pedido->bytes +sizeof(t_heap_metadata)))){
 			int oldOffset=offset-sizeof(t_heap_metadata);
 
 			respuesta->puntero=(pag_heap->nroPagina*tamanio_pag_memoria)+offset;
@@ -348,7 +348,7 @@ void reservar(void* data,int socket){
 		if(respuesta.puntero != -1){
 
 			bool pageWithSpace(void* elem){
-				return ((t_pagina_heap*)elem)->espacioDisponible>(pedido->bytes +sizeof(t_heap_metadata));
+				return ((t_pagina_heap*)elem)->espacioDisponible>=(pedido->bytes +sizeof(t_heap_metadata));
 			}
 
 			int index=0;
@@ -367,6 +367,9 @@ void reservar(void* data,int socket){
 						respuesta.codigo = RESERVAR_SIN_ESPACIO;
 						break;
 					}
+					list_destroy(all_pages_with_space);
+					all_pages_with_space = list_filter(paginas_proceso->paginas,pageWithSpace);
+					pag_heap = list_get(all_pages_with_space,index);
 				}
 			}
 
