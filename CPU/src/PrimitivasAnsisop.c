@@ -306,16 +306,97 @@ void irAlLabel(t_nombre_etiqueta t_nombre_etiqueta) {
 	return;
 }
 void llamarSinRetorno(t_nombre_etiqueta etiqueta) {
+	if (error_en_ejecucion) {
+			return;
+	}
 
+	actual_pcb->cant_entradas_indice_stack++;
+	int tamanio_stack = actual_pcb->cant_entradas_indice_stack;
+	actual_pcb->indice_stack = realloc(actual_pcb->indice_stack,sizeof(registro_indice_stack)*tamanio_stack);
+
+	// tamanio_stack - 1 = a nuevo registro de indice agregado
+	registro_indice_stack* stack_actual = &actual_pcb->indice_stack[tamanio_stack-1];
+	stack_actual->cant_argumentos=0;
+	stack_actual->cant_variables=0;
+	stack_actual->argumentos = NULL;
+	stack_actual->variables = NULL;
+	stack_actual->pos_retorno = actual_pcb->pc;
+	stack_actual->pos_var_retorno.pag = -1;
+	stack_actual->pos_var_retorno.offset = -1;
+	stack_actual->pos_var_retorno.size = -1;
+
+	log_info(cpu_log,"Llamando a funcion: %s sin retorno", etiqueta);
+
+	irAlLabel(etiqueta);
 }
 void llamarConRetorno(t_nombre_etiqueta etiqueta, t_puntero donde_retornar) {
+	if (error_en_ejecucion) {
+			return;
+	}
 
+	actual_pcb->cant_entradas_indice_stack++;
+	int tamanio_stack = actual_pcb->cant_entradas_indice_stack;
+	actual_pcb->indice_stack = realloc(actual_pcb->indice_stack,sizeof(registro_indice_stack)*tamanio_stack);
+
+	// tamanio_stack - 1 = a nuevo registro de indice agregado
+	registro_indice_stack* stack_actual = &actual_pcb->indice_stack[tamanio_stack-1];
+	stack_actual->cant_argumentos=0;
+	stack_actual->cant_variables=0;
+	stack_actual->argumentos = NULL;
+	stack_actual->variables = NULL;
+	stack_actual->pos_retorno = actual_pcb->pc;
+	stack_actual->pos_var_retorno = pos_logica_a_fisica(donde_retornar);
+
+	log_info(cpu_log,"Llamando a funcion: %s con retorno a: %d", etiqueta, donde_retornar);
+
+	irAlLabel(etiqueta);
 }
 void finalizar(void) {
+	if (error_en_ejecucion) {
+			return;
+	}
 
+	int tamanio_stack = actual_pcb->cant_entradas_indice_stack;
+	registro_indice_stack* stack_actual = &actual_pcb->indice_stack[tamanio_stack-1];
+	if (tamanio_stack-- != 0) {
+		actual_pcb->pc = stack_actual->pos_retorno;
+		if (stack_actual->pos_var_retorno.pag != -1) {
+			int posicion_logica = pos_fisica_a_logica(stack_actual->pos_var_retorno);
+			int valor_variable = dereferenciar(posicion_logica);
+			retornar(valor_variable);
+			log_info(cpu_log,"Finalizo funcion con retorno");
+			log_info(cpu_log,"Regreso a intruccion: %d", actual_pcb->pc);
+			return;
+		}
+		actual_pcb->cant_entradas_indice_stack--;
+		tamanio_stack = actual_pcb->cant_entradas_indice_stack;
+		actual_pcb->indice_stack = realloc(actual_pcb->indice_stack,sizeof(registro_indice_stack)*tamanio_stack);
+		log_info(cpu_log,"Finalizo funcion sin retorno");
+		log_info(cpu_log,"Regreso a intruccion: %d", actual_pcb->pc);
+		return;
+	}
+	actual_pcb->cant_entradas_indice_stack--;
+	tamanio_stack = actual_pcb->cant_entradas_indice_stack;
+	actual_pcb->indice_stack = realloc(actual_pcb->indice_stack,sizeof(registro_indice_stack)*tamanio_stack);
+	log_info(cpu_log,"Finalizo ejecucion programa");
+	return;
 }
 void retornar(t_valor_variable retorno) {
+	log_info(cpu_log,"Valor retorno de la funcion: %d", retorno);
 
+	int tamanio_stack = actual_pcb->cant_entradas_indice_stack;
+	registro_indice_stack* stack_actual = &actual_pcb->indice_stack[tamanio_stack-1];
+
+	t_posMemoria pos_retorno = stack_actual->pos_var_retorno;
+	t_puntero pos_retorno_logica = pos_fisica_a_logica(pos_retorno);
+
+	asignar(pos_retorno_logica,retorno);
+
+	actual_pcb->cant_entradas_indice_stack--;
+	tamanio_stack = actual_pcb->cant_entradas_indice_stack;
+	actual_pcb->indice_stack = realloc(actual_pcb->indice_stack,sizeof(registro_indice_stack)*tamanio_stack);
+
+	return;
 }
 
 // AnSISOP_kernel
