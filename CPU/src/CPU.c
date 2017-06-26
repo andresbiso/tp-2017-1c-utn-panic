@@ -40,13 +40,24 @@ void correrPCB(char* pcb, int socket){
 	ejecutarPrograma();
 	if (!proceso_bloqueado) {
 		t_pcb_serializado* paqueteSerializado = serializar_pcb(actual_pcb);
-		empaquetarEnviarMensaje(socketKernel, "RET_PCB", paqueteSerializado->tamanio, paqueteSerializado->contenido_pcb);
+
+		t_retornar_pcb retornar;
+		retornar.pcb = actual_pcb;
+		retornar.rafagasEjecutadas=rafagas_ejecutadas;
+
+		char* buffer = serializar_retornar_pcb(&retornar,paqueteSerializado);
+
+		empaquetarEnviarMensaje(socketKernel, "RET_PCB", paqueteSerializado->tamanio+sizeof(int32_t), buffer);
 		log_info(cpu_log,"Finaliza procesamiento PCB del PID:%d",actual_pcb->pid);
+
+		free(buffer);
 		free(paqueteSerializado->contenido_pcb);
 		free(paqueteSerializado);
 	}
 	error_en_ejecucion = 0;
 	proceso_bloqueado = 0;
+	rafagas_ejecutadas = 0;
+
 	destruir_pcb(actual_pcb);
 }
 
@@ -59,7 +70,10 @@ void ejecutarPrograma() {
 		pedido->pagina = actual_pcb->indice_codigo[actual_pcb->pc].pag;
 		pedido->offsetPagina = actual_pcb->indice_codigo[actual_pcb->pc].offset;
 		pedido->tamanio = actual_pcb->indice_codigo[actual_pcb->pc].size;
+
 		actual_pcb->pc++;
+		rafagas_ejecutadas++;
+
 		char* buffer =  serializar_pedido_solicitar_bytes(pedido);
 		int longitudMensaje = sizeof(t_pedido_solicitar_bytes);
 		if(!empaquetarEnviarMensaje(socketMemoria, "SOLC_BYTES", longitudMensaje, buffer)) {
@@ -143,6 +157,9 @@ int main(int argc, char** argv) {
 	}
 	t_config* configFile = cargarConfiguracion(argv[1]);
 	quantum=0;//Arranca en 0 porque si es fifo kernel no manda el quantum
+	error_en_ejecucion = 0;
+	proceso_bloqueado = 0;
+	rafagas_ejecutadas = 0;
 
 	printf("PUERTO KERNEL: %d\n",puertoKernel);
 	printf("IP KERNEL: %s\n",ipKernel);

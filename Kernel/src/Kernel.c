@@ -71,27 +71,31 @@ void addForFinishIfNotContains(int32_t* pid){
 }
 
 void retornarPCB(char* data,int socket){
-	t_pcb* pcb = deserializar_pcb(data);
+	t_retornar_pcb* retornar = deserializar_retornar_pcb(data);
 
-	log_info(logNucleo,"El socket cpu %d retorno el PID %d",socket,pcb->pid);
+	agregarRafagas(retornar->pcb->pid,retornar->rafagasEjecutadas);
 
-	t_pcb* pcbOld = sacarDe_colaExec(pcb->pid);
+	log_info(logNucleo,"El socket cpu %d retorno el PID %d",socket,retornar->pcb->pid);
+
+	t_pcb* pcbOld = sacarDe_colaExec(retornar->pcb->pid);
 	destruir_pcb(pcbOld);
 
 	cpu_change_running(socket,false);
 
-	if(processIsForFinish(pcb->pid) && pcb->exit_code>0){
-		pcb->exit_code=FINALIZAR_BY_CONSOLE;
+	if(processIsForFinish(retornar->pcb->pid) && retornar->pcb->exit_code>0){
+		retornar->pcb->exit_code=FINALIZAR_BY_CONSOLE;
 	}
 
-	if(pcb->exit_code<=0){//termino el programa
+	if(retornar->pcb->exit_code<=0){//termino el programa
 
-		log_info(logNucleo,"Programa finalizado desde el socket:%d con el PID:%d",socket,pcb->pid);
-		finishProcess(pcb,true,true);
+		log_info(logNucleo,"Programa finalizado desde el socket:%d con el PID:%d",socket,retornar->pcb->pid);
+		finishProcess(retornar->pcb,true,true);
 	}else{
-		moverA_colaReady(pcb);
-		program_change_running(pcb->pid,false);
+		moverA_colaReady(retornar->pcb);
+		program_change_running(retornar->pcb->pid,false);
 	}
+
+	free(retornar);
 
 	enviar_a_cpu();
 }

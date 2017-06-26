@@ -41,6 +41,7 @@ t_pcb* actual_pcb;
 FuncionesAnsisop* funcionesParser;
 
 int error_en_ejecucion;
+int rafagas_ejecutadas;
 int proceso_bloqueado;
 int pagesize;
 
