@@ -48,6 +48,15 @@ typedef struct{
 	int32_t exit_code;
 }__attribute__((__packed__)) t_pcb;
 
+
+
+typedef struct{
+	int32_t rafagasEjecutadas;
+	bool desconectar;
+	t_pcb* pcb;
+}__attribute__((__packed__)) t_retornar_pcb;
+
+
 typedef struct{
 	char* contenido_pcb;
 	int32_t tamanio;
@@ -219,6 +228,7 @@ typedef struct
 } __attribute__((__packed__)) t_respuesta_borrar_archivo;
 
 typedef struct{
+	int32_t rafagas;
 	int32_t tamanio;
 	char* semId;
 	t_pcb* pcb;
@@ -451,6 +461,9 @@ char* serializar_pedido_cerrar_archivo(t_pedido_cerrar_archivo *pedido);
 
 t_pedido_borrar_archivo* deserializar_pedido_borrar_archivo(char* pedido_serializado);
 char* serializar_pedido_borrar_archivo(t_pedido_borrar_archivo *pedido);
+
+t_retornar_pcb* deserializar_retornar_pcb(char* data);
+char* serializar_retornar_pcb(t_retornar_pcb* pedido,t_pcb_serializado* pcb_serializado);
 
 //Kernel
 

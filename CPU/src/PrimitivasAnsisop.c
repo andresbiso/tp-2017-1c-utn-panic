@@ -1,8 +1,5 @@
 #include "PrimitivasAnsisop.h"
 
-#include <stdbool.h>
-#include <sys/types.h>
-
 t_puntero pos_fisica_a_logica(t_posMemoria posfisica){
 	return posfisica.pag*pagesize+posfisica.offset;
 }
@@ -408,11 +405,12 @@ void waitAnsisop(t_nombre_semaforo identificador_semaforo) {
 	t_pedido_wait pedido;
 	pedido.pcb=actual_pcb;
 	pedido.tamanio=strlen(identificador_semaforo);
+	pedido.rafagas=rafagas_ejecutadas;
 	pedido.semId=malloc(strlen(identificador_semaforo));
 	memcpy(pedido.semId,identificador_semaforo,strlen(identificador_semaforo));
 
 	char *buffer = serializar_pedido_wait(&pedido);
-	empaquetarEnviarMensaje(socketKernel,"WAIT",sizeof(int32_t)+pedido.tamanio+tamanio_pcb(pedido.pcb),buffer);
+	empaquetarEnviarMensaje(socketKernel,"WAIT",(sizeof(int32_t)*2)+pedido.tamanio+tamanio_pcb(pedido.pcb),buffer);
 	free(buffer);
 	free(pedido.semId);
 

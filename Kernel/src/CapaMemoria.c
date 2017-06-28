@@ -98,6 +98,8 @@ void wait(char* data,int socket){
 
 			cpu_change_running(socket,false);
 			program_change_running(pedido->pcb->pid,false);
+
+			agregarRafagas(pedido->pcb->pid,pedido->rafagas);
 		}else{
 			log_info(logNucleo,"El SEM:%s queda con valor:%d y no se bloquea al PID:%d",pedido->semId,sem->valor,pedido->pcb->pid);
 			respuesta.respuesta=WAIT_OK;

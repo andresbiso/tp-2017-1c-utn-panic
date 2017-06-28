@@ -121,5 +121,6 @@ void agregarRafagas(int32_t pid,int32_t rafagas);
 void agregarLiberar(int32_t pid,int32_t bytes);
 void agregarReservar(int32_t pid,int32_t bytes);
 void agregarPagHeap(int32_t pid);
+void desconectarCPU(int socket);
 
 #endif /* SRC_ESTADOS_H_ */
