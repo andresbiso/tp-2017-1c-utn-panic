@@ -52,6 +52,7 @@ typedef struct{
 
 typedef struct{
 	int32_t rafagasEjecutadas;
+	bool desconectar;
 	t_pcb* pcb;
 }__attribute__((__packed__)) t_retornar_pcb;
 

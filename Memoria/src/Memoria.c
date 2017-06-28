@@ -402,6 +402,8 @@ int asignarPaginasPID(int32_t pid,int32_t paginasRequeridas,bool isNew){
 		return 1;
 	}else{
 		pthread_mutex_unlock(&mutexMemoriaPrincipal);
+		free(pagLibres);
+
 		return 0;
 	}
 

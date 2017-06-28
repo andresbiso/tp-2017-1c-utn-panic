@@ -1,8 +1,5 @@
 #include "PrimitivasAnsisop.h"
 
-#include <stdbool.h>
-#include <sys/types.h>
-
 t_puntero pos_fisica_a_logica(t_posMemoria posfisica){
 	return posfisica.pag*pagesize+posfisica.offset;
 }

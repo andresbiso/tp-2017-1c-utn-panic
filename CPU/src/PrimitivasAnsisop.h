@@ -11,6 +11,13 @@
 #include <panicommons/panisocket.h>
 #include <commons/config.h>
 #include <commons/log.h>
+#include <signal.h>
+#include <commons/collections/dictionary.h>
+#include <commons/string.h>
+#include <stdbool.h>
+#include <string.h>
+#include <sys/types.h>
+#include <unistd.h>
 
 /*typedef struct entrada_salida{
 	t_nombre_dispositivo dispositivo;

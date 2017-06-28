@@ -82,6 +82,9 @@ void retornarPCB(char* data,int socket){
 
 	cpu_change_running(socket,false);
 
+	if(retornar->desconectar)
+		desconectarCPU(socket);
+
 	if(processIsForFinish(retornar->pcb->pid) && retornar->pcb->exit_code>0){
 		retornar->pcb->exit_code=FINALIZAR_BY_CONSOLE;
 	}
@@ -869,6 +872,34 @@ void enviar_a_cpu(){
 	free(serializado);
 }
 
+void finishCPU(char* data, int socketCPU){
+	log_info(logNucleo,"Recibi un mensaje de la CPU %d para desconectarse",socketCPU);
+	desconectarCPU(socketCPU);
+}
+
+void desconectarCPU(int socket){
+
+	pthread_mutex_lock(&mutexCPUConectadas);
+
+	bool matchCPU(void* elem){
+		return (((t_cpu*)elem)->socket==socket) && (!((t_cpu*)elem)->corriendo);
+	}
+
+	t_cpu* cpu = list_find(lista_cpus_conectadas,matchCPU);
+
+	if(cpu!=NULL){
+		list_remove_and_destroy_by_condition(lista_cpus_conectadas,matchCPU,free);
+
+		empaquetarEnviarMensaje(socket,"FINISH_CPU",10,"FINISH_CPU");
+
+		log_info(logNucleo,"La CPU %d ha sido desconectada",socketCPU);
+	}else{
+		log_info(logNucleo,"La CPU %d esta corriendo o ya no se encuentra conectada",socketCPU);
+	}
+
+	pthread_mutex_unlock(&mutexCPUConectadas);
+}
+
 /* STATS */
 
 void crearStats(int32_t pid){
@@ -1017,6 +1048,7 @@ int main(int argc, char** argv) {
     dictionary_put(diccionarioFunciones,"ABRIR_ARCH",&abrirArchivo);
     dictionary_put(diccionarioFunciones,"CERRAR_ARCH",&cerrarArchivo);
     dictionary_put(diccionarioFunciones,"BORRAR_ARCH",&borrarArchivo);
+    dictionary_put(diccionarioFunciones,"FINISH_CPU",&finishCPU);
 
     t_dictionary* diccionarioHandshakes = dictionary_create();
     dictionary_put(diccionarioHandshakes,"HCPKE","HKECP");

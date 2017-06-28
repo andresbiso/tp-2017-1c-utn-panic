@@ -1081,6 +1081,8 @@ t_retornar_pcb* deserializar_retornar_pcb(char* data){
 
 	memcpy(&retornar->rafagasEjecutadas,data,sizeof(int32_t));
 	offset+=sizeof(int32_t);
+	memcpy(&retornar->desconectar,data+offset,sizeof(bool));
+	offset+=sizeof(bool);
 	retornar->pcb=deserializar_pcb(data+offset);
 
 	return retornar;
@@ -1088,12 +1090,14 @@ t_retornar_pcb* deserializar_retornar_pcb(char* data){
 
 char* serializar_retornar_pcb(t_retornar_pcb* pedido,t_pcb_serializado* pcb_serializado){
 
-	char* data = malloc(sizeof(int32_t)+pcb_serializado->tamanio);
+	char* data = malloc(sizeof(int32_t)+sizeof(bool)+pcb_serializado->tamanio);
 
 	int offset=0;
 
 	memcpy(data,&pedido->rafagasEjecutadas,sizeof(int32_t));
 	offset+=sizeof(int32_t);
+	memcpy(data+offset,&pedido->desconectar,sizeof(bool));
+	offset+=sizeof(bool);
 	memcpy(data+offset,pcb_serializado->contenido_pcb,pcb_serializado->tamanio);
 
 	return data;
