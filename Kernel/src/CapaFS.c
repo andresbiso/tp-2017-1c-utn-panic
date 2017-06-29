@@ -588,10 +588,10 @@ void cleanFilesOpen(int32_t pid){
 
 		int32_t archivosAbiertos=0;
 
-		void fileDestroy(void* elem){
+		void fileDestroy(void* elem1){
 
 			bool matchFileGlobal(void* elem){
-				return ((t_archivos_global*)elem)->globalFD==((t_archivos_proceso*)elem)->globalFD;
+				return ((t_archivos_global*)elem)->globalFD==((t_archivos_proceso*)elem1)->globalFD;
 			}
 
 			t_archivos_global* archivoGlobal= list_find(tablaArchivosGlobales,matchFileGlobal);
@@ -602,12 +602,11 @@ void cleanFilesOpen(int32_t pid){
 				list_remove_and_destroy_by_condition(tablaArchivosGlobales,matchFileGlobal,destroyArchivoGlobal);
 			}
 
-			free(((t_archivos_proceso*)elem)->flags);
-			free(((t_archivos_proceso*)elem));
+			free(((t_archivos_proceso*)elem1)->flags);
+			free(((t_archivos_proceso*)elem1));
 
 			archivosAbiertos++;
 		}
-
 		list_destroy_and_destroy_elements(listaArchivosPorProceso,fileDestroy);
 
 		dictionary_remove(tablaArchivosPorProceso,pidKey);

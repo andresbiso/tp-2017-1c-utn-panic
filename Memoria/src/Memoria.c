@@ -205,9 +205,11 @@ void cacheMiss(int32_t pid, int32_t nroPagina,char* contenido){
 		menorEntradas = getCacheMinorEntradas(lista);
 	}
 
-	log_info(logFile,"Se selecciona como victima PID:%d PAG:%d ",menorEntradas->pid,menorEntradas->nroPagina);
-	findAndReplaceInCache(menorEntradas->pid,menorEntradas->nroPagina,pid,nroPagina,contenido);
-	replaceEntradaCache(menorEntradas->pid,menorEntradas->nroPagina,pid,nroPagina);
+	if(menorEntradas){
+		log_info(logFile,"Se selecciona como victima PID:%d PAG:%d ",menorEntradas->pid,menorEntradas->nroPagina);
+		findAndReplaceInCache(menorEntradas->pid,menorEntradas->nroPagina,pid,nroPagina,contenido);
+		replaceEntradaCache(menorEntradas->pid,menorEntradas->nroPagina,pid,nroPagina);
+	}
 
 	if(lista!=NULL)
 		list_destroy(lista);
