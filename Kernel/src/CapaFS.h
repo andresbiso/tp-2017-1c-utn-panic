@@ -35,5 +35,10 @@ typedef struct {
 void abrirArchivo(char* data, int socket);
 void cerrarArchivo(char* data, int socket);
 void borrarArchivo(char* data, int socket);
+void moverCursor(char* data, int socket);
+void leerArchivo(char* data, int socket);
+void escribirArchivo(char* data, int socket);
+void destroyArchivoGlobal(void* elem);
+void destroyArchivoProceso(void* elem);
 
 #endif /* SRC_CAPAFS_H_ */

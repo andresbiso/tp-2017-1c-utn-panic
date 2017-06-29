@@ -41,5 +41,6 @@ void signal(char* data,int socket);
 void reservar(void* data,int socket);
 void liberar(void* data,int socket);
 void removePaginaHeap(int32_t pid, int32_t pagina);
+void cleanMemoriaHeap(int32_t pid);
 
 #endif /* SRC_CAPAMEMORIA_H_ */

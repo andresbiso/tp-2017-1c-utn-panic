@@ -568,4 +568,35 @@ void removePaginaHeap(int32_t pid, int32_t pagina){
 	free(pidKey);
 }
 
+void cleanMemoriaHeap(int32_t pid){
+
+	char* pidKey = string_itoa(pid);
+
+	pthread_mutex_lock(&mutexMemoriaHeap);
+
+	t_paginas_proceso* paginas_proceso = dictionary_get(paginasGlobalesHeap,pidKey);
+
+	if(paginas_proceso!=NULL){
+		int32_t memoryLeak=0;
+
+		void destroyPage(void* elem){
+
+			int32_t espacioAlocado = tamanio_pag_memoria-((t_pagina_heap*)elem)->espacioDisponible-sizeof(t_heap_metadata);
+			memoryLeak+=espacioAlocado;
+			free(elem);
+		}
+
+		list_destroy_and_destroy_elements(paginas_proceso->paginas,destroyPage);
+
+		log_info(logNucleo,"El PID:%d dejo alocado %d bytes",pid,memoryLeak);
+		free(paginas_proceso);
+	}
+
+	pthread_mutex_unlock(&mutexMemoriaHeap);
+
+	free(pidKey);
+
+}
+
+
 //Capa de memoria

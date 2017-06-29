@@ -359,6 +359,41 @@ typedef struct
 	codigo_escribir_archivo codigoRta;
 } __attribute__((__packed__)) t_respuesta_pedido_escritura;
 
+typedef struct
+{
+	int32_t pid;
+	int32_t fd;
+	int32_t posicion;
+} __attribute__((__packed__)) t_pedido_mover_cursor;
+
+typedef enum{MOVER_OK=1, MOVER_ERROR=-1} codigo_mover_cursor;
+
+typedef struct
+{
+	codigo_mover_cursor codigo;
+} __attribute__((__packed__)) t_respuesta_mover_cursor;
+
+typedef struct{
+	int32_t pid;
+	int32_t fd;
+	void* informacion;
+	int32_t tamanio;
+}t_pedido_escribir;
+
+typedef enum{ESCRITURA_OK=1, ESCRITURA_ERROR=-1, ESCRITURA_SIN_ESPACIO=-2, ESCRITURA_BLOCKED=-3} codigo_respuesta_escribir;
+
+typedef struct
+{
+	codigo_respuesta_escribir codigo;
+} __attribute__((__packed__)) t_respuesta_escribir;
+
+typedef enum{BORRADO_OK=1, BORRADO_ERROR=-1, BORRADO_BLOCKED=-2} codigo_respuesta_borrar;
+
+typedef struct
+{
+	codigo_respuesta_borrar codigo;
+} __attribute__((__packed__)) t_respuesta_borrar;
+
 t_pcb_serializado* serializar_pcb(t_pcb* pcb);
 t_pcb* deserializar_pcb(char* pcbs);
 
@@ -464,6 +499,21 @@ char* serializar_pedido_borrar_archivo(t_pedido_borrar_archivo *pedido);
 
 t_retornar_pcb* deserializar_retornar_pcb(char* data);
 char* serializar_retornar_pcb(t_retornar_pcb* pedido,t_pcb_serializado* pcb_serializado);
+
+char* serializar_pedido_mover_cursor(t_pedido_mover_cursor* pedido);
+t_pedido_mover_cursor* deserializar_pedido_mover_cursor(char* pedido_serializado);
+
+char* serializar_respuesta_mover_cursor(t_respuesta_mover_cursor* rta);
+t_respuesta_mover_cursor* deserializar_respuesta_mover_cursor(char* respuesta_serializada);
+
+char* serializar_pedido_escribir_archivo(t_pedido_escribir* pedido);
+t_pedido_escribir* deserializar_pedido_escribir_archivo(char* pedido_serializado);
+
+char* serializar_respuesta_escribir_archivo(t_respuesta_escribir* rta);
+t_respuesta_escribir* deserializar_respuesta_escribir_archivo(char* respuesta_serializada);
+
+char* serializar_respuesta_borrar(t_respuesta_borrar* rta);
+t_respuesta_borrar* deserializar_respuesta_borrar(char* respuesta_serializada);
 
 //Kernel
 
