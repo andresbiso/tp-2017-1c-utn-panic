@@ -1048,6 +1048,9 @@ int main(int argc, char** argv) {
     dictionary_put(diccionarioFunciones,"ABRIR_ARCH",&abrirArchivo);
     dictionary_put(diccionarioFunciones,"CERRAR_ARCH",&cerrarArchivo);
     dictionary_put(diccionarioFunciones,"BORRAR_ARCH",&borrarArchivo);
+    dictionary_put(diccionarioFunciones,"LEER_ARCH",&leerArchivo);
+    dictionary_put(diccionarioFunciones,"ESCRIBIR_ARCH",&escribirArchivo);
+    dictionary_put(diccionarioFunciones,"MOVER_CURSOR",&moverCursor);
     dictionary_put(diccionarioFunciones,"FINISH_CPU",&finishCPU);
 
     t_dictionary* diccionarioHandshakes = dictionary_create();
@@ -1086,7 +1089,7 @@ int main(int argc, char** argv) {
     sem_init(&grado, 0, GradoMultiprog);
 
     ultimoPID = 1;
-    ultimoGlobalFD = 4;
+    ultimoGlobalFD = 0;
 
     if ((socketMemoria = conectar(IpMemoria,PuertoMemoria)) == -1)
     	exit(EXIT_FAILURE);

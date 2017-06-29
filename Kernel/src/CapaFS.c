@@ -254,6 +254,8 @@ void cerrarArchivo(char* data, int socket){
 void borrarArchivo(char* data, int socket){
 	t_pedido_borrar_archivo* pedido = deserializar_pedido_borrar_archivo(data);
 
+	t_respuesta_borrar respuesta;
+
 	agregarSyscall(pedido->pid);
 
 	char* pidKey = string_itoa(pedido->pid);
@@ -265,9 +267,9 @@ void borrarArchivo(char* data, int socket){
 	if(listaArchivosPorProceso){
 		t_archivos_proceso* archivo_proceso = list_get(listaArchivosPorProceso,pedido->fd);
 
-		if(archivo_proceso != NULL){
-
+		if(archivo_proceso){
 			t_archivos_global* archivo_global = list_get(tablaArchivosGlobales,archivo_proceso->globalFD);
+
 			if(archivo_global->open == 1){
 				t_pedido_validar_crear_borrar_archivo_fs pedidoBorrar;
 				pedidoBorrar.tamanio = strlen(archivo_global->file);
@@ -284,31 +286,237 @@ void borrarArchivo(char* data, int socket){
 
 				switch(respuestaBorrar->codigoRta){
 					case BORRAR_OK:
-
 						list_remove_and_destroy_element(tablaArchivosGlobales,archivo_proceso->globalFD,free);
-						log_info(logNucleo,"Se borro correctamente el archivo GLOBAL FD:%d ",archivo_proceso->globalFD);
-
 						list_remove_and_destroy_element(listaArchivosPorProceso,pedido->fd,free);
+						log_info(logNucleo,"Se borro correctamente el archivo GLOBAL FD: %d ",archivo_proceso->globalFD);
 
+						respuesta.codigo = BORRADO_OK;
 						break;
 					case BORRAR_ERROR:
-						log_error(logNucleo,"No se pudo borrar el archivo GLOBAL FD:%d",archivo_global->globalFD);
+						log_error(logNucleo,"No se pudo borrar el archivo GLOBAL FD: %d",archivo_global->globalFD);
+						respuesta.codigo = BORRADO_ERROR;
 						break;
 				}
 				free(respuestaBorrar);
 			}else{
-				log_error(logNucleo,"El archivo GLOBAL FD:%d se encuentra abierto por mas de un proceso",archivo_global->globalFD);
+				log_error(logNucleo,"El archivo GLOBAL FD: %d se encuentra abierto por mas de un proceso",archivo_global->globalFD);
+				respuesta.codigo = BORRADO_BLOCKED;
 			}
 		}else{
 			log_error(logNucleo,"El archivo a borrar nunca fue abierto por el PID: %d",pedido->pid);
+			respuesta.codigo = BORRADO_ERROR;
 		}
 	}else{
 		log_error(logNucleo,"El archivo a borrar nunca fue abierto por el PID: %d",pedido->pid);
+		respuesta.codigo = BORRADO_ERROR;
 	}
 	pthread_mutex_unlock(&capaFSMutex);
 
-	//TODO respuesta a CPU
+	char* buffer = serializar_respuesta_borrar(&respuesta);
+	empaquetarEnviarMensaje(socket,"RES_BORRAR_ARCH",sizeof(int32_t),buffer);
+	free(buffer);
 
+	free(pedido);
+	free(pidKey);
+}
+
+void moverCursor(char* data, int socket){
+	t_pedido_mover_cursor* pedido = deserializar_pedido_mover_cursor(data);
+
+	t_respuesta_mover_cursor respuesta;
+
+	agregarSyscall(pedido->pid);
+
+	char* pidKey = string_itoa(pedido->pid);
+
+	pthread_mutex_lock(&capaFSMutex);
+
+	t_list* listaArchivosPorProceso = dictionary_get(tablaArchivosPorProceso,pidKey);
+
+	if(listaArchivosPorProceso){
+		t_archivos_proceso* archivo_proceso = list_get(listaArchivosPorProceso,pedido->fd);
+
+		if(archivo_proceso){
+			archivo_proceso->cursor += pedido->posicion;
+			log_info(logNucleo,"Se movio la posicion del cursor en %d posiciones",pedido->posicion);
+			respuesta.codigo = MOVER_OK;
+		}else{
+			respuesta.codigo = MOVER_ERROR;
+			log_error(logNucleo,"No se pudo mover la posicion del cursor");
+		}
+	}else{
+		respuesta.codigo = MOVER_ERROR;
+		log_error(logNucleo,"El archivo nunca fue abierto por el PID: %d",pedido->pid);
+	}
+
+	char* buffer = serializar_respuesta_mover_cursor(&respuesta);
+	empaquetarEnviarMensaje(socket,"RES_MOVER_CURSOR",sizeof(t_respuesta_mover_cursor),buffer);
+	free(buffer);
+
+	pthread_mutex_unlock(&capaFSMutex);
+
+	free(pedido);
+	free(pidKey);
+}
+
+void leerArchivo(char* data, int socket){
+    t_pedido_leer* pedido = deserializar_pedido_leer_archivo(data);
+ 
+    t_pedido_lectura_datos pedidoLectura;
+
+    t_respuesta_leer respuesta;
+ 
+    agregarSyscall(pedido->pid);
+ 
+    char* pidKey = string_itoa(pedido->pid);
+ 
+    pthread_mutex_lock(&capaFSMutex);
+ 
+    t_list* listaArchivosPorProceso = dictionary_get(tablaArchivosPorProceso,pidKey);
+ 
+    if(listaArchivosPorProceso){
+        t_archivos_proceso* archivo_proceso = list_get(listaArchivosPorProceso,pedido->descriptor_archivo);
+ 
+        if(archivo_proceso){
+            t_archivos_global* archivo_global = list_get(tablaArchivosGlobales,archivo_proceso->globalFD);
+ 
+            if(string_contains(archivo_proceso->flags,"r")){
+            	pedidoLectura.tamanioRuta = strlen(archivo_global->file);
+            	pedidoLectura.ruta = malloc(pedidoLectura.tamanioRuta);
+            	memcpy(pedidoLectura.ruta,archivo_global->file,pedidoLectura.tamanioRuta);
+            	pedidoLectura.tamanio = pedido->tamanio;
+            	pedidoLectura.offset = archivo_proceso->cursor;
+ 
+            	char* buffer = serializar_pedido_lectura_datos(&pedidoLectura);
+            	empaquetarEnviarMensaje(socketFS,"LEER_ARCH",sizeof(int32_t)*3+pedidoLectura.tamanioRuta,buffer);
+            	free(buffer);
+
+            	t_package* paqueteLeer = recibirPaquete(socketFS,NULL);
+            	t_respuesta_pedido_lectura* respuestaLeer = deserializar_respuesta_pedido_lectura(paqueteLeer->datos);
+            	borrarPaquete(paqueteLeer);
+
+            	switch(respuestaLeer->codigo){
+            		case LECTURA_OK:
+            			log_info(logNucleo,"Se leyo correctamente el archivo GLOBAL FD: %d",archivo_global->globalFD);
+            			respuesta.codigo = LEER_OK;
+            			respuesta.tamanio = respuestaLeer->tamanio;
+            			respuesta.informacion = malloc(respuesta.tamanio);
+            			memcpy(respuesta.informacion,respuestaLeer->datos,respuesta.tamanio);
+            			break;
+            		case LECTURA_ERROR: //TODO en CPU finalizar el proceso
+            			log_error(logNucleo,"No se pudo leer el archivo GLOBAL FD: %d",archivo_global->globalFD);
+            			respuesta.codigo = LEER_BLOCKED;
+            			respuesta.informacion = "LEER_ERROR";
+            			respuesta.tamanio = strlen("LEER_ERROR");
+            			break;
+            	}
+            	free(respuestaLeer->datos);
+            	free(respuestaLeer);
+            }else{
+            	respuesta.codigo = LEER_BLOCKED;
+            	respuesta.informacion = "LEER_ERROR";
+            	respuesta.tamanio = strlen("LEER_ERROR");
+            	log_error(logNucleo,"El archivo GLOBAL FD: %d no fue abierto con permisos de lectura",archivo_global->globalFD); //TODO en CPU finalizar el proceso
+            }
+        }else{
+        	respuesta.codigo = LEER_NO_EXISTE;
+        	respuesta.informacion = "NO_EXISTE_ARCHIVO";
+        	respuesta.tamanio = strlen("NO_EXISTE_ARCHIVO");
+        	log_error(logNucleo,"El archivo a leer nunca fue abierto por el PID: %d",pedido->pid);
+        }
+    }else{
+    	respuesta.codigo = LEER_NO_EXISTE;
+    	respuesta.informacion = "NO_EXISTE_ARCHIVO";
+    	respuesta.tamanio = strlen("NO_EXISTE_ARCHIVO");
+    	log_error(logNucleo,"El archivo a leer nunca fue abierto por el PID: %d",pedido->pid);
+    }
+
+    char* buffer = serializar_respuesta_leer_archivo(&respuesta);
+    empaquetarEnviarMensaje(socket,"RES_LEER_ARCH",sizeof(int32_t)*2+respuesta.tamanio,buffer);
+   	free(buffer);
+ 
+    pthread_mutex_unlock(&capaFSMutex);
+
+    free(respuesta.informacion);
+    free(pedidoLectura.ruta);
+    free(pedido);
+    free(pidKey);
+}
+
+void escribirArchivo(char* data, int socket){
+	t_pedido_escribir* pedido = deserializar_pedido_escribir_archivo(data);
+
+	t_pedido_escritura_datos pedidoEscritura;
+
+	t_respuesta_escribir respuesta;
+
+	agregarSyscall(pedido->pid);
+
+	char* pidKey = string_itoa(pedido->pid);
+
+	pthread_mutex_lock(&capaFSMutex);
+
+	t_list* listaArchivosPorProceso = dictionary_get(tablaArchivosPorProceso,pidKey);
+
+	if(listaArchivosPorProceso){
+		t_archivos_proceso* archivo_proceso = list_get(listaArchivosPorProceso,pedido->fd);
+
+	    if(archivo_proceso){
+	    t_archivos_global* archivo_global = list_get(tablaArchivosGlobales,archivo_proceso->globalFD);
+
+	    	if(string_contains(archivo_proceso->flags,"w")){
+	    		pedidoEscritura.tamanioRuta = strlen(archivo_global->file);
+	        	pedidoEscritura.ruta = malloc(pedidoEscritura.tamanioRuta);
+	        	memcpy(pedidoEscritura.ruta,archivo_global->file,pedidoEscritura.tamanioRuta);
+	        	pedidoEscritura.tamanio = pedido->tamanio;
+	        	pedidoEscritura.buffer = malloc(pedidoEscritura.tamanio);
+	        	memcpy(pedidoEscritura.buffer,pedido->informacion,pedidoEscritura.tamanio);
+	        	pedidoEscritura.offset = archivo_proceso->cursor;
+
+	        	char* buffer = serializar_pedido_escritura_datos(&pedidoEscritura);
+	        	empaquetarEnviarMensaje(socketFS,"LEER_ARCH",sizeof(int32_t)*3+pedidoEscritura.tamanioRuta+pedidoEscritura.tamanio,buffer);
+	        	free(buffer);
+
+	        	t_package* paqueteLeer = recibirPaquete(socketFS,NULL);
+	        	t_respuesta_pedido_escritura* respuestaEscribir = deserializar_respuesta_pedido_escritura(paqueteLeer->datos);
+	        	borrarPaquete(paqueteLeer);
+
+	        	switch(respuestaEscribir->codigoRta){
+	        		case ESCRIBIR_OK:
+	        			log_info(logNucleo,"Se escribio correctamente el archivo GLOBAL FD: %d",archivo_global->globalFD);
+	        	 		respuesta.codigo = ESCRITURA_OK;
+	        	 		break;
+	        	 	case NO_HAY_ESPACIO:
+	        	 		log_error(logNucleo,"No hay espacio para escribir el archivo GLOBAL FD: %d",archivo_global->globalFD);
+	        	 		respuesta.codigo = ESCRITURA_SIN_ESPACIO;
+	        	 		break;
+	        	 	case ESCRIBIR_ERROR:
+	        	 		log_error(logNucleo,"No se pudo escribir el archivo GLOBAL FD: %d",archivo_global->globalFD); //TODO en CPU finalizar el proceso
+	        	 		respuesta.codigo = ESCRITURA_ERROR;
+	        	 		break;
+	        	}
+	        	free(respuestaEscribir);
+	        }else{
+	        	log_error(logNucleo,"El archivo GLOBAL FD: %d no fue abierto con permisos de escritura",archivo_global->globalFD); //TODO en CPU finalizar el proceso
+	        	respuesta.codigo = ESCRITURA_BLOCKED;
+	        }
+	    }else{
+	    	log_error(logNucleo,"El archivo a escribir nunca fue abierto por el PID: %d",pedido->pid);
+	    	respuesta.codigo = ESCRITURA_ERROR;
+	    }
+	}else{
+		log_error(logNucleo,"El archivo a escribir nunca fue abierto por el PID: %d",pedido->pid);
+		respuesta.codigo = ESCRITURA_ERROR;
+	}
+
+	char* buffer = serializar_respuesta_escribir_archivo(&respuesta);
+	empaquetarEnviarMensaje(socket,"RES_ESCR_ARCH",sizeof(int32_t),buffer);
+	free(buffer);
+
+	pthread_mutex_unlock(&capaFSMutex);
+
+	free(pedidoEscritura.buffer);
+	free(pedidoEscritura.ruta);
 	free(pedido);
 	free(pidKey);
 }
