@@ -762,7 +762,6 @@ bool esta_libre(void * unaCpu){
 }
 
 void finishProcess(t_pcb* pcb,bool check_memoria,bool lock){
-	//TODO limpiar archivos no cerrados
 
 	moverA_colaExit(pcb);
 
