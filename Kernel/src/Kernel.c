@@ -323,6 +323,13 @@ void showTablaProceso(int size, char** functionAndParams){
 	}
 
 	char* pid = functionAndParams[1];
+	void log(void *archivo) {
+			log_info(logNucleo,"| FD: %d | Flags: %s | GlobalFD: %d | Cursor: %d |",((t_archivos_proceso*)archivo)->fd,
+					((t_archivos_proceso*)archivo)->flags,((t_archivos_proceso*)archivo)->globalFD,((t_archivos_proceso*)archivo)->cursor);
+	}
+
+	pthread_mutex_lock(&capaFSMutex);
+
 	if(!dictionary_has_key(tablaArchivosPorProceso,pid)){
 		printf("PID no encontrado\n\r");
 		freeElementsArray(functionAndParams,size);
@@ -331,14 +338,11 @@ void showTablaProceso(int size, char** functionAndParams){
 
 	log_info(logNucleo,"Tabla de archivos para proceso: %s",pid);
 
-	void log(void *archivo) {
-			log_info(logNucleo,"| FD: %d | Flags: %s | GlobalFD: %d | Cursor: %d |",((t_archivos_proceso*)archivo)->fd,
-					((t_archivos_proceso*)archivo)->flags,((t_archivos_proceso*)archivo)->globalFD,((t_archivos_proceso*)archivo)->cursor);
+	t_list* listaPorProceso = dictionary_get(tablaArchivosPorProceso,pid);
+	if(listaPorProceso){
+		list_iterate(listaPorProceso,log);
 	}
 
-	pthread_mutex_lock(&capaFSMutex);
-	t_list* listaPorProceso = dictionary_get(tablaArchivosPorProceso,pid);
-	list_iterate(listaPorProceso,log);
 	pthread_mutex_unlock(&capaFSMutex);
 
 	freeElementsArray(functionAndParams,size);
@@ -758,7 +762,7 @@ bool esta_libre(void * unaCpu){
 }
 
 void finishProcess(t_pcb* pcb,bool check_memoria,bool lock){
-	//TODO limpiar heap no liberado y archivos no cerrados
+	//TODO limpiar archivos no cerrados
 
 	moverA_colaExit(pcb);
 
@@ -784,6 +788,9 @@ void finishProcess(t_pcb* pcb,bool check_memoria,bool lock){
 
 		free(message);
 	}
+
+	cleanMemoriaHeap(pcb->pid);
+	cleanFilesOpen(pcb->pid);
 
 	if(respuesta!=NULL)
 		free(respuesta);
@@ -892,9 +899,9 @@ void desconectarCPU(int socket){
 
 		empaquetarEnviarMensaje(socket,"FINISH_CPU",10,"FINISH_CPU");
 
-		log_info(logNucleo,"La CPU %d ha sido desconectada",socketCPU);
+		log_info(logNucleo,"La CPU %d ha sido desconectada",socket);
 	}else{
-		log_info(logNucleo,"La CPU %d esta corriendo o ya no se encuentra conectada",socketCPU);
+		log_info(logNucleo,"La CPU %d esta corriendo o ya no se encuentra conectada",socket);
 	}
 
 	pthread_mutex_unlock(&mutexCPUConectadas);

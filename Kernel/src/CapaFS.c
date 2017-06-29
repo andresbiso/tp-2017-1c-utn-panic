@@ -229,10 +229,10 @@ void cerrarArchivo(char* data, int socket){
 		archivo_global->open--;
 
 		if(archivo_global->open == 0){
-			list_remove_and_destroy_element(tablaArchivosGlobales,archivo_proceso->globalFD,free);
+			list_remove_and_destroy_element(tablaArchivosGlobales,archivo_proceso->globalFD,destroyArchivoGlobal);
 		}
 
-		list_remove_and_destroy_element(listaArchivosPorProceso,pedido->fd,free);
+		list_remove_and_destroy_element(listaArchivosPorProceso,pedido->fd,destroyArchivoProceso);
 
 		respuesta.codigoRta = CERRAR_OK;
 		log_info(logNucleo,"Se cerro el archivo abierto por el PID: %d con FD: %d",pedido->pid,pedido->fd);
@@ -286,8 +286,8 @@ void borrarArchivo(char* data, int socket){
 
 				switch(respuestaBorrar->codigoRta){
 					case BORRAR_OK:
-						list_remove_and_destroy_element(tablaArchivosGlobales,archivo_proceso->globalFD,free);
-						list_remove_and_destroy_element(listaArchivosPorProceso,pedido->fd,free);
+						list_remove_and_destroy_element(tablaArchivosGlobales,archivo_proceso->globalFD,destroyArchivoGlobal);
+						list_remove_and_destroy_element(listaArchivosPorProceso,pedido->fd,destroyArchivoProceso);
 						log_info(logNucleo,"Se borro correctamente el archivo GLOBAL FD: %d ",archivo_proceso->globalFD);
 
 						respuesta.codigo = BORRADO_OK;
@@ -519,4 +519,55 @@ void escribirArchivo(char* data, int socket){
 	free(pedidoEscritura.ruta);
 	free(pedido);
 	free(pidKey);
+}
+
+void destroyArchivoGlobal(void* elem){
+	free(((t_archivos_global*)elem)->file);
+	free(((t_archivos_global*)elem));
+}
+
+void destroyArchivoProceso(void* elem){
+	free(((t_archivos_proceso*)elem)->flags);
+	free(((t_archivos_proceso*)elem));
+}
+
+void cleanFilesOpen(int32_t pid){
+
+	char* pidKey = string_itoa(pid);
+
+	pthread_mutex_lock(&capaFSMutex);
+
+	t_list* listaArchivosPorProceso = dictionary_get(tablaArchivosPorProceso,pidKey);
+
+	if(listaArchivosPorProceso){
+
+		int32_t archivosAbiertos=0;
+
+		void fileDestroy(void* elem){
+			t_archivos_global* archivoGlobal= list_get(tablaArchivosGlobales,((t_archivos_proceso*)elem)->globalFD);
+
+			archivoGlobal->open--;
+
+			if(archivoGlobal->open==0){
+				list_remove_and_destroy_element(tablaArchivosGlobales,((t_archivos_proceso*)elem)->globalFD,destroyArchivoGlobal);
+			}
+
+			free(((t_archivos_proceso*)elem)->flags);
+			free(((t_archivos_proceso*)elem));
+
+			archivosAbiertos++;
+		}
+
+		list_destroy_and_destroy_elements(listaArchivosPorProceso,fileDestroy);
+
+		dictionary_remove(tablaArchivosPorProceso,pidKey);
+
+		log_info(logNucleo,"El PID: %d dejo abiertos %d archivos",pid,archivosAbiertos);
+	}
+
+
+	pthread_mutex_unlock(&capaFSMutex);
+
+	free(pidKey);
+
 }
