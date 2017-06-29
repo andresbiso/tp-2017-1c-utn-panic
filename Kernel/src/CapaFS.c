@@ -155,7 +155,8 @@ void abrirArchivo(char* data, int socket){
 					case CREAR_OK:
 						log_info(logNucleo,"Creacion correcta de archivo");
 						archivos_global->globalFD = obtenerEIncrementarGlobalFD();
-						archivos_global->file = pedido->direccion;
+						archivos_global->file = malloc(strlen(pedido->direccion));
+						memcpy(archivos_global->file,pedido->direccion,strlen(pedido->direccion));
 						archivos_global->open = 1;
 
 						archivos_proceso->fd = posinicial + FD_START;

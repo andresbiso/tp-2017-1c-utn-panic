@@ -46,6 +46,7 @@ void validarArchivo(char* data, int socket){
 	log_info(logFS, "Se validará la existencia del archivo %s", pedido->direccion);
 	t_respuesta_validar_archivo respuesta;
 	char* ruta = concat(rutaArchivos, pedido->direccion+1);
+	string_append(&ruta,".bin");
 
 	int rta = access(ruta, F_OK );
 	if (rta != 0){
@@ -107,6 +108,7 @@ void crearArchivo(char* data, int socket){
 		nuevoArchivo->tamanio = 0;
 
 		char* ruta = concat(rutaArchivos, pedido->direccion+1);
+		string_append(&ruta,".bin");
 
 		bool already_exist = (fopen(ruta,"r")!=NULL);
 
@@ -160,6 +162,8 @@ void borrarArchivo(char* data, int socket){
 	log_info(logFS, "Se intentará borrar el archivo %s", pedido->direccion);
 	t_respuesta_borrar_archivo * rta = malloc(sizeof(t_respuesta_borrar_archivo));
 	char* ruta = concat(rutaArchivos, pedido->direccion+1);
+	string_append(&ruta,".bin");
+
 	t_config* file = config_create(ruta);
 	if (file != NULL){
 		t_metadata_archivo archivoABorrar;
