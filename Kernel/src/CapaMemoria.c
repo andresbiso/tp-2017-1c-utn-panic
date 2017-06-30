@@ -485,6 +485,7 @@ void liberar(void* data,int socket){
 	log_info(logNucleo,"Se recibio un pedido de liberar memoria del socket:%d por el PID:%d PAG:%d OFFSET:%d",socket,pedido->pid,pedido->pagina,pedido->offset);
 
 	if (pedido->offset<tamanio_pag_memoria){//Por si se va de offset
+
 		t_pedido_solicitar_bytes pedido_sol_bytes;
 		pedido_sol_bytes.pid=pedido->pid;
 		pedido_sol_bytes.pagina=pedido->pagina;
@@ -518,6 +519,24 @@ void liberar(void* data,int socket){
 				bool compressSuccess = compressPageHeap(rta_sol_bytes->data,pedido->pid,pedido->pagina);
 				if(compressSuccess){
 					respuesta.codigo=LIBERAR_OK;
+
+					pthread_mutex_lock(&mutexMemoriaHeap);
+					char* pidKey = string_itoa(pedido->pid);
+
+					t_paginas_proceso* paginas_proceso = dictionary_get(paginasGlobalesHeap,pidKey);
+
+					bool getByNumber(void* elem){
+						return ((t_pagina_heap*)elem)->nroPagina==pedido->pagina;
+					}
+
+					t_pagina_heap* pag_heap = list_find(paginas_proceso->paginas,getByNumber);
+
+					if(pag_heap)
+						pag_heap->espacioDisponible+=metadata.size;
+
+					free(pidKey);
+					pthread_mutex_unlock(&mutexMemoriaHeap);
+
 				}else{
 					respuesta.codigo=LIBERAR_ERROR;
 				}
