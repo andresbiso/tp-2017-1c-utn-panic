@@ -53,7 +53,6 @@ void correrPCB(char* pcb, int socket){
 		retornar.desconectar=signalSIGUSR1;
 
 		char* buffer = serializar_retornar_pcb(&retornar,paqueteSerializado);
-
 		empaquetarEnviarMensaje(socketKernel, "RET_PCB", paqueteSerializado->tamanio+sizeof(int32_t)+sizeof(bool), buffer);
 		log_info(cpu_log,"Finaliza procesamiento PCB del PID:%d",actual_pcb->pid);
 

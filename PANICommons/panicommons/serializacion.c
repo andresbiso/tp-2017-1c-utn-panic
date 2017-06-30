@@ -129,7 +129,7 @@ t_pcb* deserializar_pcb(char* pcbs)
 	memcpy(pcb->indice_etiquetas,pcbs+offset,pcb->tamano_etiquetas*sizeof(char));
 	offset += pcb->tamano_etiquetas;
 
-	pcb->cant_entradas_indice_stack = pcbs[offset];
+	memcpy(&pcb->cant_entradas_indice_stack,pcbs+offset,sizeof(u_int32_t));
 	offset += sizeof(pcb->cant_entradas_indice_stack);
 
 	pcb->indice_stack = malloc(pcb->cant_entradas_indice_stack * sizeof(registro_indice_stack));

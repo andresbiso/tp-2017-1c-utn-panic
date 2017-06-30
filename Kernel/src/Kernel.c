@@ -704,6 +704,8 @@ void respuesta_inicializar_programa(int socket, int socketMemoria, char* codigo)
 			break;
 	}
 
+	free(respuesta);
+
 	borrarPaquete(paquete);
 }
 

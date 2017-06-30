@@ -177,7 +177,7 @@ void abrirArchivo(char* data, int socket){
 						break;
 					case CREAR_ERROR:
 						respuesta.fd = archivos_proceso->fd;
-						respuesta.codigo = ERROR_ABRIR;
+						respuesta.codigo = ABRIR_ERROR;
 
 						buffer = serializar_respuesta_abrir_archivo(&respuesta);
 						empaquetarEnviarMensaje(socket,"RES_ABRIR_ARCH",sizeof(t_respuesta_abrir_archivo),buffer);
@@ -186,7 +186,7 @@ void abrirArchivo(char* data, int socket){
 						break;
 					case NO_HAY_BLOQUES:
 						respuesta.fd = archivos_proceso->fd;
-						respuesta.codigo = ERROR_ABRIR;
+						respuesta.codigo = ABRIR_ERROR;
 
 						buffer = serializar_respuesta_abrir_archivo(&respuesta);
 						empaquetarEnviarMensaje(socket,"RES_ABRIR_ARCH",sizeof(t_respuesta_abrir_archivo),buffer);
@@ -252,7 +252,7 @@ void cerrarArchivo(char* data, int socket){
 		respuesta.codigoRta = CERRAR_OK;
 		log_info(logNucleo,"Se cerro el archivo abierto por el PID: %d con FD: %d",pedido->pid,pedido->fd);
 	}else{
-		respuesta.codigoRta = ERROR_CERRAR;
+		respuesta.codigoRta = CERRAR_ERROR;
 		log_info(logNucleo,"El archivo a cerrar nunca fue abierto por el PID: %d",pedido->pid);
 	}
 

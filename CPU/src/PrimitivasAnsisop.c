@@ -25,6 +25,7 @@ t_puntero definirVariable(t_nombre_variable identificador_variable) {
 			log_warning(cpu_log,"Stack Overflow: Se ha intentado leer una pagina invalida");
 			puts("Stack Overflow: Se ha intentado leer una pagina invalida");
 			error_en_ejecucion = true;
+			actual_pcb->exit_code=FINALIZAR_STACK_OVERFLOW;
 			return -1;
 		}
 
@@ -365,7 +366,7 @@ void finalizar(void) {
 
 	int tamanio_stack = actual_pcb->cant_entradas_indice_stack;
 	registro_indice_stack* stack_actual = &actual_pcb->indice_stack[tamanio_stack-1];
-	if (tamanio_stack-- != 0) {
+	if ((tamanio_stack-1) != 0) {
 		actual_pcb->pc = stack_actual->pos_retorno;
 		if (stack_actual->pos_var_retorno.pag != -1) {
 			int posicion_logica = pos_fisica_a_logica(stack_actual->pos_var_retorno);

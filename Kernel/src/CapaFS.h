@@ -40,5 +40,6 @@ void leerArchivo(char* data, int socket);
 void escribirArchivo(char* data, int socket);
 void destroyArchivoGlobal(void* elem);
 void destroyArchivoProceso(void* elem);
+void cleanFilesOpen(int32_t pid);
 
 #endif /* SRC_CAPAFS_H_ */
