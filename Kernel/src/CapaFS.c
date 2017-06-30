@@ -155,7 +155,8 @@ void abrirArchivo(char* data, int socket){
 					case CREAR_OK:
 						log_info(logNucleo,"Creacion correcta de archivo");
 						archivos_global->globalFD = obtenerEIncrementarGlobalFD();
-						archivos_global->file = pedido->direccion;
+						archivos_global->file = malloc(strlen(pedido->direccion));
+						memcpy(archivos_global->file,pedido->direccion,strlen(pedido->direccion));
 						archivos_global->open = 1;
 
 						archivos_proceso->fd = posinicial + FD_START;
@@ -222,17 +223,31 @@ void cerrarArchivo(char* data, int socket){
 
 	t_respuesta_cerrar_archivo respuesta;
 
-	if(listaArchivosPorProceso){
-		t_archivos_proceso* archivo_proceso = list_get(listaArchivosPorProceso,pedido->fd);
-		t_archivos_global* archivo_global = list_get(tablaArchivosGlobales,archivo_proceso->globalFD);
+	bool matchFileProceso(void* elem){
+		return ((t_archivos_proceso*)elem)->fd==pedido->fd;
+	}
+
+	t_archivos_proceso* archivo_proceso=NULL;
+
+	if(listaArchivosPorProceso != NULL){
+		archivo_proceso = list_find(listaArchivosPorProceso,matchFileProceso);
+	}
+
+	if(listaArchivosPorProceso != NULL && archivo_proceso != NULL){
+
+		bool matchFileGlobal(void* elem){
+			return ((t_archivos_global*)elem)->globalFD==archivo_proceso->globalFD;
+		}
+
+		t_archivos_global* archivo_global = list_find(tablaArchivosGlobales,matchFileGlobal);
 
 		archivo_global->open--;
 
 		if(archivo_global->open == 0){
-			list_remove_and_destroy_element(tablaArchivosGlobales,archivo_proceso->globalFD,destroyArchivoGlobal);
+			list_remove_and_destroy_by_condition(tablaArchivosGlobales,matchFileGlobal,destroyArchivoGlobal);
 		}
 
-		list_remove_and_destroy_element(listaArchivosPorProceso,pedido->fd,destroyArchivoProceso);
+		list_remove_and_destroy_by_condition(listaArchivosPorProceso,matchFileProceso,destroyArchivoProceso);
 
 		respuesta.codigoRta = CERRAR_OK;
 		log_info(logNucleo,"Se cerro el archivo abierto por el PID: %d con FD: %d",pedido->pid,pedido->fd);
@@ -264,11 +279,20 @@ void borrarArchivo(char* data, int socket){
 
 	t_list* listaArchivosPorProceso = dictionary_get(tablaArchivosPorProceso,pidKey);
 
+	bool matchFileProceso(void* elem){
+		return ((t_archivos_proceso*)elem)->fd==pedido->fd;
+	}
+
 	if(listaArchivosPorProceso){
-		t_archivos_proceso* archivo_proceso = list_get(listaArchivosPorProceso,pedido->fd);
+		t_archivos_proceso* archivo_proceso = list_find(listaArchivosPorProceso,matchFileProceso);
 
 		if(archivo_proceso){
-			t_archivos_global* archivo_global = list_get(tablaArchivosGlobales,archivo_proceso->globalFD);
+
+			bool matchFileGlobal(void* elem){
+				return ((t_archivos_global*)elem)->globalFD==archivo_proceso->globalFD;
+			}
+
+			t_archivos_global* archivo_global = list_find(tablaArchivosGlobales,matchFileGlobal);
 
 			if(archivo_global->open == 1){
 				t_pedido_validar_crear_borrar_archivo_fs pedidoBorrar;
@@ -286,8 +310,8 @@ void borrarArchivo(char* data, int socket){
 
 				switch(respuestaBorrar->codigoRta){
 					case BORRAR_OK:
-						list_remove_and_destroy_element(tablaArchivosGlobales,archivo_proceso->globalFD,destroyArchivoGlobal);
-						list_remove_and_destroy_element(listaArchivosPorProceso,pedido->fd,destroyArchivoProceso);
+						list_remove_and_destroy_by_condition(tablaArchivosGlobales,matchFileGlobal,destroyArchivoGlobal);
+						list_remove_and_destroy_by_condition(listaArchivosPorProceso,matchFileProceso,destroyArchivoProceso);
 						log_info(logNucleo,"Se borro correctamente el archivo GLOBAL FD: %d ",archivo_proceso->globalFD);
 
 						respuesta.codigo = BORRADO_OK;
@@ -333,8 +357,12 @@ void moverCursor(char* data, int socket){
 
 	t_list* listaArchivosPorProceso = dictionary_get(tablaArchivosPorProceso,pidKey);
 
+	bool matchFileProceso(void* elem){
+		return ((t_archivos_proceso*)elem)->fd==pedido->fd;
+	}
+
 	if(listaArchivosPorProceso){
-		t_archivos_proceso* archivo_proceso = list_get(listaArchivosPorProceso,pedido->fd);
+		t_archivos_proceso* archivo_proceso = list_find(listaArchivosPorProceso,matchFileProceso);
 
 		if(archivo_proceso){
 			archivo_proceso->cursor += pedido->posicion;
@@ -374,11 +402,20 @@ void leerArchivo(char* data, int socket){
  
     t_list* listaArchivosPorProceso = dictionary_get(tablaArchivosPorProceso,pidKey);
  
+	bool matchFileProceso(void* elem){
+		return ((t_archivos_proceso*)elem)->fd==pedido->descriptor_archivo;
+	}
+
     if(listaArchivosPorProceso){
-        t_archivos_proceso* archivo_proceso = list_get(listaArchivosPorProceso,pedido->descriptor_archivo);
+        t_archivos_proceso* archivo_proceso = list_find(listaArchivosPorProceso,matchFileProceso);
  
         if(archivo_proceso){
-            t_archivos_global* archivo_global = list_get(tablaArchivosGlobales,archivo_proceso->globalFD);
+
+			bool matchFileGlobal(void* elem){
+				return ((t_archivos_global*)elem)->globalFD==archivo_proceso->globalFD;
+			}
+
+            t_archivos_global* archivo_global = list_find(tablaArchivosGlobales,matchFileGlobal);
  
             if(string_contains(archivo_proceso->flags,"r")){
             	pedidoLectura.tamanioRuta = strlen(archivo_global->file);
@@ -458,11 +495,20 @@ void escribirArchivo(char* data, int socket){
 
 	t_list* listaArchivosPorProceso = dictionary_get(tablaArchivosPorProceso,pidKey);
 
+	bool matchFileProceso(void* elem){
+		return ((t_archivos_proceso*)elem)->fd==pedido->fd;
+	}
+
 	if(listaArchivosPorProceso){
-		t_archivos_proceso* archivo_proceso = list_get(listaArchivosPorProceso,pedido->fd);
+		t_archivos_proceso* archivo_proceso = list_find(listaArchivosPorProceso,matchFileProceso);
 
 	    if(archivo_proceso){
-	    t_archivos_global* archivo_global = list_get(tablaArchivosGlobales,archivo_proceso->globalFD);
+
+		bool matchFileGlobal(void* elem){
+			return ((t_archivos_global*)elem)->globalFD==archivo_proceso->globalFD;
+		}
+
+	    t_archivos_global* archivo_global = list_find(tablaArchivosGlobales,matchFileGlobal);
 
 	    	if(string_contains(archivo_proceso->flags,"w")){
 	    		pedidoEscritura.tamanioRuta = strlen(archivo_global->file);
@@ -543,21 +589,25 @@ void cleanFilesOpen(int32_t pid){
 
 		int32_t archivosAbiertos=0;
 
-		void fileDestroy(void* elem){
-			t_archivos_global* archivoGlobal= list_get(tablaArchivosGlobales,((t_archivos_proceso*)elem)->globalFD);
+		void fileDestroy(void* elem1){
+
+			bool matchFileGlobal(void* elem){
+				return ((t_archivos_global*)elem)->globalFD==((t_archivos_proceso*)elem1)->globalFD;
+			}
+
+			t_archivos_global* archivoGlobal= list_find(tablaArchivosGlobales,matchFileGlobal);
 
 			archivoGlobal->open--;
 
 			if(archivoGlobal->open==0){
-				list_remove_and_destroy_element(tablaArchivosGlobales,((t_archivos_proceso*)elem)->globalFD,destroyArchivoGlobal);
+				list_remove_and_destroy_by_condition(tablaArchivosGlobales,matchFileGlobal,destroyArchivoGlobal);
 			}
 
-			free(((t_archivos_proceso*)elem)->flags);
-			free(((t_archivos_proceso*)elem));
+			free(((t_archivos_proceso*)elem1)->flags);
+			free(((t_archivos_proceso*)elem1));
 
 			archivosAbiertos++;
 		}
-
 		list_destroy_and_destroy_elements(listaArchivosPorProceso,fileDestroy);
 
 		dictionary_remove(tablaArchivosPorProceso,pidKey);
