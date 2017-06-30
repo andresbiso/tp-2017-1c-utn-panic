@@ -215,7 +215,7 @@ typedef struct
 	codigo_crear_archivo codigoRta;
 } __attribute__((__packed__)) t_respuesta_crear_archivo;
 
-typedef enum{CERRAR_OK=1, ERROR_CERRAR=-1} codigo_cerrar_archivo;
+typedef enum{CERRAR_OK=1, CERRAR_ERROR=-1} codigo_cerrar_archivo;
 
 typedef struct
 {
@@ -305,7 +305,7 @@ typedef struct
 	char* direccion;
 } __attribute__((__packed__))t_pedido_validar_crear_borrar_archivo_fs;
 
-typedef enum{ABRIR_OK = 0, ERROR_ABRIR = 1} codigo_respuesta_abrir;
+typedef enum{ABRIR_OK = 0, ABRIR_ERROR = 1} codigo_respuesta_abrir;
 
 typedef struct{
 	int32_t fd;
