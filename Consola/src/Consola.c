@@ -19,7 +19,6 @@ void esperarMensajePID(void*paramPid){
 			stats->cantMensajesPantalla++;
 			pthread_mutex_unlock(&mutexStatsPID);
 			free(pidKey);
-
 		}
 
 		if(avisoKernel->terminoProceso){

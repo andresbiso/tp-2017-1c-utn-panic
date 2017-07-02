@@ -95,7 +95,8 @@ void abrirArchivo(char* data, int socket){
 				list_add(tablaArchivosGlobales,archivoGlobal);
 			}else{
 				archivos_global->globalFD = obtenerEIncrementarGlobalFD();
-				archivos_global->file = malloc(strlen(pedido->direccion));
+				archivos_global->file = malloc(strlen(pedido->direccion)+1);
+				archivos_global->file[strlen(pedido->direccion)]='\0';
 				memcpy(archivos_global->file,pedido->direccion,strlen(pedido->direccion));
 				archivos_global->open = 1;
 
@@ -520,7 +521,7 @@ void escribirArchivo(char* data, int socket){
 	        	pedidoEscritura.offset = archivo_proceso->cursor;
 
 	        	char* buffer = serializar_pedido_escritura_datos(&pedidoEscritura);
-	        	empaquetarEnviarMensaje(socketFS,"LEER_ARCH",sizeof(int32_t)*3+pedidoEscritura.tamanioRuta+pedidoEscritura.tamanio,buffer);
+	        	empaquetarEnviarMensaje(socketFS,"ESCRIBIR_ARCH",sizeof(int32_t)*3+pedidoEscritura.tamanioRuta+pedidoEscritura.tamanio,buffer);
 	        	free(buffer);
 
 	        	t_package* paqueteLeer = recibirPaquete(socketFS,NULL);
@@ -556,13 +557,14 @@ void escribirArchivo(char* data, int socket){
 	}
 
 	char* buffer = serializar_respuesta_escribir_archivo(&respuesta);
-	empaquetarEnviarMensaje(socket,"RES_ESCR_ARCH",sizeof(int32_t),buffer);
+	empaquetarEnviarMensaje(socket,"RES_ESCR_ARCH",sizeof(t_respuesta_escribir),buffer);
 	free(buffer);
 
 	pthread_mutex_unlock(&capaFSMutex);
 
 	free(pedidoEscritura.buffer);
 	free(pedidoEscritura.ruta);
+	free(pedido->informacion);
 	free(pedido);
 	free(pidKey);
 }

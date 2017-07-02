@@ -96,7 +96,7 @@ void crearArchivo(char* data, int socket){
 
 	t_pedido_validar_crear_borrar_archivo_fs* pedido = deserializar_pedido_validar_crear_borrar_archivo(data);
 
-	log_info(logFS, "Se intentará crear el archivo %s", pedido->direccion);
+	log_info(logFS, "Se intentara crear el archivo %s", pedido->direccion);
 	int bloqueVacio = obtenerBloqueVacio();
 	t_respuesta_crear_archivo* rta = malloc(sizeof(t_respuesta_crear_archivo));
 
@@ -129,7 +129,7 @@ void crearArchivo(char* data, int socket){
 			config_save(file);
 			config_destroy(file);
 
-			log_info(logFS, "El archivo se creó exitosamente");
+			log_info(logFS, "El archivo se creo exitosamente");
 			marcarBloqueOcupado(nuevoArchivo->bloques[0]);
 			rta->codigoRta = CREAR_OK;
 		}else{
@@ -157,7 +157,7 @@ void crearArchivo(char* data, int socket){
 void borrarArchivo(char* data, int socket){
 	t_pedido_validar_crear_borrar_archivo_fs* pedido = deserializar_pedido_validar_crear_borrar_archivo(data);
 
-	log_info(logFS, "Se intentará borrar el archivo %s", pedido->direccion);
+	log_info(logFS, "Se intentara borrar el archivo %s", pedido->direccion);
 	t_respuesta_borrar_archivo * rta = malloc(sizeof(t_respuesta_borrar_archivo));
 	char* ruta = concat(rutaArchivos, pedido->direccion+1);
 
@@ -208,6 +208,8 @@ void leerDatosArchivo(char* datos, int socket){
 	t_pedido_lectura_datos* pedidoDeLectura = deserializar_pedido_lectura_datos(datos);
 	t_respuesta_pedido_lectura rta;
 
+	log_info(logFS,"Se intentara leer en el archivo %s con offset %d y size %d",pedidoDeLectura->ruta,pedidoDeLectura->offset,pedidoDeLectura->tamanio);
+
 	char* buffer = malloc(pedidoDeLectura->tamanio);
 
 	char* ruta = concat(rutaArchivos, pedidoDeLectura->ruta);
@@ -249,7 +251,10 @@ void leerDatosArchivo(char* datos, int socket){
 			rta.tamanio=pedidoDeLectura->tamanio;
 			rta.codigo=LECTURA_OK;
 
+			log_info(logFS,"Lectura correcta del archivo");
+
 		}else{
+			log_info(logFS,"El offset %d es más grande que el archivo de tamanio %d",pedidoDeLectura->offset,archivoALeer.tamanio);
 			rta.tamanio=5;
 			rta.datos="ERROR";
 			rta.codigo=LECTURA_ERROR;
@@ -257,6 +262,7 @@ void leerDatosArchivo(char* datos, int socket){
 
 		config_destroy(metadata_file);
 	}else{
+		log_info(logFS,"El archivo %s no existe",pedidoDeLectura->ruta);
 		rta.tamanio=5;
 		rta.datos="ERROR";
 		rta.codigo=LECTURA_ERROR;
@@ -302,6 +308,8 @@ void escribirDatosArchivo(char* datos, int socket){
 	t_pedido_escritura_datos* pedidoEscritura = deserializar_pedido_escritura_datos(datos);
 	t_respuesta_pedido_escritura rta;
 	t_metadata_archivo archivoAEscribir;
+
+	log_info(logFS,"Se intentara escribir en el archivo %s con offset %d y size %d",pedidoEscritura->ruta,pedidoEscritura->offset,pedidoEscritura->tamanio);
 
 	char* ruta = concat(rutaArchivos, pedidoEscritura->ruta);
 	FILE* file = fopen(ruta, "r");
@@ -364,11 +372,13 @@ void escribirDatosArchivo(char* datos, int socket){
 			config_destroy(metadata_file);
 
 			rta.codigoRta= ESCRIBIR_OK;
-
+			log_info(logFS,"Se completó la escritura");
 		}else{
+			log_info(logFS,"No hay espacio en el FS");
 			rta.codigoRta = NO_HAY_ESPACIO;
 		}
 	}else{
+		log_info(logFS,"El archivo %s no existe",pedidoEscritura->ruta);
 		rta.codigoRta = ESCRIBIR_ERROR;
 	}
 	fclose(file);
@@ -458,6 +468,7 @@ int main(int argc, char** argv){
 	dictionary_put(diccionarioFunc, "CREAR_ARCH", &crearArchivo);
 	dictionary_put(diccionarioFunc, "BORRAR_ARCH", &borrarArchivo);
 	dictionary_put(diccionarioFunc, "LEER_ARCH", &leerDatosArchivo);
+	dictionary_put(diccionarioFunc, "ESCRIBIR_ARCH", &escribirDatosArchivo);
 
 	int sock= crearHostMultiConexion(puerto);
 	correrServidorMultiConexion(sock,NULL,NULL,NULL,diccionarioFunc,diccionarioHands);

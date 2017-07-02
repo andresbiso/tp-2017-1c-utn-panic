@@ -502,12 +502,7 @@ void programa(void* arg){
 
 	sem_wait(&grado);
 
-	pthread_mutex_lock(&mutexRespuestaInicializar);//Sino se marea con muchos pedidos
-
-	inicializar_programa(nuevo_pcb);
-	respuesta_inicializar_programa(socket, socketMemoria, params->codigo);
-
-	pthread_mutex_unlock(&mutexRespuestaInicializar);//Sino se marea con muchos pedidos
+	inicializar_programa(nuevo_pcb,socket, socketMemoria, params->codigo);
 
 	free(params->codigo);
 	free(params);
@@ -583,20 +578,6 @@ t_pcb* armar_nuevo_pcb(char* codigo){
 	return nvopcb;
 }
 
-void inicializar_programa(t_pcb* nuevo_pcb){
-	t_pedido_inicializar pedido_inicializar;
-
-	pedido_inicializar.pagRequeridas = nuevo_pcb->cant_pags_totales;
-	pedido_inicializar.idPrograma = nuevo_pcb->pid;
-
-	char *pedido_serializado = serializar_pedido_inicializar(&pedido_inicializar);
-
-	empaquetarEnviarMensaje(socketMemoria,"INIT_PROGM",sizeof(t_pedido_inicializar),pedido_serializado);
-	log_debug(logNucleo,"Pedido inicializar enviado. PID: %d, Paginas: %d",pedido_inicializar.idPrograma,pedido_inicializar.pagRequeridas);
-
-	free(pedido_serializado);
-}
-
 bool almacenarBytes(t_pcb* pcb,int socketMemoria,char* data){
 	int i;
 	t_pedido_almacenar_bytes pedido;
@@ -636,11 +617,14 @@ bool almacenarBytes(t_pcb* pcb,int socketMemoria,char* data){
 		memcpy(pedido.data,data+offset,tamanio);
 
 		char* buffer = serializar_pedido_almacenar_bytes(&pedido);
+
+		pthread_mutex_lock(&mutexMemoria);
 		empaquetarEnviarMensaje(socketMemoria,"ALMC_BYTES",sizeof(int32_t)*4+pedido.tamanio,buffer);
+		t_package* paquete = recibirPaquete(socketMemoria,NULL);
+		pthread_mutex_unlock(&mutexMemoria);
+
 		free(buffer);
 		free(pedido.data);
-
-		t_package* paquete = recibirPaqueteMemoria();
 
 		t_respuesta_almacenar_bytes* respuesta = deserializar_respuesta_almacenar_bytes(paquete->datos);
 
@@ -666,9 +650,23 @@ bool almacenarBytes(t_pcb* pcb,int socketMemoria,char* data){
 	return true;
 }
 
-void respuesta_inicializar_programa(int socket, int socketMemoria, char* codigo){
+void inicializar_programa(t_pcb* nuevo_pcb,int socket, int socketMemoria, char* codigo){
 
-	t_package* paquete = recibirPaqueteMemoria();
+	t_pedido_inicializar pedido_inicializar;
+
+	pedido_inicializar.pagRequeridas = nuevo_pcb->cant_pags_totales;
+	pedido_inicializar.idPrograma = nuevo_pcb->pid;
+
+	char *pedido_serializado = serializar_pedido_inicializar(&pedido_inicializar);
+	log_debug(logNucleo,"Pedido inicializar enviado. PID: %d, Paginas: %d",pedido_inicializar.idPrograma,pedido_inicializar.pagRequeridas);
+
+	pthread_mutex_lock(&mutexMemoria);
+	empaquetarEnviarMensaje(socketMemoria,"INIT_PROGM",sizeof(t_pedido_inicializar),pedido_serializado);
+	t_package* paquete = recibirPaquete(socketMemoria,NULL);
+	pthread_mutex_unlock(&mutexMemoria);
+
+	free(pedido_serializado);
+
 	t_respuesta_inicializar* respuesta = deserializar_respuesta_inicializar(paquete->datos);
 
 	t_pcb* pcb_respuesta = sacarDe_colaNew(respuesta->idPrograma);
@@ -802,21 +800,18 @@ t_respuesta_finalizar_programa* finalizarProcesoMemoria(int32_t pid){
 	pedido.pid = pid;
 
 	char* buffer = serializar_pedido_finalizar_programa(&pedido);
+
+	pthread_mutex_lock(&mutexMemoria);
 	empaquetarEnviarMensaje(socketMemoria,"FINZ_PROGM",sizeof(t_pedido_finalizar_programa),buffer);
+	t_package* paquete = recibirPaquete(socketMemoria,NULL);
+	pthread_mutex_unlock(&mutexMemoria);
+
 	free(buffer);
 
-	t_package* paquete = recibirPaqueteMemoria();
 	t_respuesta_finalizar_programa* respuesta = deserializar_respuesta_finalizar_programa(paquete->datos);
 	borrarPaquete(paquete);
 
 	return respuesta;
-}
-
-t_package* recibirPaqueteMemoria(){
-	pthread_mutex_lock(&mutexMemoria);
-	t_package* paquete = recibirPaquete(socketMemoria,NULL);
-	pthread_mutex_unlock(&mutexMemoria);
-	return paquete;
 }
 
 void enviar_a_cpu(){
@@ -1030,7 +1025,6 @@ int main(int argc, char** argv) {
 	pthread_mutex_init(&mutexMemoria,NULL);
 	pthread_mutex_init(&mutexGlobalFD,NULL);
 	pthread_mutex_init(&capaFSMutex,NULL);
-	pthread_mutex_init(&mutexRespuestaInicializar,NULL);
 	pthread_mutex_init(&mutexStatsEjecucion,NULL);
 	pthread_mutex_init(&mutexMemoriaHeap,NULL);
 	sem_init(&stopped,0,0);
@@ -1102,31 +1096,31 @@ int main(int argc, char** argv) {
     if ((socketMemoria = conectar(IpMemoria,PuertoMemoria)) == -1)
     	exit(EXIT_FAILURE);
     if(handshake(socketMemoria,"HKEME","HMEKE")){
-    		puts("Se pudo realizar handshake");
-    		empaquetarEnviarMensaje(socketMemoria,"GET_MARCOS",strlen("GET_MARCOS\0"),"GET_MARCOS");
-    		recibirTamanioPagina(socketMemoria);
-    }
-    else{
-    	puts("No se pudo realizar handshake");
+		puts("Se pudo realizar handshake con Memoria");
+		empaquetarEnviarMensaje(socketMemoria,"GET_MARCOS",strlen("GET_MARCOS\0"),"GET_MARCOS");
+		recibirTamanioPagina(socketMemoria);
+    }else{
+    	puts("No se pudo realizar handshake con Memoria");
     	exit(EXIT_FAILURE);
-    	}
+    }
 
     if ((socketFS = conectar(IpFS,PuertoFS)) == -1)
         exit(EXIT_FAILURE);
     if(handshake(socketFS,"HKEFS","HFSKE")){
-     		puts("Se pudo realizar handshake");
-	}else
-		puts("No se pudo realizar handshake");
+     	puts("Se pudo realizar handshake con el FS");
+	}else{
+		puts("No se pudo realizar handshake con el FS");
+	}
 
     if (pthread_create(&thread_consola, NULL, (void*)correrServidor, &parametrosCpu)){
-    		        perror("Error el crear el thread consola.");
-    		        exit(EXIT_FAILURE);
-    		}
+		perror("Error el crear el thread consola.");
+		exit(EXIT_FAILURE);
+    }
 
     if (pthread_create(&thread_cpu, NULL, (void*)correrServidor, &parametrosConsola)){
-      		        perror("Error el crear el thread consola.");
-      		        exit(EXIT_FAILURE);
-      		}
+		perror("Error el crear el thread consola.");
+		exit(EXIT_FAILURE);
+    }
 
     pthread_t hiloConsola;
     pthread_create(&hiloConsola,NULL,(void*)&consolaCreate,NULL);

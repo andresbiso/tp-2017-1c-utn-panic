@@ -172,11 +172,16 @@ bool pedirPaginaHeap(t_paginas_proceso* paginas_proceso, int paginasTotales, int
 	pedido_memoria.pagRequeridas=1;
 	pedido_memoria.idPrograma=pid;
 
+
 	char* buffer = serializar_pedido_inicializar(&pedido_memoria);
+
+	pthread_mutex_lock(&mutexMemoria);
 	empaquetarEnviarMensaje(socketMemoria,"ASIG_PAGES",sizeof(t_pedido_inicializar),buffer);
+	t_package* paquete_asig = recibirPaquete(socketMemoria,NULL);
+	pthread_mutex_unlock(&mutexMemoria);
+
 	free(buffer);
 
-	t_package* paquete_asig = recibirPaqueteMemoria();
 	t_respuesta_inicializar* respuesta_memoria = deserializar_respuesta_inicializar(paquete_asig->datos);
 	borrarPaquete(paquete_asig);
 
@@ -201,11 +206,15 @@ bool pedirPaginaHeap(t_paginas_proceso* paginas_proceso, int paginasTotales, int
 		memcpy((pedido_memoria.data+sizeof(bool)),(void*)&(metadata.size),sizeof(int32_t));
 
 		char* buffer = serializar_pedido_almacenar_bytes(&pedido_memoria);
+
+		pthread_mutex_lock(&mutexMemoria);
 		empaquetarEnviarMensaje(socketMemoria,"ALMC_BYTES",sizeof(int32_t)*4+pedido_memoria.tamanio,buffer);
+		t_package* paquete_alm = recibirPaquete(socketMemoria,NULL);
+		pthread_mutex_unlock(&mutexMemoria);
+
 		free(buffer);
 		free(pedido_memoria.data);
 
-		t_package* paquete_alm = recibirPaqueteMemoria();
 		t_respuesta_almacenar_bytes* respuesta_alm = deserializar_respuesta_almacenar_bytes(paquete_alm->datos);
 		borrarPaquete(paquete_alm);
 
@@ -234,10 +243,14 @@ bool tryAllocate(t_pedido_reservar* pedido,t_respuesta_reservar* respuesta,t_pag
 	pedido_sol_bytes.tamanio=tamanio_pag_memoria;
 
 	char* buffer = serializar_pedido_solicitar_bytes(&pedido_sol_bytes);
+
+	pthread_mutex_lock(&mutexMemoria);
 	empaquetarEnviarMensaje(socketMemoria,"SOLC_BYTES",sizeof(t_pedido_solicitar_bytes),buffer);
+	t_package* paquete_sol_bytes = recibirPaquete(socketMemoria,NULL);
+	pthread_mutex_unlock(&mutexMemoria);
+
 	free(buffer);
 
-	t_package* paquete_sol_bytes = recibirPaqueteMemoria();
 	t_respuesta_solicitar_bytes* rta_sol_bytes = deserializar_respuesta_solicitar_bytes(paquete_sol_bytes->datos);
 	borrarPaquete(paquete_sol_bytes);
 
@@ -282,10 +295,14 @@ bool tryAllocate(t_pedido_reservar* pedido,t_respuesta_reservar* respuesta,t_pag
 			pedido_memoria.data=rta_sol_bytes->data;
 
 			char* buffer = serializar_pedido_almacenar_bytes(&pedido_memoria);
+
+			pthread_mutex_lock(&mutexMemoria);
 			empaquetarEnviarMensaje(socketMemoria,"ALMC_BYTES",sizeof(int32_t)*4+pedido_memoria.tamanio,buffer);
+			t_package* paquete_alm = recibirPaquete(socketMemoria,NULL);
+			pthread_mutex_unlock(&mutexMemoria);
+
 			free(buffer);
 
-			t_package* paquete_alm = recibirPaqueteMemoria();
 			t_respuesta_almacenar_bytes* respuesta_alm = deserializar_respuesta_almacenar_bytes(paquete_alm->datos);
 			borrarPaquete(paquete_alm);
 
@@ -438,10 +455,14 @@ bool compressPageHeap(char* page,int32_t pid,int32_t pagina){//retorna un boolea
 		pedido_liberar.pid=pid;
 
 		char * buffer = serializar_pedido_liberar_pagina(&pedido_liberar);
+
+		pthread_mutex_lock(&mutexMemoria);
 		empaquetarEnviarMensaje(socketMemoria,"LIBERAR_PAG",sizeof(t_pedido_liberar_pagina),buffer);
+		t_package* paquete = recibirPaquete(socketMemoria,NULL);
+		pthread_mutex_unlock(&mutexMemoria);
+
 		free(buffer);
 
-		t_package* paquete = recibirPaqueteMemoria();
 		t_respuesta_liberar_pagina* respuesta_liberar = deserializar_respuesta_liberar_pagina(paquete->datos);
 		borrarPaquete(paquete);
 
@@ -461,10 +482,14 @@ bool compressPageHeap(char* page,int32_t pid,int32_t pagina){//retorna un boolea
 		pedido_memoria.data=page;
 
 		char* buffer = serializar_pedido_almacenar_bytes(&pedido_memoria);
+
+		pthread_mutex_lock(&mutexMemoria);
 		empaquetarEnviarMensaje(socketMemoria,"ALMC_BYTES",sizeof(int32_t)*4+pedido_memoria.tamanio,buffer);
+		t_package* paquete_alm = recibirPaquete(socketMemoria,NULL);
+		pthread_mutex_unlock(&mutexMemoria);
+
 		free(buffer);
 
-		t_package* paquete_alm = recibirPaqueteMemoria();
 		t_respuesta_almacenar_bytes* respuesta_alm = deserializar_respuesta_almacenar_bytes(paquete_alm->datos);
 		borrarPaquete(paquete_alm);
 
@@ -493,10 +518,14 @@ void liberar(void* data,int socket){
 		pedido_sol_bytes.tamanio=tamanio_pag_memoria;
 
 		char* buffer = serializar_pedido_solicitar_bytes(&pedido_sol_bytes);
+
+		pthread_mutex_lock(&mutexMemoria);
 		empaquetarEnviarMensaje(socketMemoria,"SOLC_BYTES",sizeof(t_pedido_solicitar_bytes),buffer);
+		t_package* paquete = recibirPaquete(socketMemoria,NULL);
+		pthread_mutex_unlock(&mutexMemoria);
+
 		free(buffer);
 
-		t_package* paquete = recibirPaqueteMemoria();
 		t_respuesta_solicitar_bytes* rta_sol_bytes = deserializar_respuesta_solicitar_bytes(paquete->datos);
 		borrarPaquete(paquete);
 

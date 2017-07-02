@@ -71,7 +71,6 @@ pthread_mutex_t listForFinishMutex;
 pthread_mutex_t mutexCPUConectadas;
 pthread_mutex_t mutexProgramasActuales;
 pthread_mutex_t mutexMemoria;
-pthread_mutex_t mutexRespuestaInicializar;
 pthread_mutex_t mutexStatsEjecucion;
 sem_t stopped;
 
@@ -109,7 +108,6 @@ void eliminarConsolaPorPID(int32_t pid);
 void program_change_running(int32_t pid, bool newState);
 void enviarMensajeConsola(char*mensaje,char*key,int32_t pid,int32_t socket,int32_t terminoProceso,int32_t mostrarPorPantalla);
 t_respuesta_finalizar_programa* finalizarProcesoMemoria(int32_t pid);
-t_package* recibirPaqueteMemoria();
 void enviar_a_cpu();
 void finishProcess(t_pcb* pcb,bool check_memoria,bool lock);
 
