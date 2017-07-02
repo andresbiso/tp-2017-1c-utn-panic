@@ -109,10 +109,10 @@ t_puntero obtenerPosicionVariable(t_nombre_variable identificador_variable) {
 	}
 
 	if(isdigit(identificador_variable)){
-		int numero_variable = identificador_variable;
+		int numero_variable = identificador_variable-'0';
 		log_info(cpu_log,"Identificado %c como un argumento",identificador_variable);
 
-		if(numero_variable >= stack_actual->cant_argumentos) {
+		if(numero_variable > stack_actual->cant_argumentos) {
 			log_error(cpu_log,"Es %d es un argumento incorrecto, porque solo hay %d argumentos",numero_variable,stack_actual->cant_argumentos);
 			error_en_ejecucion = true;
 			actual_pcb->exit_code = FINALIZAR_EXCEPCION_MEMORIA;
@@ -296,10 +296,10 @@ void irAlLabel(t_nombre_etiqueta t_nombre_etiqueta) {
 	if (puntero_instruccion == -1) {
 		error_en_ejecucion = 1;
 		actual_pcb->exit_code = FINALIZAR_ERROR_SIN_DEFINICION;
-		log_info(cpu_log,"Error al intentar econtrar el label: %s", t_nombre_etiqueta);
+		log_info(cpu_log,"Error al intentar encontrar el label: %s", t_nombre_etiqueta);
 		return;
 	}
-	actual_pcb->pc = puntero_instruccion;
+	actual_pcb->pc = puntero_instruccion+1;
 	log_info(cpu_log,"Yendo al label: %s", t_nombre_etiqueta);
 	return;
 }

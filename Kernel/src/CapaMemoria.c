@@ -86,7 +86,7 @@ void wait(char* data,int socket){
 		log_info(logNucleo,"El SEM:%s no existe",pedido->semId);
 		respuesta.respuesta=WAIT_NOT_EXIST;
 	}else{
-		log_info(logNucleo,"Cantidad de procesos en cola del SEM:%d",sem->valor,queue_size(sem->cola));
+		log_info(logNucleo,"Valor del SEM:%d",sem->valor,queue_size(sem->cola));
 		sem->valor--;
 		if(sem->valor <0){
 			log_info(logNucleo,"El SEM:%s queda con valor:%d y se bloquea al PID:%d",pedido->semId,sem->valor,pedido->pcb->pid);
@@ -137,7 +137,7 @@ void signal(char* data,int socket){
 		respuesta.respuesta=SIGNAL_NOT_EXIST;
 	}else{
 		respuesta.respuesta=SIGNAL_OK;
-		log_info(logNucleo,"Cantidad de procesos en cola del SEM:%d",sem->valor,queue_size(sem->cola));
+		log_info(logNucleo,"Valor del SEM:%d",sem->valor,queue_size(sem->cola));
 		sem->valor++;
 		log_info(logNucleo,"El SEM:%s queda con valor:%d",pedido->semId,sem->valor);
 		if(sem->valor <=0){

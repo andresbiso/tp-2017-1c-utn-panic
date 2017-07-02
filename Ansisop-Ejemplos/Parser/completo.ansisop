@@ -18,7 +18,7 @@ begin
     f = 8	  
     g <- doble !Global	
     io impresora 20
-	:Siguiente	
+    :Siguiente
     imprimir A
     prints l Hola Mundo!
     

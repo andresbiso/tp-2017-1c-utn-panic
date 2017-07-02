@@ -531,7 +531,11 @@ t_pcb* armar_nuevo_pcb(char* codigo){
 		t_posMemoria posicion_nueva_instruccion;
 		posicion_nueva_instruccion.size = metadata->instrucciones_serializado[i].offset;
 
-		if((lastOffset+posicion_nueva_instruccion.size)>tamanio_pag_memoria){
+		posicion_nueva_instruccion.offset = (metadata->instrucciones_serializado[i].start%tamanio_pag_memoria);
+
+		int maxOffset = lastOffset>posicion_nueva_instruccion.offset?lastOffset:posicion_nueva_instruccion.offset;
+
+		if((maxOffset+posicion_nueva_instruccion.size)>tamanio_pag_memoria){
 			posPag++;
 			posicion_nueva_instruccion.offset=0;
 		}else{
