@@ -299,7 +299,7 @@ void irAlLabel(t_nombre_etiqueta t_nombre_etiqueta) {
 		log_info(cpu_log,"Error al intentar encontrar el label: %s", t_nombre_etiqueta);
 		return;
 	}
-	actual_pcb->pc = puntero_instruccion+1;
+	actual_pcb->pc = puntero_instruccion;
 	log_info(cpu_log,"Yendo al label: %s", t_nombre_etiqueta);
 	return;
 }
@@ -396,14 +396,16 @@ void retornar(t_valor_variable retorno) {
 	registro_indice_stack* stack_actual = &actual_pcb->indice_stack[tamanio_stack-1];
 
 	t_posMemoria pos_retorno = stack_actual->pos_var_retorno;
-	t_puntero pos_retorno_logica = pos_fisica_a_logica(pos_retorno);
 
-	asignar(pos_retorno_logica,retorno);
+	if(pos_retorno.pag != -1){
+		t_puntero pos_retorno_logica = pos_fisica_a_logica(pos_retorno);
 
-	actual_pcb->cant_entradas_indice_stack--;
-	tamanio_stack = actual_pcb->cant_entradas_indice_stack;
-	actual_pcb->indice_stack = realloc(actual_pcb->indice_stack,sizeof(registro_indice_stack)*tamanio_stack);
+		asignar(pos_retorno_logica,retorno);
 
+		actual_pcb->cant_entradas_indice_stack--;
+		tamanio_stack = actual_pcb->cant_entradas_indice_stack;
+		actual_pcb->indice_stack = realloc(actual_pcb->indice_stack,sizeof(registro_indice_stack)*tamanio_stack);
+	}
 	return;
 }
 
@@ -438,7 +440,7 @@ void waitAnsisop(t_nombre_semaforo identificador_semaforo) {
 		log_info(cpu_log,"El semaforo %s recibio el wait", identificador_semaforo);
 		break;
 	case WAIT_BLOCKED:
-		log_error(cpu_log,"Error: El semaforo %s ya se encuentra boqueado", identificador_semaforo);
+		log_error(cpu_log,"El semaforo %s bloqueo el proceso", identificador_semaforo);
 		proceso_bloqueado = 1;
 		break;
 	case WAIT_NOT_EXIST:

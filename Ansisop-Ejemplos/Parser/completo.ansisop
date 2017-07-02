@@ -14,14 +14,12 @@ begin
     prints n !Global
     jnz !Global Siguiente 
 :Proximo
-	
     f = 8	  
     g <- doble !Global	
     io impresora 20
-    :Siguiente
+          :Siguiente
     imprimir A
     prints l Hola Mundo!
-    
     f <- sumar1 &g		
     prints n 		g  
 end

@@ -527,19 +527,21 @@ t_pcb* armar_nuevo_pcb(char* codigo){
 
 	int posPag=0;
 	int lastOffset=0;
+	int littleFrag=0;
 	for(i=0;i<(metadata->instrucciones_size);i++){
 		t_posMemoria posicion_nueva_instruccion;
 		posicion_nueva_instruccion.size = metadata->instrucciones_serializado[i].offset;
 
-		posicion_nueva_instruccion.offset = (metadata->instrucciones_serializado[i].start%tamanio_pag_memoria);
+		posicion_nueva_instruccion.offset = (metadata->instrucciones_serializado[i].start%(tamanio_pag_memoria-littleFrag));
 
-		int maxOffset = lastOffset>posicion_nueva_instruccion.offset?lastOffset:posicion_nueva_instruccion.offset;
-
-		if((maxOffset+posicion_nueva_instruccion.size)>tamanio_pag_memoria){
+		if((lastOffset+posicion_nueva_instruccion.size)>tamanio_pag_memoria || (posicion_nueva_instruccion.offset+posicion_nueva_instruccion.size)>tamanio_pag_memoria){
 			posPag++;
 			posicion_nueva_instruccion.offset=0;
+
+			littleFrag=tamanio_pag_memoria-lastOffset;
 		}else{
-			posicion_nueva_instruccion.offset = (metadata->instrucciones_serializado[i].start%tamanio_pag_memoria);
+			posicion_nueva_instruccion.offset = (metadata->instrucciones_serializado[i].start%(tamanio_pag_memoria-littleFrag));
+
 			if(posPag!=0 && ((posicion_nueva_instruccion.offset)<(nvopcb->indice_codigo[i-1].offset+nvopcb->indice_codigo[i-1].size)))
 				posicion_nueva_instruccion.offset=(nvopcb->indice_codigo[i-1].size+nvopcb->indice_codigo[i-1].offset);
 		}
@@ -586,7 +588,6 @@ bool almacenarBytes(t_pcb* pcb,int socketMemoria,char* data){
 	int i;
 	t_pedido_almacenar_bytes pedido;
 
-
 	int paginasCodigo=pcb->cant_pags_totales-StackSize;
 
 	int j;
@@ -611,8 +612,6 @@ bool almacenarBytes(t_pcb* pcb,int socketMemoria,char* data){
 		}else{
 			tamanio=(strlen(data)-offset);
 		}
-
-		log_info(logNucleo,"Tamanio pedido: %d",tamanio);
 
 		pedido.offsetPagina = 0;
 		pedido.tamanio=tamanio_pag_memoria;
