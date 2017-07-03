@@ -991,7 +991,7 @@ t_respuesta_cerrar_archivo* deserializar_respuesta_cerrar_archivo(char* rta){
 	return respuesta;
 }
 char* serializar_pedido_lectura_datos(t_pedido_lectura_datos *pedido){
-	char *buffer = malloc(sizeof(int32_t)*3+pedido->tamanio);
+	char *buffer = malloc(sizeof(int32_t)*3+pedido->tamanioRuta);
 
 	int offset=0;
 	memcpy(buffer,&(pedido->tamanio),sizeof(int32_t));
