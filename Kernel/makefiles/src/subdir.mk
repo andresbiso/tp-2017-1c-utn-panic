@@ -4,18 +4,21 @@
 
 # Add inputs and outputs from these tool invocations to the build variables 
 C_SRCS += \
+../src/CapaFS.c \
 ../src/CapaMemoria.c \
 ../src/Kernel.c \
 ../src/estados.c \
 ../src/inotify.c 
 
 OBJS += \
+./src/CapaFS.o \
 ./src/CapaMemoria.o \
 ./src/Kernel.o \
 ./src/estados.o \
 ./src/inotify.o 
 
 C_DEPS += \
+./src/CapaFS.d \
 ./src/CapaMemoria.d \
 ./src/Kernel.d \
 ./src/estados.d \

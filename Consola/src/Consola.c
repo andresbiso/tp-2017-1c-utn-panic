@@ -19,7 +19,6 @@ void esperarMensajePID(void*paramPid){
 			stats->cantMensajesPantalla++;
 			pthread_mutex_unlock(&mutexStatsPID);
 			free(pidKey);
-
 		}
 
 		if(avisoKernel->terminoProceso){
@@ -101,16 +100,16 @@ void esperarKernel(void* args){
 		}else{
 			avisoKernel = deserializar_aviso_consola(paqueteKernel->datos);
 			char* pid = string_itoa(avisoKernel->idPrograma);
-			sem_post((sem_t*)dictionary_get(semaforosPID,pid));
+
+			if(dictionary_get(semaforosPID,pid)!=NULL){
+				sem_post((sem_t*)dictionary_get(semaforosPID,pid));
+				sem_wait(&avisoProcesado);
+			}
+
 			free(pid);
 			borrarPaquete(paqueteKernel);
-			sem_wait(&avisoProcesado);
 			free(avisoKernel->mensaje);
 			free(avisoKernel);
-
-			if(dictionary_is_empty(semaforosPID)){
-				sem_post(&hilosTerminados);
-			}
 		}
 	}
 }
@@ -139,7 +138,7 @@ void init(int sizeArgs, char** path){
 	buffer[tamanio]='\0';
 
 	empaquetarEnviarMensaje(socketKernel,"NUEVO_PROG",strlen(buffer),buffer);
-	sem_trywait(&hilosTerminados);
+
 	fclose(arch);
 	free(buffer);
 	freeElementsArray(path,sizeArgs);
@@ -158,11 +157,17 @@ void end(int sizeArgs, char** path){
 			return;
 	}
 	char* pid= path[1];
+
+	pthread_mutex_lock(&mutexSemaforosPID);
 	if(!dictionary_has_key(semaforosPID,pid)){  //controla que el pid este en el diccionario
+		pthread_mutex_unlock(&mutexSemaforosPID);
+
 		printf("PID no encontrado\n\r");
 		freeElementsArray(path,sizeArgs);
 		return;
 	}
+	pthread_mutex_unlock(&mutexSemaforosPID);
+
 	empaquetarEnviarMensaje(socketKernel,"END_PROG",strlen(pid) ,pid);
 	freeElementsArray(path,sizeArgs);
  }
@@ -174,10 +179,7 @@ void cerrarConsola(int sizeArgs,char** args){
 	pthread_mutex_lock(&mutexSemaforosPID);
 	dictionary_iterator(semaforosPID,llamarEnd);
 	pthread_mutex_unlock(&mutexSemaforosPID);
-	sem_wait(&hilosTerminados);
-	dictionary_put(commands,"theEnd","theEnd");
-	printf("Apagando Consola\n");
-	sem_destroy(&hilosTerminados);
+
 	freeElementsArray(args,sizeArgs);
 }
 
@@ -190,7 +192,6 @@ int main(int argc, char** argv) {
 	t_config* configFile = cargarConfiguracion(argv[1]);
 	logConsola = log_create("Consola.log","Consola",false,LOG_LEVEL_TRACE);
 
-	sem_init(&hilosTerminados,0,1);
 	sem_init(&avisoProcesado,0,0);
 
 	semaforosPID = dictionary_create();

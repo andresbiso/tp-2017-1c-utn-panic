@@ -6,6 +6,7 @@ void recibirTamanioPagina(int socket){
 	t_package* paquete = recibirPaquete(socket,NULL);
 	pagesize = atoi(paquete->datos);
 	log_info(cpu_log,"Tamaño de pagina de memoria %d",pagesize);
+	borrarPaquete(paquete);
 }
 
 void desconexionKernel(int socket){
@@ -21,6 +22,10 @@ void waitKernel(int socketKernel,t_dictionary* diccionarioFunciones){
 			break;
 		}
 		procesarPaquete(paquete, socketKernel, diccionarioFunciones, NULL,NULL);
+
+		if(terminoCPU){
+			break;
+		}
 	 }
 }
 
@@ -37,12 +42,28 @@ void modificarQuantumSleep(char*data, int socket) {
 void correrPCB(char* pcb, int socket){
 	actual_pcb = deserializar_pcb(pcb);
 	log_info(cpu_log,"Recibí PCB del PID:%d",actual_pcb->pid);
-	ejecutarPrograma();
-	t_pcb_serializado* paqueteSerializado = serializar_pcb(actual_pcb);
-	empaquetarEnviarMensaje(socketKernel, "RET_PCB", paqueteSerializado->tamanio, paqueteSerializado->contenido_pcb);
-	log_info(cpu_log,"Finaliza procesamiento PCB del PID:%d",actual_pcb->pid);
-	free(paqueteSerializado->contenido_pcb);
-	free(paqueteSerializado);
+	if(!signalSIGUSR1)
+		ejecutarPrograma();
+	if (!proceso_bloqueado) {
+		t_pcb_serializado* paqueteSerializado = serializar_pcb(actual_pcb);
+
+		t_retornar_pcb retornar;
+		retornar.pcb = actual_pcb;
+		retornar.rafagasEjecutadas=rafagas_ejecutadas;
+		retornar.desconectar=signalSIGUSR1;
+
+		char* buffer = serializar_retornar_pcb(&retornar,paqueteSerializado);
+		empaquetarEnviarMensaje(socketKernel, "RET_PCB", paqueteSerializado->tamanio+sizeof(int32_t)+sizeof(bool), buffer);
+		log_info(cpu_log,"Finaliza procesamiento PCB del PID:%d",actual_pcb->pid);
+
+		free(buffer);
+		free(paqueteSerializado->contenido_pcb);
+		free(paqueteSerializado);
+	}
+	error_en_ejecucion = 0;
+	proceso_bloqueado = 0;
+	rafagas_ejecutadas = 0;
+
 	destruir_pcb(actual_pcb);
 }
 
@@ -55,6 +76,10 @@ void ejecutarPrograma() {
 		pedido->pagina = actual_pcb->indice_codigo[actual_pcb->pc].pag;
 		pedido->offsetPagina = actual_pcb->indice_codigo[actual_pcb->pc].offset;
 		pedido->tamanio = actual_pcb->indice_codigo[actual_pcb->pc].size;
+
+		actual_pcb->pc++;
+		rafagas_ejecutadas++;
+
 		char* buffer =  serializar_pedido_solicitar_bytes(pedido);
 		int longitudMensaje = sizeof(t_pedido_solicitar_bytes);
 		if(!empaquetarEnviarMensaje(socketMemoria, "SOLC_BYTES", longitudMensaje, buffer)) {
@@ -69,12 +94,11 @@ void ejecutarPrograma() {
 		free(bufferRespuesta);
 		sleep(quantumSleep * 0.001);
 		cicloActual--;
-		actual_pcb->pc++;
-		if(error_en_ejecucion)
+		if(error_en_ejecucion || proceso_bloqueado)
 			break;
 	}
 	//Finalizo ok si no hubo un error en la ejecucion y es fifo (ejecuta todas las rafagas) o es RR y llega hasta la ultima instruccion
-	if(!error_en_ejecucion && (fifo || actual_pcb->pc==actual_pcb->cant_instrucciones) )
+	if(!error_en_ejecucion && !proceso_bloqueado && (fifo || actual_pcb->pc==actual_pcb->cant_instrucciones) )
 		actual_pcb->exit_code=FINALIZAR_OK;
 	free(pedido);
 }
@@ -92,6 +116,18 @@ void ejecutarInstruccion(t_respuesta_solicitar_bytes* respuesta) {
 
 void mostrarMensaje(char* mensaje, int socket){
 	printf("Mensaje recibido: %s \n",mensaje);
+}
+
+void signalHandler(int signal){
+	signalSIGUSR1=true;
+
+	log_info(cpu_log,"Se recibe signal SIGUSR1 se solicita la desconexión");
+	empaquetarEnviarMensaje(socketKernel,"FINISH_CPU",10,"FINISH_CPU");//la data del mensaje es trivial
+}
+
+void finishCPU(char* data, int socket){
+	log_info(cpu_log,"Se procede a la desconexión por autorizacion del Kernel");
+	terminoCPU=true;
 }
 
 t_config* cargarConfiguracion(char * nombreArchivo){
@@ -131,7 +167,6 @@ t_config* cargarConfiguracion(char * nombreArchivo){
 	return configFile;
 }
 
-
 int main(int argc, char** argv) {
 	if (argc == 1) {
 		printf("Falta parametro: archivo de configuracion");
@@ -139,6 +174,10 @@ int main(int argc, char** argv) {
 	}
 	t_config* configFile = cargarConfiguracion(argv[1]);
 	quantum=0;//Arranca en 0 porque si es fifo kernel no manda el quantum
+	quantumSleep=0;
+	error_en_ejecucion = 0;
+	proceso_bloqueado = 0;
+	rafagas_ejecutadas = 0;
 
 	printf("PUERTO KERNEL: %d\n",puertoKernel);
 	printf("IP KERNEL: %s\n",ipKernel);
@@ -148,6 +187,7 @@ int main(int argc, char** argv) {
 	t_dictionary* diccionarioFunciones = dictionary_create();
 	dictionary_put(diccionarioFunciones,"ERROR_FUNC",&mostrarMensaje);
 	dictionary_put(diccionarioFunciones,"CORRER_PCB",&correrPCB);
+	dictionary_put(diccionarioFunciones,"FINISH_CPU",&finishCPU);
 	dictionary_put(diccionarioFunciones,"NUEVO_QUANTUM",&modificarQuantum);
 	dictionary_put(diccionarioFunciones,"NUEVO_QUANTUM_SLEEP",&modificarQuantumSleep);
 	// ver comuncicaciones memoria-kernel
@@ -167,6 +207,8 @@ int main(int argc, char** argv) {
 		log_error(cpu_log,"No se pudo realizar la conexion con el kernel");
 		exit(EXIT_FAILURE);
 	}
+
+	signal(SIGUSR1, signalHandler);
 
 	funcionesParser = inicializar_primitivas();
 	waitKernel(socketKernel, diccionarioFunciones);

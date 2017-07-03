@@ -7,6 +7,19 @@
 
 #include "estados.h"
 
+void enviarMensajeConsola(char*mensaje,char*key,int32_t pid,int32_t socket,int32_t terminoProceso,int32_t mostrarPorPantalla){
+	t_aviso_consola aviso_consola;
+	aviso_consola.mensaje = mensaje;
+	aviso_consola.tamaniomensaje = strlen(aviso_consola.mensaje);
+	aviso_consola.idPrograma = pid;
+	aviso_consola.terminoProceso = terminoProceso;
+	aviso_consola.mostrarPorPantalla = mostrarPorPantalla;
+
+	char *pedido_serializado = serializar_aviso_consola(&aviso_consola);
+
+	empaquetarEnviarMensaje(socket,key,aviso_consola.tamaniomensaje+(sizeof(int32_t)*4),pedido_serializado);
+	free(pedido_serializado);
+}
 
 void crear_colas(){
 	colaNew = queue_create();
@@ -111,6 +124,13 @@ void moverA_colaReady(t_pcb *pcb){
 	queue_push(colaReady, pcb);
 	pthread_mutex_unlock(&colaReadyMutex);
 	log_debug(logEstados, "El PCB: %d paso a la cola Ready",pcb->pid);
+
+	if(processIsForFinish(pcb->pid)){
+		pcb->exit_code=FINALIZAR_BY_CONSOLE;
+		finishProcess(pcb,true,true);
+	}
+
+
 }
 
 t_pcb* sacarCualquieraDeReady(){
@@ -204,9 +224,47 @@ bool processIsForFinish(int32_t pid){
 	pthread_mutex_lock(&listForFinishMutex);
 	if(list_find(listForFinish,matchPID) != NULL){
 		list_remove_and_destroy_by_condition(listForFinish,matchPID,free);
+		pthread_mutex_unlock(&listForFinishMutex);
 		return true;
 	}
 	pthread_mutex_unlock(&listForFinishMutex);
 
 	return false;
 }
+
+void cpu_change_running(int32_t socket, bool newState){
+	bool matchSocket(void*elem){
+		return ((t_cpu*)elem)->socket==socket;
+	}
+
+	pthread_mutex_lock(&mutexCPUConectadas);
+	t_cpu* cpu = list_find(lista_cpus_conectadas,matchSocket);
+	cpu->corriendo=newState;
+	pthread_mutex_unlock(&mutexCPUConectadas);
+}
+
+
+t_consola* matchear_consola_por_pid(int pid){
+
+	bool matchPID_Consola(void *consola) {
+						return ((t_consola*)consola)->pid == pid;
+					}
+	return list_find(lista_programas_actuales, matchPID_Consola);
+}
+
+void eliminarConsolaPorPID(int32_t pid){
+	bool matchPID_Consola(void *consola) {
+							return ((t_consola*)consola)->pid == pid;
+	}
+	list_remove_and_destroy_by_condition(lista_programas_actuales,matchPID_Consola,free);
+}
+
+void program_change_running(int32_t pid, bool newState){
+
+	pthread_mutex_lock(&mutexProgramasActuales);
+	t_consola* consola = matchear_consola_por_pid(pid);
+	consola->corriendo=newState;
+	pthread_mutex_unlock(&mutexProgramasActuales);
+}
+
+

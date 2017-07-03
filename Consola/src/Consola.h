@@ -30,7 +30,6 @@ int socketKernel;
 pthread_mutex_t mutexSemaforosPID = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t mutexStatsPID = PTHREAD_MUTEX_INITIALIZER;
 sem_t avisoProcesado;
-sem_t hilosTerminados;
 t_log* logConsola;
 t_dictionary*semaforosPID;
 t_dictionary*commands;
