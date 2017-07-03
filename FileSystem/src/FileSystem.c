@@ -296,7 +296,7 @@ void eliminarBloque(char* bloque){
 bool hayXBloquesLibres(int cantidad){
 
 	int libres = 0;
-	while(libres<=metadataFS->cantidadBloques && bitarray_test_bit(bitmap, libres)){
+	while(libres<=metadataFS->cantidadBloques && !bitarray_test_bit(bitmap, libres)){
 		libres++;
 		if(libres>=cantidad)
 			break;

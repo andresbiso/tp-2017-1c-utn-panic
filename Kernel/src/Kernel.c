@@ -557,6 +557,11 @@ t_pcb* armar_nuevo_pcb(char* codigo){
 	}
 
 	int result_pag = divAndRoundUp(strlen(codigo), tamanio_pag_memoria);
+
+	if(result_pag<(posPag+1)){
+		result_pag=posPag+1;
+	}
+
 	nvopcb->cant_pags_totales=(result_pag + StackSize);
 
 	log_debug(logNucleo,"Cant paginas codigo: %d",result_pag);
@@ -862,8 +867,12 @@ void enviar_a_cpu(){
 
 	char* quantum = string_itoa(Quantum);
 	char* quantumsleep = string_itoa(QuantumSleep);
-	empaquetarEnviarMensaje(cpu_libre->socket,"NUEVO_QUANTUM_SLEEP",strlen(quantumsleep),quantumsleep);
-	empaquetarEnviarMensaje(cpu_libre->socket,"NUEVO_QUANTUM",strlen(quantum),quantum);
+
+	if(Modo==RR){
+		empaquetarEnviarMensaje(cpu_libre->socket,"NUEVO_QUANTUM_SLEEP",strlen(quantumsleep),quantumsleep);
+		empaquetarEnviarMensaje(cpu_libre->socket,"NUEVO_QUANTUM",strlen(quantum),quantum);
+	}
+
 	free(quantum);
 	free(quantumsleep);
 
@@ -1211,7 +1220,7 @@ t_config* cargarConfiguracion(char* archivo){
 		else{
 			printf("ERROR archivo config sin Quantum\n");
 			exit(EXIT_FAILURE);
-			}
+		}
 
 		if(config_has_property(archivo_cnf, "QUANTUM_SLEEP") == true)
 			QuantumSleep = config_get_int_value(archivo_cnf, "QUANTUM_SLEEP");

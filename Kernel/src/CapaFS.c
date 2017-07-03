@@ -54,6 +54,8 @@ void abrirArchivo(char* data, int socket){
 	t_respuesta_validar_archivo* respuestaValidar = deserializar_respuesta_validar_archivo(paqueteValidar->datos);
 	borrarPaquete(paqueteValidar);
 
+	t_respuesta_abrir_archivo respuesta;
+
 	switch (respuestaValidar->codigoRta){
 		case VALIDAR_OK:
 			log_info(logNucleo,"Validacion correcta de archivo");
@@ -76,8 +78,6 @@ void abrirArchivo(char* data, int socket){
 			t_archivos_global* archivos_global= malloc(sizeof(t_archivos_global));
 
 			t_archivos_proceso* archivos_proceso= malloc(sizeof(t_archivos_proceso));
-
-			t_respuesta_abrir_archivo respuesta;
 
 			if(archivoGlobal){
 				archivoGlobal->open++;
@@ -199,6 +199,12 @@ void abrirArchivo(char* data, int socket){
 				free(respuestaCrear);
 			}else{
 				log_error(logNucleo,"No existe el archivo solicitado");
+
+				respuesta.fd = 0;
+				respuesta.codigo = ABRIR_ERROR;
+				buffer = serializar_respuesta_abrir_archivo(&respuesta);
+				empaquetarEnviarMensaje(socket,"RES_ABRIR_ARCH",sizeof(t_respuesta_abrir_archivo),buffer);
+				free(buffer);
 			}
 			break;
 	}
@@ -366,7 +372,7 @@ void moverCursor(char* data, int socket){
 		t_archivos_proceso* archivo_proceso = list_find(listaArchivosPorProceso,matchFileProceso);
 
 		if(archivo_proceso){
-			archivo_proceso->cursor += pedido->posicion;
+			archivo_proceso->cursor = pedido->posicion;
 			log_info(logNucleo,"Se movio la posicion del cursor en %d posiciones",pedido->posicion);
 			respuesta.codigo = MOVER_OK;
 		}else{

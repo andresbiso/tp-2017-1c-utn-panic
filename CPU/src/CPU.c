@@ -174,6 +174,7 @@ int main(int argc, char** argv) {
 	}
 	t_config* configFile = cargarConfiguracion(argv[1]);
 	quantum=0;//Arranca en 0 porque si es fifo kernel no manda el quantum
+	quantumSleep=0;
 	error_en_ejecucion = 0;
 	proceso_bloqueado = 0;
 	rafagas_ejecutadas = 0;
