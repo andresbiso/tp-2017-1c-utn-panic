@@ -1125,14 +1125,14 @@ t_pedido_leer* deserializar_pedido_leer_archivo(char* pedido_serializado){
 	offset+=sizeof(int32_t);
 	memcpy(&pedido->descriptor_archivo,pedido_serializado+offset,sizeof(int32_t));
 	offset+=sizeof(int32_t);
-	memcpy(&pedido->tamanio,pedido_serializado,sizeof(int32_t));
+	memcpy(&pedido->tamanio,pedido_serializado+offset,sizeof(int32_t));
 
 	return pedido;
 
 }
 
 char* serializar_respuesta_leer_archivo(t_respuesta_leer* respuesta){
-	char* buffer = malloc(sizeof(int32_t)+sizeof(codigo_respuesta_leer)+sizeof(respuesta->tamanio));
+	char* buffer = malloc(sizeof(int32_t)+sizeof(codigo_respuesta_leer)+respuesta->tamanio);
 	int offset =0;
 
 	memcpy(buffer,&(respuesta->codigo),sizeof(codigo_respuesta_leer));
