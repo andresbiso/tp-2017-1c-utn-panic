@@ -191,7 +191,7 @@ char* leerBloque(char* numero, int tamanio, int offset){
 	char* nombreBloque = concat(numero, ".bin");
 	char* ruta = concat(rutaBloques, nombreBloque);
 	char* bloque = malloc(tamanio);
-	FILE* file = fopen(ruta, "r");
+	FILE* file = fopen(ruta, "rb");
 	if (file != NULL){
 		fseek(file, offset, SEEK_SET);
 		fread(bloque, tamanio, 1, file);
@@ -279,10 +279,11 @@ void leerDatosArchivo(char* datos, int socket){
 void escribirBloque(char* bloque, char* buffer, int tamanio, int offset){
 	char* nombre = concat(bloque, ".bin");
 	char* ruta = concat(rutaBloques, nombre);
-	FILE* file = fopen(ruta, "r");
+	FILE* file = fopen(ruta, "wb");
 	if (file != NULL){
 		fseek(file, offset, SEEK_SET);
 		fwrite(buffer, tamanio, 1, file);
+		fflush(file);
 	}
 }
 void eliminarBloque(char* bloque){
