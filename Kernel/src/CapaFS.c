@@ -39,8 +39,6 @@ void abrirArchivo(char* data, int socket){
 		dictionary_put(tablaArchivosPorProceso,pidKey,listaArchivos);
 	}
 
-	free(pidKey);
-
 	t_pedido_validar_crear_borrar_archivo_fs pedidoValidar;
 	pedidoValidar.tamanio = pedido->tamanio;
 	pedidoValidar.direccion = malloc((pedido->tamanio)+1);
@@ -140,10 +138,13 @@ void abrirArchivo(char* data, int socket){
 					strcpy(banderas,"rw");
 				}else if(pedido->flags->escritura){
 					strcpy(banderas,"w");
-				}else strcpy(banderas,"r");
+				}else{
+					strcpy(banderas,"r");
+				}
 
-				switch(respuestaCrear->codigoRta){
-					case CREAR_OK:
+				listaArchivos = dictionary_get(tablaArchivosPorProceso,pidKey);//Dejar esta linea
+
+				if(respuestaCrear->codigoRta== CREAR_OK){
 						log_info(logNucleo,"Creacion correcta de archivo");
 						archivos_global->globalFD = obtenerEIncrementarGlobalFD();
 						archivos_global->file = malloc(strlen(pedido->direccion)+1);
@@ -166,28 +167,25 @@ void abrirArchivo(char* data, int socket){
 						buffer = serializar_respuesta_abrir_archivo(&respuesta);
 						empaquetarEnviarMensaje(socket,"RES_ABRIR_ARCH",sizeof(t_respuesta_abrir_archivo),buffer);
 						free(buffer);
-						break;
-					case CREAR_ERROR:
-						respuesta.fd = archivos_proceso->fd;
+					}else if (respuestaCrear->codigoRta == CREAR_ERROR){
+						respuesta.fd = 0;
 						respuesta.codigo = ABRIR_ERROR;
 
 						buffer = serializar_respuesta_abrir_archivo(&respuesta);
 						empaquetarEnviarMensaje(socket,"RES_ABRIR_ARCH",sizeof(t_respuesta_abrir_archivo),buffer);
 						free(buffer);
 						log_error(logNucleo,"No se pudo crear el archivo");
-						break;
-					case NO_HAY_BLOQUES:
-						respuesta.fd = archivos_proceso->fd;
+					}else{
+						respuesta.fd = 0;
 						respuesta.codigo = ABRIR_ERROR;
 
 						buffer = serializar_respuesta_abrir_archivo(&respuesta);
 						empaquetarEnviarMensaje(socket,"RES_ABRIR_ARCH",sizeof(t_respuesta_abrir_archivo),buffer);
 						free(buffer);
 						log_error(logNucleo,"No hay bloques disponibles para crear el archivo");
-						break;
-				}
-				free(pid);
-				free(respuestaCrear);
+					}
+					free(pid);
+					free(respuestaCrear);
 			}else{
 				log_error(logNucleo,"No existe el archivo solicitado");
 
@@ -205,6 +203,7 @@ void abrirArchivo(char* data, int socket){
 	free(pedido->direccion);
 	free(pedido->flags);
 	free(pedido);
+	free(pidKey);
 }
 
 void cerrarArchivo(char* data, int socket){
@@ -305,19 +304,16 @@ void borrarArchivo(char* data, int socket){
 				t_respuesta_borrar_archivo* respuestaBorrar = deserializar_respuesta_borrar_archivo(paqueteBorrar->datos);
 				borrarPaquete(paqueteBorrar);
 
-				switch(respuestaBorrar->codigoRta){
-					case BORRAR_OK:
-						log_info(logNucleo,"Se borro correctamente el archivo GLOBAL FD: %d ",archivo_proceso->globalFD);
+				if(respuestaBorrar->codigoRta == BORRAR_OK){
+					log_info(logNucleo,"Se borro correctamente el archivo GLOBAL FD: %d ",archivo_proceso->globalFD);
 
-						list_remove_and_destroy_by_condition(tablaArchivosGlobales,matchFileGlobal,destroyArchivoGlobal);
-						list_remove_and_destroy_by_condition(listaArchivosPorProceso,matchFileProceso,destroyArchivoProceso);
+					list_remove_and_destroy_by_condition(tablaArchivosGlobales,matchFileGlobal,destroyArchivoGlobal);
+					list_remove_and_destroy_by_condition(listaArchivosPorProceso,matchFileProceso,destroyArchivoProceso);
 
-						respuesta.codigo = BORRADO_OK;
-						break;
-					case BORRAR_ERROR:
-						log_error(logNucleo,"No se pudo borrar el archivo GLOBAL FD: %d",archivo_global->globalFD);
-						respuesta.codigo = BORRADO_ERROR;
-						break;
+					respuesta.codigo = BORRADO_OK;
+				}else{
+					log_error(logNucleo,"No se pudo borrar el archivo GLOBAL FD: %d",archivo_global->globalFD);
+					respuesta.codigo = BORRADO_ERROR;
 				}
 				free(respuestaBorrar);
 			}else{
@@ -430,20 +426,17 @@ void leerArchivo(char* data, int socket){
             	t_respuesta_pedido_lectura* respuestaLeer = deserializar_respuesta_pedido_lectura(paqueteLeer->datos);
             	borrarPaquete(paqueteLeer);
 
-            	switch(respuestaLeer->codigo){
-            		case LECTURA_OK:
+            	if(respuestaLeer->codigo == LECTURA_OK){
             			log_info(logNucleo,"Se leyo correctamente el archivo GLOBAL FD: %d",archivo_global->globalFD);
             			respuesta.codigo = LEER_OK;
             			respuesta.tamanio = respuestaLeer->tamanio;
             			respuesta.informacion = malloc(respuesta.tamanio);
             			memcpy(respuesta.informacion,respuestaLeer->datos,respuesta.tamanio);
-            			break;
-            		case LECTURA_ERROR: //TODO en CPU finalizar el proceso
+            	}else{
             			log_error(logNucleo,"No se pudo leer el archivo GLOBAL FD: %d",archivo_global->globalFD);
             			respuesta.codigo = LEER_BLOCKED;
             			respuesta.informacion = "LEER_ERROR";
             			respuesta.tamanio = strlen("LEER_ERROR");
-            			break;
             	}
             	free(respuestaLeer->datos);
             	free(respuestaLeer);
@@ -451,7 +444,7 @@ void leerArchivo(char* data, int socket){
             	respuesta.codigo = LEER_BLOCKED;
             	respuesta.informacion = "LEER_ERROR";
             	respuesta.tamanio = strlen("LEER_ERROR");
-            	log_error(logNucleo,"El archivo GLOBAL FD: %d no fue abierto con permisos de lectura",archivo_global->globalFD); //TODO en CPU finalizar el proceso
+            	log_error(logNucleo,"El archivo GLOBAL FD: %d no fue abierto con permisos de lectura",archivo_global->globalFD);
             }
         }else{
         	respuesta.codigo = LEER_NO_EXISTE;
@@ -537,7 +530,7 @@ void escribirArchivo(char* data, int socket){
 	        	 		respuesta.codigo = ESCRITURA_SIN_ESPACIO;
 	        	 		break;
 	        	 	case ESCRIBIR_ERROR:
-	        	 		log_error(logNucleo,"No se pudo escribir el archivo GLOBAL FD: %d",archivo_global->globalFD); //TODO en CPU finalizar el proceso
+	        	 		log_error(logNucleo,"No se pudo escribir el archivo GLOBAL FD: %d",archivo_global->globalFD);
 	        	 		respuesta.codigo = ESCRITURA_ERROR;
 	        	 		break;
 	        	}

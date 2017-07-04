@@ -1069,7 +1069,7 @@ char* serializar_respuesta_pedido_escritura(t_respuesta_pedido_escritura* rta){
 t_respuesta_pedido_escritura* deserializar_respuesta_pedido_escritura(char* rta){
 	t_respuesta_pedido_escritura* respuesta = malloc(sizeof(t_respuesta_pedido_escritura));
 
-	memcpy(&respuesta->codigoRta,(void*)rta,sizeof(t_respuesta_pedido_escritura));
+	memcpy(&respuesta->codigoRta,(void*)rta,sizeof(codigo_escribir_archivo));
 
 	return respuesta;
 }

@@ -868,8 +868,8 @@ void enviar_a_cpu(){
 	char* quantum = string_itoa(Quantum);
 	char* quantumsleep = string_itoa(QuantumSleep);
 
+	empaquetarEnviarMensaje(cpu_libre->socket,"NUEVO_QUANTUM_SLEEP",strlen(quantumsleep),quantumsleep);
 	if(Modo==RR){
-		empaquetarEnviarMensaje(cpu_libre->socket,"NUEVO_QUANTUM_SLEEP",strlen(quantumsleep),quantumsleep);
 		empaquetarEnviarMensaje(cpu_libre->socket,"NUEVO_QUANTUM",strlen(quantum),quantum);
 	}
 

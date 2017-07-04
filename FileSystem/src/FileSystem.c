@@ -77,6 +77,7 @@ void marcarBloqueOcupado(char* bloque){
 	bitarray_set_bit(bitmap, atoi(bloque));
 	msync(bitmap->bitarray,bitmap->size,MS_SYNC);
 }
+
 void marcarBloqueDesocupado(char* bloque){
 	log_trace(logFS, "Se marca el bit %s como desocupado", bloque);
 	bitarray_clean_bit(bitmap, atoi(bloque));
@@ -84,10 +85,10 @@ void marcarBloqueDesocupado(char* bloque){
 }
 int obtenerBloqueVacio(){
 	int i = 0;
-	while(i<=metadataFS->cantidadBloques && bitarray_test_bit(bitmap, i)){
+	while(i<metadataFS->cantidadBloques && bitarray_test_bit(bitmap, i)){
 		i++;
 	}
-	if (i <= metadataFS->cantidadBloques)
+	if (i < metadataFS->cantidadBloques)
 		return i;
 	else
 		return -1;
@@ -298,7 +299,7 @@ bool hayXBloquesLibres(int cantidad){
 
 	int libres = 0;
 	int cont = 0;
-	while(cont<=metadataFS->cantidadBloques){
+	while(cont<metadataFS->cantidadBloques){
 		cont++;
 
 		if(!bitarray_test_bit(bitmap, cont)){
@@ -338,31 +339,33 @@ void escribirDatosArchivo(char* datos, int socket){
 			startBlockIndex++;//Esta en un extremo de un bloque
 		}
 
-		int bloquesNewSize = ((pedidoEscritura->offset+tamanioAEscribir)/metadataFS->tamanioBloque);
+		int bloquesNewSize = divAndRoundUp(pedidoEscritura->offset+tamanioAEscribir,metadataFS->tamanioBloque);
 		int totalBloques = bloquesNewSize>cantBloques?bloquesNewSize:cantBloques;
 
 		int cantNuevosBloques = totalBloques - cantBloques;
 		archivoAEscribir.bloques = realloc(archivoAEscribir.bloques, sizeof(char*) * totalBloques);
 		if(hayXBloquesLibres(cantNuevosBloques)){
-			for (nroBloque = startBlockIndex; nroBloque < totalBloques; nroBloque++){
+			for (nroBloque = cantBloques; nroBloque <= totalBloques; nroBloque++){
 				if(nroBloque > (cantBloques-1)){
 					int bloqueNuevo = obtenerBloqueVacio();
 					archivoAEscribir.bloques[nroBloque] = string_itoa(bloqueNuevo);
 					marcarBloqueOcupado(archivoAEscribir.bloques[nroBloque]);
 				}
-				int tamanio = ((offsetBloque + tamanioAEscribir)>metadataFS->tamanioBloque)?(metadataFS->tamanioBloque-offsetBloque):tamanioAEscribir;
-				char* buffer = malloc(tamanio);
-				memcpy(buffer, (void*)pedidoEscritura->buffer+offset, tamanio);
-				escribirBloque(archivoAEscribir.bloques[nroBloque], buffer, tamanio, offsetBloque);
-				free(buffer);
+				if(nroBloque >= startBlockIndex){
+					int tamanio = ((offsetBloque + tamanioAEscribir)>metadataFS->tamanioBloque)?(metadataFS->tamanioBloque-offsetBloque):tamanioAEscribir;
+					char* buffer = malloc(tamanio);
+					memcpy(buffer, (void*)pedidoEscritura->buffer+offset, tamanio);
+					escribirBloque(archivoAEscribir.bloques[nroBloque], buffer, tamanio, offsetBloque);
+					free(buffer);
 
-				offset+=tamanio;
-				tamanioAEscribir-=tamanio;
+					offset+=tamanio;
+					tamanioAEscribir-=tamanio;
 
-				offsetBloque = 0;
+					offsetBloque = 0;
 
-				if(tamanioAEscribir==0)
-					break;
+					if(tamanioAEscribir==0)
+						break;
+				}
 			}
 			int nuevoTamanio = pedidoEscritura->offset + pedidoEscritura->tamanio;
 			int tamanioGuardar = (nuevoTamanio > archivoAEscribir.tamanio)?nuevoTamanio:archivoAEscribir.tamanio;
@@ -464,7 +467,6 @@ int main(int argc, char** argv){
 
 	printf("PUERTO: %d\n",puerto);
 	printf("PUNTO_MONTAJE: %s\n",puntoMontaje);
-	printf("TAMANIO BITMAP: %d\n", bitmap->size);
 
 	t_dictionary* diccionarioFunc= dictionary_create();
 	t_dictionary* diccionarioHands= dictionary_create();
