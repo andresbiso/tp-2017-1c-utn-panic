@@ -254,7 +254,7 @@ void leerDatosArchivo(char* datos, int socket){
 			log_info(logFS,"Lectura correcta del archivo");
 
 		}else{
-			log_info(logFS,"El offset %d es más grande que el archivo de tamanio %d",pedidoDeLectura->offset,archivoALeer.tamanio);
+			log_info(logFS,"El offset %d con el size %d es más grande que el archivo de tamanio %d",pedidoDeLectura->offset,pedidoDeLectura->tamanio,archivoALeer.tamanio);
 			rta.tamanio=5;
 			rta.datos="ERROR";
 			rta.codigo=LECTURA_ERROR;
@@ -297,8 +297,14 @@ void eliminarBloque(char* bloque){
 bool hayXBloquesLibres(int cantidad){
 
 	int libres = 0;
-	while(libres<=metadataFS->cantidadBloques && !bitarray_test_bit(bitmap, libres)){
-		libres++;
+	int cont = 0;
+	while(cont<=metadataFS->cantidadBloques){
+		cont++;
+
+		if(!bitarray_test_bit(bitmap, cont)){
+			libres++;
+		}
+
 		if(libres>=cantidad)
 			break;
 	}
@@ -332,7 +338,7 @@ void escribirDatosArchivo(char* datos, int socket){
 			startBlockIndex++;//Esta en un extremo de un bloque
 		}
 
-		int bloquesNewSize = ((pedidoEscritura->offset+tamanioAEscribir)/metadataFS->tamanioBloque)+1;
+		int bloquesNewSize = ((pedidoEscritura->offset+tamanioAEscribir)/metadataFS->tamanioBloque);
 		int totalBloques = bloquesNewSize>cantBloques?bloquesNewSize:cantBloques;
 
 		int cantNuevosBloques = totalBloques - cantBloques;

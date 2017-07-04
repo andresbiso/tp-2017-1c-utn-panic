@@ -22,8 +22,7 @@ t_puntero definirVariable(t_nombre_variable identificador_variable) {
 		log_info(cpu_log,"Se solicita definir %c", identificador_variable);
 
 		if(actual_pcb->fin_stack.pag == actual_pcb->cant_pags_totales){
-			log_warning(cpu_log,"Stack Overflow: Se ha intentado leer una pagina invalida");
-			puts("Stack Overflow: Se ha intentado leer una pagina invalida");
+			log_info(cpu_log,"Stack Overflow: Se ha intentado leer una pagina invalida");
 			error_en_ejecucion = true;
 			actual_pcb->exit_code=FINALIZAR_STACK_OVERFLOW;
 			return -1;
@@ -290,6 +289,10 @@ void irAlLabel(t_nombre_etiqueta t_nombre_etiqueta) {
 
 	if(t_nombre_etiqueta[tamanioLabel-1]=='\n'){
 		t_nombre_etiqueta[tamanioLabel-1]='\0';
+	}
+
+	if(t_nombre_etiqueta[tamanioLabel-2]=='\r'){
+		t_nombre_etiqueta[tamanioLabel-2]='\0';
 	}
 
 	t_puntero_instruccion puntero_instruccion = metadata_buscar_etiqueta(t_nombre_etiqueta, actual_pcb->indice_etiquetas, actual_pcb->tamano_etiquetas);
@@ -570,6 +573,16 @@ t_descriptor_archivo abrir(t_direccion_archivo direccion, t_banderas flags) {
 		return -1;
 	}
 
+	int tamanioLabel = strlen(direccion);
+
+	if(direccion[tamanioLabel-1]=='\n'){
+		direccion[tamanioLabel-1]='\0';
+	}
+
+	if(direccion[tamanioLabel-2]=='\r'){
+		direccion[tamanioLabel-2]='\0';
+	}
+
 	t_pedido_abrir_archivo pedido;
 	pedido.pid=actual_pcb->pid;
 	pedido.flags = malloc(sizeof(bool)*3);
@@ -641,7 +654,7 @@ void borrar(t_descriptor_archivo descriptor_archivo) {
 		free(respuesta);
 		return;
 	} else {
-		log_error(cpu_log,"Error: El archivo se encuentra bloqueado");
+		log_error(cpu_log,"Error: Error sin definicion al borrar el archivo");
 		error_en_ejecucion = 1;
 		actual_pcb->exit_code = FINALIZAR_ERROR_SIN_DEFINICION;
 		free(respuesta);
@@ -784,7 +797,7 @@ void escribir(t_descriptor_archivo descriptor_archivo, void* informacion, t_valo
 		actual_pcb->exit_code = FINALIZAR_ERROR_SIN_DEFINICION;
 		break;
 	case ESCRITURA_BLOCKED:
-		log_error(cpu_log,"Error: el archivo se encuentra bloqueado");
+		log_error(cpu_log,"Error: no se tiene permisos para escribir el archivo");
 		error_en_ejecucion = 1;
 		actual_pcb->exit_code = FINALIZAR_ERROR_SIN_DEFINICION;
 		break;
@@ -864,7 +877,7 @@ void leer(t_descriptor_archivo descriptor_archivo, t_puntero informacion, t_valo
 		actual_pcb->exit_code = FINALIZAR_ARCHIVO_NO_EXISTE;
 		break;
 	case LEER_BLOCKED:
-		log_error(cpu_log,"Error: el archivo se encuentra bloqueado");
+		log_error(cpu_log,"Error: no se tiene permisos para leer el archivo");
 		error_en_ejecucion = 1;
 		actual_pcb->exit_code = FINALIZAR_LEER_ARCHIVO_SIN_PERMISOS;
 		break;

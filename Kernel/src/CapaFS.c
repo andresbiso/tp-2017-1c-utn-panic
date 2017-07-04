@@ -56,8 +56,11 @@ void abrirArchivo(char* data, int socket){
 
 	t_respuesta_abrir_archivo respuesta;
 
-	switch (respuestaValidar->codigoRta){
-		case VALIDAR_OK:
+	t_archivos_global* archivos_global= malloc(sizeof(t_archivos_global));
+
+	t_archivos_proceso* archivos_proceso= malloc(sizeof(t_archivos_proceso));
+
+	if(respuestaValidar->codigoRta == VALIDAR_OK){
 			log_info(logNucleo,"Validacion correcta de archivo");
 
 			bool matchFile(void *archivoGlobal) {
@@ -74,10 +77,6 @@ void abrirArchivo(char* data, int socket){
 			}else strcpy(banderas,"r");
 
 			t_archivos_global* archivoGlobal = list_find(tablaArchivosGlobales,matchFile);
-
-			t_archivos_global* archivos_global= malloc(sizeof(t_archivos_global));
-
-			t_archivos_proceso* archivos_proceso= malloc(sizeof(t_archivos_proceso));
 
 			if(archivoGlobal){
 				archivoGlobal->open++;
@@ -118,8 +117,7 @@ void abrirArchivo(char* data, int socket){
 			char* buffer = serializar_respuesta_abrir_archivo(&respuesta);
 			empaquetarEnviarMensaje(socket,"RES_ABRIR_ARCH",sizeof(t_respuesta_abrir_archivo),buffer);
 			free(buffer);
-			break;
-		case NO_EXISTE_ARCHIVO:
+	}else{
 			if(pedido->flags->creacion){
 				log_info(logNucleo,"No existe el archivo, se intentara crearlo");
 				t_pedido_validar_crear_borrar_archivo_fs pedidoCrear;
@@ -144,19 +142,12 @@ void abrirArchivo(char* data, int socket){
 					strcpy(banderas,"w");
 				}else strcpy(banderas,"r");
 
-				t_archivos_global* archivos_global;
-				archivos_global = malloc(sizeof(t_archivos_global));
-
-				t_archivos_proceso* archivos_proceso;
-				archivos_proceso = malloc(sizeof(t_archivos_proceso));
-
-				t_respuesta_abrir_archivo respuesta;
-
 				switch(respuestaCrear->codigoRta){
 					case CREAR_OK:
 						log_info(logNucleo,"Creacion correcta de archivo");
 						archivos_global->globalFD = obtenerEIncrementarGlobalFD();
-						archivos_global->file = malloc(strlen(pedido->direccion));
+						archivos_global->file = malloc(strlen(pedido->direccion)+1);
+						archivos_global->file[strlen(pedido->direccion)]='\0';
 						memcpy(archivos_global->file,pedido->direccion,strlen(pedido->direccion));
 						archivos_global->open = 1;
 
@@ -206,7 +197,6 @@ void abrirArchivo(char* data, int socket){
 				empaquetarEnviarMensaje(socket,"RES_ABRIR_ARCH",sizeof(t_respuesta_abrir_archivo),buffer);
 				free(buffer);
 			}
-			break;
 	}
 
 	pthread_mutex_unlock(&capaFSMutex);
@@ -317,9 +307,10 @@ void borrarArchivo(char* data, int socket){
 
 				switch(respuestaBorrar->codigoRta){
 					case BORRAR_OK:
+						log_info(logNucleo,"Se borro correctamente el archivo GLOBAL FD: %d ",archivo_proceso->globalFD);
+
 						list_remove_and_destroy_by_condition(tablaArchivosGlobales,matchFileGlobal,destroyArchivoGlobal);
 						list_remove_and_destroy_by_condition(listaArchivosPorProceso,matchFileProceso,destroyArchivoProceso);
-						log_info(logNucleo,"Se borro correctamente el archivo GLOBAL FD: %d ",archivo_proceso->globalFD);
 
 						respuesta.codigo = BORRADO_OK;
 						break;
@@ -481,7 +472,9 @@ void leerArchivo(char* data, int socket){
  
     pthread_mutex_unlock(&capaFSMutex);
 
-    free(respuesta.informacion);
+    if(respuesta.codigo == LEER_OK){
+    	free(respuesta.informacion);
+    }
     free(pedidoLectura.ruta);
     free(pedido);
     free(pidKey);
