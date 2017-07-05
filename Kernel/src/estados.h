@@ -90,6 +90,7 @@ void moverA_colaExit(t_pcb *pcb);
 void moverA_colaBlocked(t_pcb *pcb);
 void moverA_colaExec(t_pcb *pcb);
 void moverA_colaReady(t_pcb *pcb);
+void moverA_colaReadySinFinalizar(t_pcb *pcb);
 
 t_pcb *sacarDe_colaNew(uint32_t pid);
 t_pcb *sacarDe_colaReady(uint32_t pid);
@@ -120,5 +121,6 @@ void agregarLiberar(int32_t pid,int32_t bytes);
 void agregarReservar(int32_t pid,int32_t bytes);
 void agregarPagHeap(int32_t pid);
 void desconectarCPU(int socket);
+void addForFinishIfNotContains(int32_t* pid);
 
 #endif /* SRC_ESTADOS_H_ */

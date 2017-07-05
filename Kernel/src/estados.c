@@ -114,22 +114,41 @@ void moverA_colaExec(t_pcb *pcb)
 	log_debug(logEstados, "El PCB: %d paso a la cola Exec",pcb->pid);
 }
 
+void moverA_colaReadySinFinalizar(t_pcb *pcb){
+	if(!pcb)
+		return;
+
+	checkStopped();
+
+	log_debug(logEstados, "El PCB: %d paso a la cola Ready",pcb->pid);
+
+	pthread_mutex_lock(&colaReadyMutex);
+
+	queue_push(colaReady, pcb);
+
+	pthread_mutex_unlock(&colaReadyMutex);
+
+}
+
 void moverA_colaReady(t_pcb *pcb){
 	if(!pcb)
 		return;
 
 	checkStopped();
 
-	pthread_mutex_lock(&colaReadyMutex);
-	queue_push(colaReady, pcb);
-	pthread_mutex_unlock(&colaReadyMutex);
 	log_debug(logEstados, "El PCB: %d paso a la cola Ready",pcb->pid);
 
+	pthread_mutex_lock(&colaReadyMutex);
+
 	if(processIsForFinish(pcb->pid)){
+		log_debug(logEstados, "Debio finalizar el pid: %d",pcb->pid);
 		pcb->exit_code=FINALIZAR_BY_CONSOLE;
 		finishProcess(pcb,true,true);
+	}else{
+		queue_push(colaReady, pcb);
 	}
 
+	pthread_mutex_unlock(&colaReadyMutex);
 
 }
 
@@ -211,8 +230,9 @@ void bloquear_pcb(t_pcb* pcbabloquear){
 void desbloquear_pcb(int32_t pid){
 	t_pcb* pcbsacado = sacarDe_colaBlocked(pid);
 
-	if(pcbsacado)
-		moverA_colaReady(pcbsacado);
+	if(pcbsacado){
+		moverA_colaReadySinFinalizar(pcbsacado);
+	}
 }
 
 bool processIsForFinish(int32_t pid){
@@ -248,7 +268,8 @@ t_consola* matchear_consola_por_pid(int pid){
 
 	bool matchPID_Consola(void *consola) {
 						return ((t_consola*)consola)->pid == pid;
-					}
+	}
+
 	return list_find(lista_programas_actuales, matchPID_Consola);
 }
 
@@ -256,6 +277,7 @@ void eliminarConsolaPorPID(int32_t pid){
 	bool matchPID_Consola(void *consola) {
 							return ((t_consola*)consola)->pid == pid;
 	}
+
 	list_remove_and_destroy_by_condition(lista_programas_actuales,matchPID_Consola,free);
 }
 
@@ -263,8 +285,8 @@ void program_change_running(int32_t pid, bool newState){
 
 	pthread_mutex_lock(&mutexProgramasActuales);
 	t_consola* consola = matchear_consola_por_pid(pid);
-	consola->corriendo=newState;
+	if(consola){
+		consola->corriendo=newState;
+	}
 	pthread_mutex_unlock(&mutexProgramasActuales);
 }
-
-

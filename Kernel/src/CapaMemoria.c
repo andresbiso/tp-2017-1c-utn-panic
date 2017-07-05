@@ -86,7 +86,7 @@ void wait(char* data,int socket){
 		log_info(logNucleo,"El SEM:%s no existe",pedido->semId);
 		respuesta.respuesta=WAIT_NOT_EXIST;
 	}else{
-		log_info(logNucleo,"Valor del SEM:%d",sem->valor,queue_size(sem->cola));
+		log_info(logNucleo,"Valor del SEM:%d",sem->valor);
 		sem->valor--;
 		if(sem->valor <0){
 			log_info(logNucleo,"El SEM:%s queda con valor:%d y se bloquea al PID:%d",pedido->semId,sem->valor,pedido->pcb->pid);
@@ -145,6 +145,7 @@ void signal(char* data,int socket){
 				int32_t* pidADesbloquear = queue_pop(sem->cola);
 				desbloquear_pcb(*pidADesbloquear);
 				free(pidADesbloquear);
+				enviar_a_cpu();
 			}else{
 				log_info(logNucleo,"El SEM:%s con cola de espera vacia",pedido->semId);
 			}
@@ -629,7 +630,7 @@ void cleanMemoriaHeap(int32_t pid){
 
 		void destroyPage(void* elem){
 
-			int32_t espacioAlocado = tamanio_pag_memoria-((t_pagina_heap*)elem)->espacioDisponible-sizeof(t_heap_metadata);
+			int32_t espacioAlocado = tamanio_pag_memoria-((t_pagina_heap*)elem)->espacioDisponible;
 			memoryLeak+=espacioAlocado;
 			free(elem);
 		}

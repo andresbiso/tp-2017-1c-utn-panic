@@ -90,7 +90,6 @@ void retornarPCB(char* data,int socket){
 	}
 
 	if(retornar->pcb->exit_code<=0){//termino el programa
-
 		log_info(logNucleo,"Programa finalizado desde el socket:%d con el PID:%d",socket,retornar->pcb->pid);
 		finishProcess(retornar->pcb,true,true);
 	}else{
@@ -120,6 +119,34 @@ void finalizarProceso(void* pidArg){
 			if(pcb!=NULL){//Esta en ready
 				log_info(logNucleo,"Finalizando proceso con PID:%d ",*pid);
 				pcb->exit_code=FINALIZAR_BY_CONSOLE;
+				finishProcess(pcb,true,false);
+			}else{//Esta bloqueado
+				addForFinishIfNotContains(pid);
+			}
+		}else{
+			addForFinishIfNotContains(pid);
+		}
+	}
+	pthread_mutex_unlock(&mutexProgramasActuales);
+}
+
+void finalizarProcesoDesconexion(void* pidArg){
+	int32_t* pid = (int32_t*)pidArg;
+
+	log_info(logNucleo,"A punto de finalizar el proceso con el PID:%d",*pid);
+
+	pthread_mutex_lock(&mutexProgramasActuales);
+	t_consola* consola = matchear_consola_por_pid(*pid);
+
+	if(consola != NULL){
+		if(consola->corriendo==false){
+			//Puede estar bloqueado o en ready
+			t_pcb* pcb;
+
+			pcb = sacarDe_colaReady(*pid);
+			if(pcb!=NULL){//Esta en ready
+				log_info(logNucleo,"Finalizando proceso con PID:%d ",*pid);
+				pcb->exit_code=FINALIZAR_DESCONEXION_CONSOLA;
 				finishProcess(pcb,true,false);
 			}else{//Esta bloqueado
 				addForFinishIfNotContains(pid);
@@ -786,8 +813,11 @@ void finishProcess(t_pcb* pcb,bool check_memoria,bool lock){
 		}
 
 		t_consola* consola = matchear_consola_por_pid(pcb->pid);
-		enviarMensajeConsola(message,"END_PRGM",pcb->pid,consola->socket,1,0);
-		eliminarConsolaPorPID(pcb->pid);
+
+		if(consola){
+			enviarMensajeConsola(message,"END_PRGM",pcb->pid,consola->socket,1,0);
+			eliminarConsolaPorPID(pcb->pid);
+		}
 
 		if(lock){
 			pthread_mutex_unlock(&mutexProgramasActuales);
@@ -1006,6 +1036,24 @@ void agregarReservar(int32_t pid,int32_t bytes){
 
 /* STATS */
 
+void desconexionConsola(int socket){
+	log_info(logNucleo,"Se desconecto la consola del socket %d",socket);
+
+	void enviarAfinalizar(void* elem){
+		if (((t_consola*)elem)->socket==socket){
+			pthread_t hilo;//Se hace con un hilo por si se pausa la planificacion
+			int32_t* pid_finish = malloc(sizeof(int32_t));
+			*pid_finish=((t_consola*)elem)->pid;
+			pthread_create(&hilo,NULL,(void*)&finalizarProcesoDesconexion,pid_finish);
+		}
+	}
+
+	pthread_mutex_lock(&mutexProgramasActuales);
+	list_iterate(lista_programas_actuales,enviarAfinalizar);
+	pthread_mutex_unlock(&mutexProgramasActuales);
+
+}
+
 void mostrarMensaje(char* mensaje,int socket){
 	printf("Mensaje recibido: %s \n",mensaje);
 }
@@ -1077,7 +1125,7 @@ int main(int argc, char** argv) {
     threadParams parametrosConsola;
     parametrosConsola.socketEscucha = socketConsola;
     parametrosConsola.nuevaConexion = NULL;
-    parametrosConsola.desconexion = NULL;
+    parametrosConsola.desconexion = &desconexionConsola;
     parametrosConsola.handshakes = diccionarioHandshakes;
     parametrosConsola.funciones = diccionarioFunciones;
     parametrosConsola.afterHandshake = NULL;
