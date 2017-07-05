@@ -335,10 +335,6 @@ void escribirDatosArchivo(char* datos, int socket){
 		int offsetBloque=pedidoEscritura->offset%metadataFS->tamanioBloque;
 		int startBlockIndex=((pedidoEscritura->offset)/metadataFS->tamanioBloque);
 
-		if(pedidoEscritura->offset!=0 && offsetBloque==0){
-			startBlockIndex++;//Esta en un extremo de un bloque
-		}
-
 		int bloquesNewSize = divAndRoundUp(pedidoEscritura->offset+tamanioAEscribir,metadataFS->tamanioBloque);
 		int totalBloques = bloquesNewSize>cantBloques?bloquesNewSize:cantBloques;
 
