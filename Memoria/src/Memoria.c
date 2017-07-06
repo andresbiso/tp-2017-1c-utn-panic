@@ -100,6 +100,14 @@ t_cache_admin* findMinorEntradas(){//Si hay alguna libre le doy esa sino busco l
 	return getCacheMinorEntradas(NULL);
 }
 
+t_cache_admin* getCacheAdmin(int32_t pid, int32_t pag){
+	bool find(void*e1){
+		return ((t_cache_admin*)e1)->pid==pid && ((t_cache_admin*)e1)->nroPagina==pag;
+	}
+
+	return list_find(cacheEntradas,find);
+}
+
 void clearEntradasCache(int32_t pid,int32_t nroPagina,int32_t pidReplace,int32_t nroPaginaReplace){
 
 	if(nroPagina == -1){
@@ -721,6 +729,9 @@ void solicitarBytes(char* data,int socket){
 	t_cache* cache = findInCache(pedido->pid,pedido->pagina);
 
 	if(cache!=NULL){
+		t_cache_admin* cache_admin = getCacheAdmin(pedido->pid,pedido->pagina);
+		cache_admin->tiempoEntrada=time(0);
+
 		log_info(logFile,"Pagina encontrada en cache PID:%d PAG:%d",pedido->pid,pedido->pagina);
 
 		if(marcoSize -(pedido->offsetPagina+pedido->tamanio) <0){
@@ -831,6 +842,9 @@ void almacenarBytes(char* data,int socket){
 			int32_t offsetHastaData= (marcoSize*(pag->indice))+pedido->offsetPagina;
 			memcpy(bloqueMemoria+offsetHastaData,pedido->data,pedido->tamanio);
 			if(cache!=NULL){
+				t_cache_admin* cache_admin = getCacheAdmin(pedido->pid,pedido->pagina);
+				cache_admin->tiempoEntrada=time(0);
+
 				log_info(logFile,"Se actualiza la pagina de cache del PID:%d NRO:%d",cache->pid,cache->nroPagina);
 				memcpy(cache->contenido+pedido->offsetPagina,pedido->data,pedido->tamanio);
 				free(cache);
