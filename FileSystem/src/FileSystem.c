@@ -70,6 +70,7 @@ void marcarBloqueOcupado(char* bloque){
 	string_append(&rutaBloque,".bin");
 
 	FILE* file = fopen(rutaBloque,"w");
+	fflush(file);
 	fclose(file);
 	free(rutaBloque);
 
@@ -341,27 +342,25 @@ void escribirDatosArchivo(char* datos, int socket){
 		int cantNuevosBloques = totalBloques - cantBloques;
 		archivoAEscribir.bloques = realloc(archivoAEscribir.bloques, sizeof(char*) * totalBloques);
 		if(hayXBloquesLibres(cantNuevosBloques)){
-			for (nroBloque = (cantBloques-1); nroBloque < totalBloques; nroBloque++){
+			for (nroBloque = startBlockIndex; nroBloque < totalBloques; nroBloque++){
 				if(nroBloque > (cantBloques-1)){
 					int bloqueNuevo = obtenerBloqueVacio();
 					archivoAEscribir.bloques[nroBloque] = string_itoa(bloqueNuevo);
 					marcarBloqueOcupado(archivoAEscribir.bloques[nroBloque]);
 				}
-				if(nroBloque >= startBlockIndex){
-					int tamanio = ((offsetBloque + tamanioAEscribir)>metadataFS->tamanioBloque)?(metadataFS->tamanioBloque-offsetBloque):tamanioAEscribir;
-					char* buffer = malloc(tamanio);
-					memcpy(buffer, (void*)pedidoEscritura->buffer+offset, tamanio);
-					escribirBloque(archivoAEscribir.bloques[nroBloque], buffer, tamanio, offsetBloque);
-					free(buffer);
+				int tamanio = ((offsetBloque + tamanioAEscribir)>metadataFS->tamanioBloque)?(metadataFS->tamanioBloque-offsetBloque):tamanioAEscribir;
+				char* buffer = malloc(tamanio);
+				memcpy(buffer, (void*)pedidoEscritura->buffer+offset, tamanio);
+				escribirBloque(archivoAEscribir.bloques[nroBloque], buffer, tamanio, offsetBloque);
+				free(buffer);
 
-					offset+=tamanio;
-					tamanioAEscribir-=tamanio;
+				offset+=tamanio;
+				tamanioAEscribir-=tamanio;
 
-					offsetBloque = 0;
+				offsetBloque = 0;
 
-					if(tamanioAEscribir==0)
-						break;
-				}
+				if(tamanioAEscribir==0)
+					break;
 			}
 			int nuevoTamanio = pedidoEscritura->offset + pedidoEscritura->tamanio;
 			int tamanioGuardar = (nuevoTamanio > archivoAEscribir.tamanio)?nuevoTamanio:archivoAEscribir.tamanio;

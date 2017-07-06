@@ -159,7 +159,13 @@ t_valor_variable dereferenciar(t_puntero direccion_variable) {
 	borrarPaquete(paquete);
 
 	t_valor_variable valor;
-	memcpy(&valor,respuesta->data,4);
+
+	if(respuesta->codigo == OK_SOLICITAR){
+		memcpy(&valor,respuesta->data,4);
+	}else{
+		valor=1;
+		log_warning(cpu_log,"No se encuentra la direccion logica en memoria");
+	}
 
 	free(respuesta->data);
 	free(respuesta);

@@ -237,10 +237,11 @@ void cerrarArchivo(char* data, int socket){
 
 		t_archivos_global* archivo_global = list_find(tablaArchivosGlobales,matchFileGlobal);
 
-		archivo_global->open--;
-
-		if(archivo_global->open == 0){
-			list_remove_and_destroy_by_condition(tablaArchivosGlobales,matchFileGlobal,destroyArchivoGlobal);
+		if(archivo_global){
+			archivo_global->open--;
+			if(archivo_global->open == 0){
+				list_remove_and_destroy_by_condition(tablaArchivosGlobales,matchFileGlobal,destroyArchivoGlobal);
+			}
 		}
 
 		list_remove_and_destroy_by_condition(listaArchivosPorProceso,matchFileProceso,destroyArchivoProceso);
@@ -308,7 +309,6 @@ void borrarArchivo(char* data, int socket){
 					log_info(logNucleo,"Se borro correctamente el archivo GLOBAL FD: %d ",archivo_proceso->globalFD);
 
 					list_remove_and_destroy_by_condition(tablaArchivosGlobales,matchFileGlobal,destroyArchivoGlobal);
-					list_remove_and_destroy_by_condition(listaArchivosPorProceso,matchFileProceso,destroyArchivoProceso);
 
 					respuesta.codigo = BORRADO_OK;
 				}else{
