@@ -68,6 +68,7 @@ pthread_mutex_t colaExecMutex;
 pthread_mutex_t colaExitMutex;
 pthread_mutex_t stoppedMutex;
 pthread_mutex_t listForFinishMutex;
+pthread_mutex_t listForFinishDesconexionMutex;
 pthread_mutex_t mutexCPUConectadas;
 pthread_mutex_t mutexProgramasActuales;
 pthread_mutex_t mutexMemoria;
@@ -79,6 +80,7 @@ int socketMemoria;
 int tamanio_pag_memoria;
 
 t_list* listForFinish;
+t_list* listForFinishDesconexion;
 
 void crear_colas();
 void destruir_colas();
@@ -103,6 +105,7 @@ void desbloquear_pcb(int32_t pid);
 void destruir_pcb (t_pcb* pcbADestruir);
 
 bool processIsForFinish(int32_t pid);
+bool processIsForFinishDesconexion(int32_t pid);
 void cpu_change_running(int32_t socket, bool newState);
 t_consola* matchear_consola_por_pid(int pid);
 void eliminarConsolaPorPID(int32_t pid);
@@ -122,5 +125,6 @@ void agregarReservar(int32_t pid,int32_t bytes);
 void agregarPagHeap(int32_t pid);
 void desconectarCPU(int socket);
 void addForFinishIfNotContains(int32_t* pid);
+void addForFinishDesconexionIfNotContains(int32_t* pid);
 
 #endif /* SRC_ESTADOS_H_ */

@@ -133,8 +133,6 @@ void finalizarProceso(void* pidArg){
 void finalizarProcesoDesconexion(void* pidArg){
 	int32_t* pid = (int32_t*)pidArg;
 
-	log_info(logNucleo,"A punto de finalizar el proceso con el PID:%d",*pid);
-
 	pthread_mutex_lock(&mutexProgramasActuales);
 	t_consola* consola = matchear_consola_por_pid(*pid);
 
@@ -145,14 +143,16 @@ void finalizarProcesoDesconexion(void* pidArg){
 
 			pcb = sacarDe_colaReady(*pid);
 			if(pcb!=NULL){//Esta en ready
-				log_info(logNucleo,"Finalizando proceso con PID:%d ",*pid);
+				log_info(logNucleo,"Se finaliza el PID:%d ",*pid);
 				pcb->exit_code=FINALIZAR_DESCONEXION_CONSOLA;
 				finishProcess(pcb,true,false);
 			}else{//Esta bloqueado
-				addForFinishIfNotContains(pid);
+				log_info(logNucleo,"Se quiso finalizar el PID:%d pero esta bloqueado",*pid);
+				addForFinishDesconexionIfNotContains(pid);
 			}
 		}else{
-			addForFinishIfNotContains(pid);
+			log_info(logNucleo,"Se quiso finalizar el PID:%d pero se encuentra corriendo",*pid);
+			addForFinishDesconexionIfNotContains(pid);
 		}
 	}
 	pthread_mutex_unlock(&mutexProgramasActuales);
@@ -1087,6 +1087,7 @@ int main(int argc, char** argv) {
 	pthread_mutex_init(&capaFSMutex,NULL);
 	pthread_mutex_init(&mutexStatsEjecucion,NULL);
 	pthread_mutex_init(&mutexMemoriaHeap,NULL);
+	pthread_mutex_init(&listForFinishDesconexionMutex,NULL);
 	sem_init(&stopped,0,0);
 
 	isStopped=false;
@@ -1143,6 +1144,7 @@ int main(int argc, char** argv) {
     crear_colas();
 
     listForFinish=list_create();
+    listForFinishDesconexion=list_create();
     tablaArchivosGlobales = list_create();
 
     logNucleo = log_create("logNucleo.log", "nucleo.c", false, LOG_LEVEL_TRACE);

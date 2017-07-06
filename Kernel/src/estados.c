@@ -124,7 +124,13 @@ void moverA_colaReadySinFinalizar(t_pcb *pcb){
 
 	pthread_mutex_lock(&colaReadyMutex);
 
-	queue_push(colaReady, pcb);
+	if(processIsForFinishDesconexion(pcb->pid)){
+		log_debug(logEstados, "Se finaliza el PID: %d",pcb->pid);
+		pcb->exit_code=FINALIZAR_DESCONEXION_CONSOLA;
+		finishProcess(pcb,true,true);
+	}else{
+		queue_push(colaReady, pcb);
+	}
 
 	pthread_mutex_unlock(&colaReadyMutex);
 
@@ -141,8 +147,12 @@ void moverA_colaReady(t_pcb *pcb){
 	pthread_mutex_lock(&colaReadyMutex);
 
 	if(processIsForFinish(pcb->pid)){
-		log_debug(logEstados, "Debio finalizar el pid: %d",pcb->pid);
+		log_debug(logEstados, "Se finaliza el PID: %d",pcb->pid);
 		pcb->exit_code=FINALIZAR_BY_CONSOLE;
+		finishProcess(pcb,true,true);
+	}else if (processIsForFinishDesconexion(pcb->pid)){
+		log_debug(logEstados, "Se finaliza el PID: %d",pcb->pid);
+		pcb->exit_code=FINALIZAR_DESCONEXION_CONSOLA;
 		finishProcess(pcb,true,true);
 	}else{
 		queue_push(colaReady, pcb);
@@ -251,6 +261,38 @@ bool processIsForFinish(int32_t pid){
 
 	return false;
 }
+
+bool processIsForFinishDesconexion(int32_t pid){
+	bool matchPID(void* elemt){
+		return (*((int32_t*) elemt))==pid;
+	}
+
+	pthread_mutex_lock(&listForFinishDesconexionMutex);
+	if(list_find(listForFinishDesconexion,matchPID) != NULL){
+		list_remove_and_destroy_by_condition(listForFinishDesconexion,matchPID,free);
+		pthread_mutex_unlock(&listForFinishDesconexionMutex);
+		return true;
+	}
+	pthread_mutex_unlock(&listForFinishDesconexionMutex);
+
+	return false;
+}
+
+
+void addForFinishDesconexionIfNotContains(int32_t* pid){
+	bool matchPID(void* elemt){
+		return (*((int32_t*) elemt))==(*pid);
+	}
+
+	pthread_mutex_lock(&listForFinishDesconexionMutex);
+	if(list_find(listForFinishDesconexion,matchPID)==NULL){
+		list_add(listForFinishDesconexion,pid);
+	}else{
+		free(pid);
+	}
+	pthread_mutex_unlock(&listForFinishDesconexionMutex);
+}
+
 
 void cpu_change_running(int32_t socket, bool newState){
 	bool matchSocket(void*elem){
