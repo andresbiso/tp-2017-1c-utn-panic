@@ -86,9 +86,14 @@ void newPID(char*data,int socket){
 	pthread_detach(hiloPID);
 }
 
+void desconexionKernel(int socket){
+	log_info(logConsola,"El kernel se desconectó");
+	exit(0);
+}
+
 void esperarKernel(void* args){
 	while(1){
-		t_package* paqueteKernel = recibirPaquete(socketKernel,NULL);
+		t_package* paqueteKernel = recibirPaquete(socketKernel,desconexionKernel);
 		if(strcmp(paqueteKernel->key,"NEW_PID")==0){
 			t_dictionary* diccionario = dictionary_create();
 			dictionary_put(diccionario,"NEW_PID",&newPID);

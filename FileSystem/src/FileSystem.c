@@ -341,7 +341,7 @@ void escribirDatosArchivo(char* datos, int socket){
 		int cantNuevosBloques = totalBloques - cantBloques;
 		archivoAEscribir.bloques = realloc(archivoAEscribir.bloques, sizeof(char*) * totalBloques);
 		if(hayXBloquesLibres(cantNuevosBloques)){
-			for (nroBloque = cantBloques; nroBloque <= totalBloques; nroBloque++){
+			for (nroBloque = (cantBloques-1); nroBloque < totalBloques; nroBloque++){
 				if(nroBloque > (cantBloques-1)){
 					int bloqueNuevo = obtenerBloqueVacio();
 					archivoAEscribir.bloques[nroBloque] = string_itoa(bloqueNuevo);
