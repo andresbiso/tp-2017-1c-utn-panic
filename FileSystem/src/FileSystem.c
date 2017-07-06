@@ -110,14 +110,15 @@ void crearArchivo(char* data, int socket){
 
 		char* ruta = concat(rutaArchivos, pedido->direccion+1);
 
-		bool already_exist = (fopen(ruta,"r")!=NULL);
+		FILE* already = fopen(ruta,"r");
 
 		char* tmp = strdup(ruta);
 		char* dir = dirname(tmp);
 		_mkdir(dir);
 
-		if (!already_exist){
-			fopen(ruta,"w");
+		if (already==NULL){
+			FILE* file_literal = fopen(ruta,"w");
+			fclose(file_literal);
 			t_config* file =config_create(ruta);
 
 			char* tamanio_string = string_itoa(nuevoArchivo->tamanio);
@@ -135,6 +136,7 @@ void crearArchivo(char* data, int socket){
 			marcarBloqueOcupado(nuevoArchivo->bloques[0]);
 			rta->codigoRta = CREAR_OK;
 		}else{
+			fclose(already);
 			log_error(logFS, "Error al crear el archivo");
 			if(already_exist)
 				log_error(logFS, "El archivo ya existe");
@@ -197,12 +199,12 @@ char* leerBloque(char* numero, int tamanio, int offset){
 	if (file != NULL){
 		fseek(file, offset, SEEK_SET);
 		fread(bloque, tamanio, 1, file);
+		fclose(file);
 	}else{
 		log_error(logFS, "No se pudo leer el bloque numero: %d", numero);
 	}
 	free(nombreBloque);
 	free(ruta);
-	fclose(file);
 
 	return bloque;
 }
@@ -217,6 +219,7 @@ void leerDatosArchivo(char* datos, int socket){
 	char* ruta = concat(rutaArchivos, pedidoDeLectura->ruta);
 	FILE* file = fopen(ruta, "r");
 	if (file != NULL){
+		fclose(file);
 		t_config* metadata_file = config_create(ruta);
 
 		t_metadata_archivo archivoALeer;
@@ -286,6 +289,7 @@ void escribirBloque(char* bloque, char* buffer, int tamanio, int offset){
 		fseek(file, offset, SEEK_SET);
 		fwrite(buffer, tamanio, 1, file);
 		fflush(file);
+		fclose(file);
 	}
 }
 void eliminarBloque(char* bloque){
@@ -382,11 +386,11 @@ void escribirDatosArchivo(char* datos, int socket){
 			log_info(logFS,"No hay espacio en el FS");
 			rta.codigoRta = NO_HAY_ESPACIO;
 		}
+		fclose(file);
 	}else{
 		log_info(logFS,"El archivo %s no existe",pedidoEscritura->ruta);
 		rta.codigoRta = ESCRIBIR_ERROR;
 	}
-	fclose(file);
 	free(ruta);
 
 	free(pedidoEscritura->ruta);
