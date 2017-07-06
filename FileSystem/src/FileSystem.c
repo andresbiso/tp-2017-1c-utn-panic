@@ -137,9 +137,7 @@ void crearArchivo(char* data, int socket){
 			rta->codigoRta = CREAR_OK;
 		}else{
 			fclose(already);
-			log_error(logFS, "Error al crear el archivo");
-			if(already_exist)
-				log_error(logFS, "El archivo ya existe");
+			log_error(logFS, "El archivo ya existe");
 			rta->codigoRta = CREAR_ERROR;
 		}
 		free(nuevoArchivo->bloques);
