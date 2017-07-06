@@ -46,6 +46,7 @@ void abrirArchivo(char* data, int socket){
 
 	char* buffer = serializar_pedido_validar_crear_borrar_archivo(&pedidoValidar);
 	empaquetarEnviarMensaje(socketFS,"VALIDAR_ARCH",sizeof(int32_t)+pedidoValidar.tamanio,buffer);
+	free(pedidoValidar.direccion);
 	free(buffer);
 
 	t_package* paqueteValidar = recibirPaquete(socketFS,NULL);
@@ -59,7 +60,7 @@ void abrirArchivo(char* data, int socket){
 	t_archivos_proceso* archivos_proceso= malloc(sizeof(t_archivos_proceso));
 
 	if(respuestaValidar->codigoRta == VALIDAR_OK){
-			log_info(logNucleo,"Validacion correcta de archivo");
+			log_info(logNucleo,"Validacion correcta del archivo: %s",pedido->direccion);
 
 			bool matchFile(void *archivoGlobal) {
 					return strcmp(((t_archivos_global*)archivoGlobal)->file,pedido->direccion)==0;
@@ -117,7 +118,7 @@ void abrirArchivo(char* data, int socket){
 			free(buffer);
 	}else{
 			if(pedido->flags->creacion){
-				log_info(logNucleo,"No existe el archivo, se intentara crearlo");
+				log_info(logNucleo,"No existe el archivo: %s, se procedera a crearlo",pedido->direccion);
 				t_pedido_validar_crear_borrar_archivo_fs pedidoCrear;
 				pedidoCrear.tamanio = pedido->tamanio;
 				pedidoCrear.direccion = malloc((pedido->tamanio)+1);
@@ -125,6 +126,7 @@ void abrirArchivo(char* data, int socket){
 
 				char* buffer = serializar_pedido_validar_crear_borrar_archivo(&pedidoCrear);
 				empaquetarEnviarMensaje(socketFS,"CREAR_ARCH",sizeof(int32_t)+pedidoCrear.tamanio,buffer);
+				free(pedidoCrear.direccion);
 				free(buffer);
 
 				t_package* paqueteCrear = recibirPaquete(socketFS,NULL);
@@ -145,7 +147,6 @@ void abrirArchivo(char* data, int socket){
 				listaArchivos = dictionary_get(tablaArchivosPorProceso,pidKey);//Dejar esta linea
 
 				if(respuestaCrear->codigoRta== CREAR_OK){
-						log_info(logNucleo,"Creacion correcta de archivo");
 						archivos_global->globalFD = obtenerEIncrementarGlobalFD();
 						archivos_global->file = malloc(strlen(pedido->direccion)+1);
 						archivos_global->file[strlen(pedido->direccion)]='\0';
@@ -158,6 +159,10 @@ void abrirArchivo(char* data, int socket){
 						memcpy(archivos_proceso->flags,banderas,sizeof(banderas));
 						archivos_proceso->globalFD = archivos_global->globalFD;
 						archivos_proceso->cursor = 0;
+
+						log_info(logNucleo,"Creacion correcta del archivo: %s para el PID: %d con FD: %d y Global FD: %d",
+								pedido->direccion,pedido->pid,archivos_proceso->fd,archivos_global->globalFD);
+
 						list_add(tablaArchivosGlobales,archivos_global);
 
 						respuesta.fd = archivos_proceso->fd;
@@ -174,7 +179,7 @@ void abrirArchivo(char* data, int socket){
 						buffer = serializar_respuesta_abrir_archivo(&respuesta);
 						empaquetarEnviarMensaje(socket,"RES_ABRIR_ARCH",sizeof(t_respuesta_abrir_archivo),buffer);
 						free(buffer);
-						log_error(logNucleo,"No se pudo crear el archivo");
+						log_error(logNucleo,"No se pudo crear el archivo: %s",pedido->direccion);
 					}else{
 						respuesta.fd = 0;
 						respuesta.codigo = ABRIR_ERROR;
@@ -182,12 +187,12 @@ void abrirArchivo(char* data, int socket){
 						buffer = serializar_respuesta_abrir_archivo(&respuesta);
 						empaquetarEnviarMensaje(socket,"RES_ABRIR_ARCH",sizeof(t_respuesta_abrir_archivo),buffer);
 						free(buffer);
-						log_error(logNucleo,"No hay bloques disponibles para crear el archivo");
+						log_error(logNucleo,"No hay bloques disponibles para crear el archivo: %s",pedido->direccion);
 					}
 					free(pid);
 					free(respuestaCrear);
 			}else{
-				log_error(logNucleo,"No existe el archivo solicitado");
+				log_error(logNucleo,"No existe el archivo: %s",pedido->direccion);
 
 				respuesta.fd = 0;
 				respuesta.codigo = ABRIR_ERROR;
@@ -280,6 +285,8 @@ void borrarArchivo(char* data, int socket){
 		return ((t_archivos_proceso*)elem)->fd==pedido->fd;
 	}
 
+	t_pedido_validar_crear_borrar_archivo_fs pedidoBorrar;
+
 	if(listaArchivosPorProceso){
 		t_archivos_proceso* archivo_proceso = list_find(listaArchivosPorProceso,matchFileProceso);
 
@@ -292,7 +299,7 @@ void borrarArchivo(char* data, int socket){
 			t_archivos_global* archivo_global = list_find(tablaArchivosGlobales,matchFileGlobal);
 
 			if(archivo_global->open == 1){
-				t_pedido_validar_crear_borrar_archivo_fs pedidoBorrar;
+
 				pedidoBorrar.tamanio = strlen(archivo_global->file);
 				pedidoBorrar.direccion = malloc(pedidoBorrar.tamanio);
 				memcpy(pedidoBorrar.direccion,archivo_global->file,pedidoBorrar.tamanio);
@@ -306,18 +313,21 @@ void borrarArchivo(char* data, int socket){
 				borrarPaquete(paqueteBorrar);
 
 				if(respuestaBorrar->codigoRta == BORRAR_OK){
-					log_info(logNucleo,"Se borro correctamente el archivo GLOBAL FD: %d ",archivo_proceso->globalFD);
+					log_info(logNucleo,"Se borro correctamente el archivo: %s de Global FD: %d",
+							archivo_global->file,archivo_proceso->globalFD);
 
 					list_remove_and_destroy_by_condition(tablaArchivosGlobales,matchFileGlobal,destroyArchivoGlobal);
 
 					respuesta.codigo = BORRADO_OK;
 				}else{
-					log_error(logNucleo,"No se pudo borrar el archivo GLOBAL FD: %d",archivo_global->globalFD);
+					log_error(logNucleo,"No se pudo borrar el archivo: %s de Global FD: %d",
+							archivo_global->file,archivo_global->globalFD);
 					respuesta.codigo = BORRADO_ERROR;
 				}
 				free(respuestaBorrar);
 			}else{
-				log_error(logNucleo,"El archivo GLOBAL FD: %d se encuentra abierto por mas de un proceso",archivo_global->globalFD);
+				log_error(logNucleo,"El archivo: %s de Global FD: %d se encuentra abierto por mas de un proceso",
+						archivo_global->file,archivo_global->globalFD);
 				respuesta.codigo = BORRADO_BLOCKED;
 			}
 		}else{
@@ -334,6 +344,7 @@ void borrarArchivo(char* data, int socket){
 	empaquetarEnviarMensaje(socket,"RES_BORRAR_ARCH",sizeof(int32_t),buffer);
 	free(buffer);
 
+	free(pedidoBorrar.direccion);
 	free(pedido);
 	free(pidKey);
 }
@@ -427,13 +438,15 @@ void leerArchivo(char* data, int socket){
             	borrarPaquete(paqueteLeer);
 
             	if(respuestaLeer->codigo == LECTURA_OK){
-            			log_info(logNucleo,"Se leyo correctamente el archivo GLOBAL FD: %d",archivo_global->globalFD);
+            			log_info(logNucleo,"Se leyo correctamente el archivo: %s de Global FD: %d",
+            					archivo_global->file,archivo_global->globalFD);
             			respuesta.codigo = LEER_OK;
             			respuesta.tamanio = respuestaLeer->tamanio;
             			respuesta.informacion = malloc(respuesta.tamanio);
             			memcpy(respuesta.informacion,respuestaLeer->datos,respuesta.tamanio);
             	}else{
-            			log_error(logNucleo,"No se pudo leer el archivo GLOBAL FD: %d",archivo_global->globalFD);
+            			log_error(logNucleo,"No se pudo leer el archivo: %s de Global FD: %d",
+            					archivo_global->file,archivo_global->globalFD);
             			respuesta.codigo = LEER_BLOCKED;
             			respuesta.informacion = "LEER_ERROR";
             			respuesta.tamanio = strlen("LEER_ERROR");
@@ -444,7 +457,8 @@ void leerArchivo(char* data, int socket){
             	respuesta.codigo = LEER_BLOCKED;
             	respuesta.informacion = "LEER_ERROR";
             	respuesta.tamanio = strlen("LEER_ERROR");
-            	log_error(logNucleo,"El archivo GLOBAL FD: %d no fue abierto con permisos de lectura",archivo_global->globalFD);
+            	log_error(logNucleo,"El archivo: %s de Global FD: %d no fue abierto con permisos de lectura",
+            			archivo_global->file,archivo_global->globalFD);
             }
         }else{
         	respuesta.codigo = LEER_NO_EXISTE;
@@ -522,21 +536,25 @@ void escribirArchivo(char* data, int socket){
 
 	        	switch(respuestaEscribir->codigoRta){
 	        		case ESCRIBIR_OK:
-	        			log_info(logNucleo,"Se escribio correctamente el archivo GLOBAL FD: %d",archivo_global->globalFD);
+	        			log_info(logNucleo,"Se escribio correctamente el archivo: %s de Global FD: %d",
+	        					archivo_global->file,archivo_global->globalFD);
 	        	 		respuesta.codigo = ESCRITURA_OK;
 	        	 		break;
 	        	 	case NO_HAY_ESPACIO:
-	        	 		log_error(logNucleo,"No hay espacio para escribir el archivo GLOBAL FD: %d",archivo_global->globalFD);
+	        	 		log_error(logNucleo,"No hay espacio para escribir el archivo: %s de Global FD: %d",
+	        	 				archivo_global->file,archivo_global->globalFD);
 	        	 		respuesta.codigo = ESCRITURA_SIN_ESPACIO;
 	        	 		break;
 	        	 	case ESCRIBIR_ERROR:
-	        	 		log_error(logNucleo,"No se pudo escribir el archivo GLOBAL FD: %d",archivo_global->globalFD);
+	        	 		log_error(logNucleo,"No se pudo escribir el archivo: %s de Global FD: %d",
+	        	 				archivo_global->file,archivo_global->globalFD);
 	        	 		respuesta.codigo = ESCRITURA_ERROR;
 	        	 		break;
 	        	}
 	        	free(respuestaEscribir);
 	        }else{
-	        	log_error(logNucleo,"El archivo GLOBAL FD: %d no fue abierto con permisos de escritura",archivo_global->globalFD); //TODO en CPU finalizar el proceso
+	        	log_error(logNucleo,"El archivo: %s de Global FD: %d no fue abierto con permisos de escritura",
+	        			archivo_global->file,archivo_global->globalFD);
 	        	respuesta.codigo = ESCRITURA_BLOCKED;
 	        }
 	    }else{
