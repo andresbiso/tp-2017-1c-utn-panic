@@ -1147,8 +1147,8 @@ int main(int argc, char** argv) {
     listForFinishDesconexion=list_create();
     tablaArchivosGlobales = list_create();
 
-    logNucleo = log_create("logNucleo.log", "nucleo.c", false, LOG_LEVEL_TRACE);
-    logEstados = log_create("logEstados.log", "estados.c", false, LOG_LEVEL_TRACE);
+    logNucleo = log_create("logNucleo.log", "Kernel", false, LOG_LEVEL_TRACE);
+    logEstados = log_create("logEstados.log", "Kernel", false, LOG_LEVEL_TRACE);
 
     sem_init(&grado, 0, GradoMultiprog);
 
