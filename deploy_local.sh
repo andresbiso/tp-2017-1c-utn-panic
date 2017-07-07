@@ -2,28 +2,6 @@
 
 cd ../..
 
-#Bajo e instalo las commons
-echo "Instalando las commons..."
-
-git clone https://github.com/sisoputnfrba/so-commons-library.git
-cd ~/so-commons-library
-sudo make install
-utnso
-echo "Se instalaron las commons"
-
-cd ..
-
-#Bajo e instalo el parser de ansisop
-echo "Instalando el parser de ansisop..."
-
-git clone https://github.com/sisoputnfrba/ansisop-parser.git
-cd ~/ansisop-parser/parser
-sudo make all
-utnso
-sudo make install
-utnso
-echo "Se instalo el parser de ansisop"
-
 mv ~/workspace/tp-2017-1c-utn-panic/PANICommons/makefiles ~/workspace/tp-2017-1c-utn-panic/PANICommons/Debug
 
 echo "Se copian los archivos de configuracion"
@@ -52,12 +30,10 @@ cd /home/utnso
 echo "export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:~/workspace/tp-2017-1c-utn-panic/PANICommons/Debug" >> .bashrc
 
 #Muevo archivos de prueba a carpeta personal
-cp  -a ~/ansisop-parser/programas-ejemplo/evaluacion-final-esther/Scripts-Prueba/. ~
+cp  -a ~/GitRepos/ansisop-parser/programas-ejemplo/evaluacion-final-esther/Scripts-Prueba/. ~
 cp -a ~/workspace/tp-2017-1c-utn-panic/FileSystem/mnt/. ~
 
 
 exec bash
-
-echo "Fin compilacion"
 
 echo "Deploy finalizado exitosamente"
