@@ -182,7 +182,7 @@ void abrirArchivo(char* data, int socket){
 						log_error(logNucleo,"No se pudo crear el archivo: %s",pedido->direccion);
 					}else{
 						respuesta.fd = 0;
-						respuesta.codigo = ABRIR_ERROR;
+						respuesta.codigo = ABRIR_SIN_ESPACIO;
 
 						buffer = serializar_respuesta_abrir_archivo(&respuesta);
 						empaquetarEnviarMensaje(socket,"RES_ABRIR_ARCH",sizeof(t_respuesta_abrir_archivo),buffer);

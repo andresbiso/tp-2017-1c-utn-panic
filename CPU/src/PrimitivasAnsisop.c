@@ -615,10 +615,16 @@ t_descriptor_archivo abrir(t_direccion_archivo direccion, t_banderas flags) {
 
 	if(respuesta->codigo == ABRIR_OK){
 		log_info(cpu_log,"Se ha abierto el archivo correctamente");
-	}else{
+	}else if (respuesta->codigo == ABRIR_ERROR){
 		log_error(cpu_log,"Error al intentar abrir el archivo");
 		error_en_ejecucion = 1;
 		actual_pcb->exit_code = FINALIZAR_ARCHIVO_NO_EXISTE;
+		free(respuesta);
+		return -1;
+	}else{
+		log_error(cpu_log,"Error al crear el archivo, no hay espacio en el FS");
+		error_en_ejecucion = 1;
+		actual_pcb->exit_code = FINALIZAR_ARCHIVO_SIN_ESPACIO;
 		free(respuesta);
 		return -1;
 	}
