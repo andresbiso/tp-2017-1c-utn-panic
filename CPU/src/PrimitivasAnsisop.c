@@ -449,7 +449,7 @@ void waitAnsisop(t_nombre_semaforo identificador_semaforo) {
 		log_info(cpu_log,"El semaforo %s recibio el wait", identificador_semaforo);
 		break;
 	case WAIT_BLOCKED:
-		log_error(cpu_log,"El semaforo %s bloqueo el proceso", identificador_semaforo);
+		log_info(cpu_log,"El semaforo %s bloqueo el proceso", identificador_semaforo);
 		proceso_bloqueado = 1;
 		break;
 	case WAIT_NOT_EXIST:

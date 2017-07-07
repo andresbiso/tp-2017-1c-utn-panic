@@ -53,6 +53,7 @@ echo "export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:~/workspace/tp-2017-1c-utn-panic/P
 
 #Muevo archivos de prueba a carpeta personal
 cp  -a ~/ansisop-parser/programas-ejemplo/evaluacion-final-esther/Scripts-Prueba/. ~
+find ~/ansisop-parser/programas-ejemplo/ -name '*.ansisop' -exec cp -prv '{}' '/home/utnso/' ';' 
 cp -a ~/workspace/tp-2017-1c-utn-panic/FileSystem/mnt/. ~
 
 
