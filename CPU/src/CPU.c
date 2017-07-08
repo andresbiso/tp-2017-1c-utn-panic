@@ -99,7 +99,7 @@ void ejecutarPrograma() {
 		borrarPaquete(paqueteRespuesta);
 		free(bufferRespuesta->data);
 		free(bufferRespuesta);
-		sleep(quantumSleep * 0.001);
+		usleep(quantumSleep*1000);
 		cicloActual--;
 		if(error_en_ejecucion || proceso_bloqueado)
 			break;

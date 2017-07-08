@@ -49,7 +49,7 @@ void configChange(){
 void inotifyWatch(void*args){
 	char cwd[1024];
 	getcwd(cwd,sizeof(cwd));
-	watchFile(cwd,configFileName,&configChange);
+	watchFile(cwd,configFileName,configChange);
 }
 
 //inotify
@@ -1070,7 +1070,7 @@ int main(int argc, char** argv) {
 	t_config* configFile= cargarConfiguracion(configFileName);
 
 	pthread_t hiloInotify;
-	pthread_create(&hiloInotify,NULL,(void*)&inotifyWatch,NULL);
+	pthread_create(&hiloInotify,NULL,(void*)inotifyWatch,NULL);
 
 	pthread_mutex_init(&relacionMutex,NULL);
 	pthread_mutex_init(&colaNewMutex,NULL);

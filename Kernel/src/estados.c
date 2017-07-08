@@ -95,10 +95,22 @@ void moverA_colaBlocked(t_pcb *pcb)
 
 	checkStopped();
 
-	pthread_mutex_lock(&colaBlockedMutex);
-	queue_push(colaBlocked, pcb);
-	pthread_mutex_unlock(&colaBlockedMutex);
 	log_debug(logEstados, "El PCB: %d paso a la cola Blocked",pcb->pid);
+
+	pthread_mutex_lock(&colaBlockedMutex);
+
+	if(processIsForFinishDesconexion(pcb->pid)){
+		log_debug(logEstados, "El PCB: %d paso a la cola Ready",pcb->pid);
+
+		log_debug(logEstados, "Se finaliza el PID: %d",pcb->pid);
+		pcb->exit_code=FINALIZAR_DESCONEXION_CONSOLA;
+		finishProcess(pcb,true,true);
+
+	}else{
+		queue_push(colaBlocked, pcb);
+	}
+
+	pthread_mutex_unlock(&colaBlockedMutex);
 }
 
 void moverA_colaExec(t_pcb *pcb)

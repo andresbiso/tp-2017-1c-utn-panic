@@ -15,7 +15,7 @@ void watchFile(char* path,char* file, void  (*function)()) {
 		return;
 	}
 
-	int watch_descriptor = inotify_add_watch(file_descriptor, path, IN_MODIFY);
+	int watch_descriptor = inotify_add_watch(file_descriptor, path, IN_CLOSE_WRITE);
 
 	while(1){
 		int length = read(file_descriptor, buffer, BUF_LEN);
@@ -30,7 +30,7 @@ void watchFile(char* path,char* file, void  (*function)()) {
 			struct inotify_event *event = (struct inotify_event *) &buffer[offset];
 
 			if (event->len && strcmp(event->name,file)==0) {
-				if (event->mask & IN_MODIFY)
+				if (event->mask & IN_CLOSE_WRITE)
 					function();
 			}
 			offset += sizeof (struct inotify_event) + event->len;
