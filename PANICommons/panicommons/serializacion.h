@@ -190,6 +190,7 @@ typedef enum {
 	FINALIZAR_PAGE_OVERFLOW=-8,
 	FINALIZAR_SIN_MEMORIA=-9,
 	FINALIZAR_STACK_OVERFLOW=-10,
+	FINALIZAR_ARCHIVO_SIN_ESPACIO=-11,
 	FINALIZAR_ERROR_SIN_DEFINICION=-20
 } exit_codes;
 
@@ -306,7 +307,7 @@ typedef struct
 	char* direccion;
 } __attribute__((__packed__))t_pedido_validar_crear_borrar_archivo_fs;
 
-typedef enum{ABRIR_OK = 0, ABRIR_ERROR = 1} codigo_respuesta_abrir;
+typedef enum{ABRIR_OK = 0, ABRIR_ERROR = -1,ABRIR_SIN_ESPACIO=-2} codigo_respuesta_abrir;
 
 typedef struct{
 	int32_t fd;

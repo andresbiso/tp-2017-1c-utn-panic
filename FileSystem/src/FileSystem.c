@@ -70,6 +70,7 @@ void marcarBloqueOcupado(char* bloque){
 	string_append(&rutaBloque,".bin");
 
 	FILE* file = fopen(rutaBloque,"w");
+	fflush(file);
 	fclose(file);
 	free(rutaBloque);
 
@@ -77,6 +78,7 @@ void marcarBloqueOcupado(char* bloque){
 	bitarray_set_bit(bitmap, atoi(bloque));
 	msync(bitmap->bitarray,bitmap->size,MS_SYNC);
 }
+
 void marcarBloqueDesocupado(char* bloque){
 	log_trace(logFS, "Se marca el bit %s como desocupado", bloque);
 	bitarray_clean_bit(bitmap, atoi(bloque));
@@ -84,10 +86,10 @@ void marcarBloqueDesocupado(char* bloque){
 }
 int obtenerBloqueVacio(){
 	int i = 0;
-	while(i<=metadataFS->cantidadBloques && bitarray_test_bit(bitmap, i)){
+	while(i<metadataFS->cantidadBloques && bitarray_test_bit(bitmap, i)){
 		i++;
 	}
-	if (i <= metadataFS->cantidadBloques)
+	if (i < metadataFS->cantidadBloques)
 		return i;
 	else
 		return -1;
@@ -108,14 +110,15 @@ void crearArchivo(char* data, int socket){
 
 		char* ruta = concat(rutaArchivos, pedido->direccion+1);
 
-		bool already_exist = (fopen(ruta,"r")!=NULL);
+		FILE* already = fopen(ruta,"r");
 
 		char* tmp = strdup(ruta);
 		char* dir = dirname(tmp);
 		_mkdir(dir);
 
-		if (!already_exist){
-			fopen(ruta,"w");
+		if (already==NULL){
+			FILE* file_literal = fopen(ruta,"w");
+			fclose(file_literal);
 			t_config* file =config_create(ruta);
 
 			char* tamanio_string = string_itoa(nuevoArchivo->tamanio);
@@ -133,9 +136,8 @@ void crearArchivo(char* data, int socket){
 			marcarBloqueOcupado(nuevoArchivo->bloques[0]);
 			rta->codigoRta = CREAR_OK;
 		}else{
-			log_error(logFS, "Error al crear el archivo");
-			if(already_exist)
-				log_error(logFS, "El archivo ya existe");
+			fclose(already);
+			log_error(logFS, "El archivo ya existe");
 			rta->codigoRta = CREAR_ERROR;
 		}
 		free(nuevoArchivo->bloques);
@@ -195,12 +197,12 @@ char* leerBloque(char* numero, int tamanio, int offset){
 	if (file != NULL){
 		fseek(file, offset, SEEK_SET);
 		fread(bloque, tamanio, 1, file);
+		fclose(file);
 	}else{
 		log_error(logFS, "No se pudo leer el bloque numero: %d", numero);
 	}
 	free(nombreBloque);
 	free(ruta);
-	fclose(file);
 
 	return bloque;
 }
@@ -215,6 +217,7 @@ void leerDatosArchivo(char* datos, int socket){
 	char* ruta = concat(rutaArchivos, pedidoDeLectura->ruta);
 	FILE* file = fopen(ruta, "r");
 	if (file != NULL){
+		fclose(file);
 		t_config* metadata_file = config_create(ruta);
 
 		t_metadata_archivo archivoALeer;
@@ -254,7 +257,7 @@ void leerDatosArchivo(char* datos, int socket){
 			log_info(logFS,"Lectura correcta del archivo");
 
 		}else{
-			log_info(logFS,"El offset %d es más grande que el archivo de tamanio %d",pedidoDeLectura->offset,archivoALeer.tamanio);
+			log_info(logFS,"El offset %d con el size %d es más grande que el archivo de tamanio %d",pedidoDeLectura->offset,pedidoDeLectura->tamanio,archivoALeer.tamanio);
 			rta.tamanio=5;
 			rta.datos="ERROR";
 			rta.codigo=LECTURA_ERROR;
@@ -284,6 +287,7 @@ void escribirBloque(char* bloque, char* buffer, int tamanio, int offset){
 		fseek(file, offset, SEEK_SET);
 		fwrite(buffer, tamanio, 1, file);
 		fflush(file);
+		fclose(file);
 	}
 }
 void eliminarBloque(char* bloque){
@@ -297,8 +301,14 @@ void eliminarBloque(char* bloque){
 bool hayXBloquesLibres(int cantidad){
 
 	int libres = 0;
-	while(libres<=metadataFS->cantidadBloques && !bitarray_test_bit(bitmap, libres)){
-		libres++;
+	int cont = 0;
+	while(cont<metadataFS->cantidadBloques){
+		cont++;
+
+		if(!bitarray_test_bit(bitmap, cont)){
+			libres++;
+		}
+
 		if(libres>=cantidad)
 			break;
 	}
@@ -328,11 +338,7 @@ void escribirDatosArchivo(char* datos, int socket){
 		int offsetBloque=pedidoEscritura->offset%metadataFS->tamanioBloque;
 		int startBlockIndex=((pedidoEscritura->offset)/metadataFS->tamanioBloque);
 
-		if(pedidoEscritura->offset!=0 && offsetBloque==0){
-			startBlockIndex++;//Esta en un extremo de un bloque
-		}
-
-		int bloquesNewSize = ((pedidoEscritura->offset+tamanioAEscribir)/metadataFS->tamanioBloque)+1;
+		int bloquesNewSize = divAndRoundUp(pedidoEscritura->offset+tamanioAEscribir,metadataFS->tamanioBloque);
 		int totalBloques = bloquesNewSize>cantBloques?bloquesNewSize:cantBloques;
 
 		int cantNuevosBloques = totalBloques - cantBloques;
@@ -378,11 +384,11 @@ void escribirDatosArchivo(char* datos, int socket){
 			log_info(logFS,"No hay espacio en el FS");
 			rta.codigoRta = NO_HAY_ESPACIO;
 		}
+		fclose(file);
 	}else{
 		log_info(logFS,"El archivo %s no existe",pedidoEscritura->ruta);
 		rta.codigoRta = ESCRIBIR_ERROR;
 	}
-	fclose(file);
 	free(ruta);
 
 	free(pedidoEscritura->ruta);
@@ -458,7 +464,6 @@ int main(int argc, char** argv){
 
 	printf("PUERTO: %d\n",puerto);
 	printf("PUNTO_MONTAJE: %s\n",puntoMontaje);
-	printf("TAMANIO BITMAP: %d\n", bitmap->size);
 
 	t_dictionary* diccionarioFunc= dictionary_create();
 	t_dictionary* diccionarioHands= dictionary_create();

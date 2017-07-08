@@ -16,7 +16,7 @@
 
 #define EVENT_SIZE  ( sizeof (struct inotify_event) + 24 )
 
-#define BUF_LEN ( EVENT_SIZE )
+#define BUF_LEN ( EVENT_SIZE * 1024 )
 
 void watchFile(char* path,char* file, void  (*function)());
 

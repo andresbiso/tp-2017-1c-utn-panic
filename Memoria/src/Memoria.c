@@ -100,6 +100,14 @@ t_cache_admin* findMinorEntradas(){//Si hay alguna libre le doy esa sino busco l
 	return getCacheMinorEntradas(NULL);
 }
 
+t_cache_admin* getCacheAdmin(int32_t pid, int32_t pag){
+	bool find(void*e1){
+		return ((t_cache_admin*)e1)->pid==pid && ((t_cache_admin*)e1)->nroPagina==pag;
+	}
+
+	return list_find(cacheEntradas,find);
+}
+
 void clearEntradasCache(int32_t pid,int32_t nroPagina,int32_t pidReplace,int32_t nroPaginaReplace){
 
 	if(nroPagina == -1){
@@ -364,7 +372,7 @@ void escribirEnEstrucAdmin(t_pagina* pagina){
 int asignarPaginasPID(int32_t pid,int32_t paginasRequeridas,bool isNew){
 	int cantPaginasLibres=0;
 	int32_t* pagLibres = malloc(sizeof(int32_t)*marcos);
-	sleep(retardoMemoria/1000);//pasamos a milisegundos
+	usleep(retardoMemoria*1000);
 	pthread_mutex_lock(&mutexMemoriaPrincipal);
 
 	cantPaginasLibres=paginasLibres(pagLibres);
@@ -721,6 +729,9 @@ void solicitarBytes(char* data,int socket){
 	t_cache* cache = findInCache(pedido->pid,pedido->pagina);
 
 	if(cache!=NULL){
+		t_cache_admin* cache_admin = getCacheAdmin(pedido->pid,pedido->pagina);
+		cache_admin->tiempoEntrada=time(0);
+
 		log_info(logFile,"Pagina encontrada en cache PID:%d PAG:%d",pedido->pid,pedido->pagina);
 
 		if(marcoSize -(pedido->offsetPagina+pedido->tamanio) <0){
@@ -751,7 +762,7 @@ void solicitarBytes(char* data,int socket){
 		return;
 	}
 
-	sleep(retardoMemoria/1000);
+	usleep(retardoMemoria*1000);
 	pthread_mutex_lock(&mutexMemoriaPrincipal);
 
 	t_pagina* pag = encontrarPagina(pedido->pid,pedido->pagina);
@@ -803,15 +814,10 @@ void almacenarBytes(char* data,int socket){
 	t_respuesta_almacenar_bytes* respuesta = malloc(sizeof(t_respuesta_almacenar_bytes));
 	respuesta->pid=pedido->pid;
 
-	bool inCache = true;
-
 	pthread_mutex_lock(&mutexCache);
 	t_cache* cache = findInCache(pedido->pid,pedido->pagina);
-	if(cache==NULL){
-		inCache=false;
-		pthread_mutex_unlock(&mutexCache);//Si no esta en cache desbloqueamos el acceso sino se espera hasta que escribamos en memoria
-	}
-	sleep(retardoMemoria/1000);
+
+	usleep(retardoMemoria*1000);
 	pthread_mutex_lock(&mutexMemoriaPrincipal);
 
 	t_pagina* pag = encontrarPagina(pedido->pid,pedido->pagina);
@@ -831,17 +837,21 @@ void almacenarBytes(char* data,int socket){
 			int32_t offsetHastaData= (marcoSize*(pag->indice))+pedido->offsetPagina;
 			memcpy(bloqueMemoria+offsetHastaData,pedido->data,pedido->tamanio);
 			if(cache!=NULL){
+				t_cache_admin* cache_admin = getCacheAdmin(pedido->pid,pedido->pagina);
+				cache_admin->tiempoEntrada=time(0);
+
 				log_info(logFile,"Se actualiza la pagina de cache del PID:%d NRO:%d",cache->pid,cache->nroPagina);
 				memcpy(cache->contenido+pedido->offsetPagina,pedido->data,pedido->tamanio);
 				free(cache);
+			}else{
+				cacheMiss(pedido->pid,pedido->pagina,bloqueMemoria+offsetHastaData);
 			}
 			log_info(logFile,"Pedido correcto escribir en pagina PID:%d PAG:%d TAMANIO:%d OFFSET:%d",pedido->pid,pedido->pagina,pedido->tamanio,pedido->offsetPagina);
 			respuesta->codigo=OK_ALMACENAR;
 		}
 	}
 
-	if(inCache)
-		pthread_mutex_unlock(&mutexCache);
+	pthread_mutex_unlock(&mutexCache);
 	pthread_mutex_unlock(&mutexMemoriaPrincipal);
 
 	char*buffer = serializar_respuesta_almacenar_bytes(respuesta);
@@ -901,7 +911,7 @@ void finalizarPrograma(char* data,int socket){
 	log_info(logFile,"Pedido para finalizar programa PID:%d",pedido->pid);
 
 	int i;
-	sleep(retardoMemoria/1000);
+	usleep(retardoMemoria*1000);
 	pthread_mutex_lock(&mutexMemoriaPrincipal);
 	for(i=0;i<marcos;i++){
 		t_pagina* pag = getPagina(i);
@@ -946,7 +956,7 @@ void liberarPagina(char* data,int socket){
 	}
 	pthread_mutex_unlock(&mutexCache);
 
-	sleep(retardoMemoria/1000);
+	usleep(retardoMemoria*1000);
 	pthread_mutex_lock(&mutexMemoriaPrincipal);
 
 	t_pagina* pag = encontrarPagina(pedido->pid,pedido->pagina);

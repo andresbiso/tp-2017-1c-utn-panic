@@ -1,6 +1,7 @@
 /RemoteSystemsTempFiles
 /Debug
 .log
+.d
 
 # Object files
 *.o

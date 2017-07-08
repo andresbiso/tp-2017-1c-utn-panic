@@ -71,6 +71,8 @@ void ejecutarPrograma() {
 	t_pedido_solicitar_bytes* pedido = (t_pedido_solicitar_bytes*)malloc(sizeof (t_pedido_solicitar_bytes));
 	int fifo = quantum == 0;
 	int cicloActual = quantum;
+	struct timespec inicio, fin;
+	uint64_t tiempo_respuesta;
 	while(actual_pcb->pc < actual_pcb->cant_instrucciones && (fifo || cicloActual > 0)) {
 		pedido->pid = actual_pcb->pid;
 		pedido->pagina = actual_pcb->indice_codigo[actual_pcb->pc].pag;
@@ -82,17 +84,22 @@ void ejecutarPrograma() {
 
 		char* buffer =  serializar_pedido_solicitar_bytes(pedido);
 		int longitudMensaje = sizeof(t_pedido_solicitar_bytes);
+		clock_gettime(CLOCK_MONOTONIC_RAW, &inicio);
+		log_info(cpu_log,"Se solicita instruccion en memoria por pid: %d en pagina: %d, offset: %d, tamanio: %d", pedido->pid, pedido->pagina, pedido->offsetPagina, pedido->tamanio);
 		if(!empaquetarEnviarMensaje(socketMemoria, "SOLC_BYTES", longitudMensaje, buffer)) {
 			perror("Hubo un error procesando el paquete");
 			exit(EXIT_FAILURE);
 		}
 		t_package* paqueteRespuesta = recibirPaquete(socketMemoria, NULL);
+		clock_gettime(CLOCK_MONOTONIC_RAW, &fin);
+		tiempo_respuesta = (fin.tv_sec - inicio.tv_sec) * 1000000 + (fin.tv_nsec - inicio.tv_nsec) / 1000;
+		log_info(cpu_log,"Tiempo total de obtencion de la instruccion en memoria: %d milisegundos", tiempo_respuesta);
 		t_respuesta_solicitar_bytes* bufferRespuesta = deserializar_respuesta_solicitar_bytes(paqueteRespuesta->datos);
 		ejecutarInstruccion(bufferRespuesta);
 		borrarPaquete(paqueteRespuesta);
 		free(bufferRespuesta->data);
 		free(bufferRespuesta);
-		sleep(quantumSleep * 0.001);
+		usleep(quantumSleep*1000);
 		cicloActual--;
 		if(error_en_ejecucion || proceso_bloqueado)
 			break;

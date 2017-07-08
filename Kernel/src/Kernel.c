@@ -49,7 +49,7 @@ void configChange(){
 void inotifyWatch(void*args){
 	char cwd[1024];
 	getcwd(cwd,sizeof(cwd));
-	watchFile(cwd,configFileName,&configChange);
+	watchFile(cwd,configFileName,configChange);
 }
 
 //inotify
@@ -90,7 +90,6 @@ void retornarPCB(char* data,int socket){
 	}
 
 	if(retornar->pcb->exit_code<=0){//termino el programa
-
 		log_info(logNucleo,"Programa finalizado desde el socket:%d con el PID:%d",socket,retornar->pcb->pid);
 		finishProcess(retornar->pcb,true,true);
 	}else{
@@ -126,6 +125,34 @@ void finalizarProceso(void* pidArg){
 			}
 		}else{
 			addForFinishIfNotContains(pid);
+		}
+	}
+	pthread_mutex_unlock(&mutexProgramasActuales);
+}
+
+void finalizarProcesoDesconexion(void* pidArg){
+	int32_t* pid = (int32_t*)pidArg;
+
+	pthread_mutex_lock(&mutexProgramasActuales);
+	t_consola* consola = matchear_consola_por_pid(*pid);
+
+	if(consola != NULL){
+		if(consola->corriendo==false){
+			//Puede estar bloqueado o en ready
+			t_pcb* pcb;
+
+			pcb = sacarDe_colaReady(*pid);
+			if(pcb!=NULL){//Esta en ready
+				log_info(logNucleo,"Se finaliza el PID:%d ",*pid);
+				pcb->exit_code=FINALIZAR_DESCONEXION_CONSOLA;
+				finishProcess(pcb,true,false);
+			}else{//Esta bloqueado
+				log_info(logNucleo,"Se quiso finalizar el PID:%d pero esta bloqueado",*pid);
+				addForFinishDesconexionIfNotContains(pid);
+			}
+		}else{
+			log_info(logNucleo,"Se quiso finalizar el PID:%d pero se encuentra corriendo",*pid);
+			addForFinishDesconexionIfNotContains(pid);
 		}
 	}
 	pthread_mutex_unlock(&mutexProgramasActuales);
@@ -786,8 +813,11 @@ void finishProcess(t_pcb* pcb,bool check_memoria,bool lock){
 		}
 
 		t_consola* consola = matchear_consola_por_pid(pcb->pid);
-		enviarMensajeConsola(message,"END_PRGM",pcb->pid,consola->socket,1,0);
-		eliminarConsolaPorPID(pcb->pid);
+
+		if(consola){
+			enviarMensajeConsola(message,"END_PRGM",pcb->pid,consola->socket,1,0);
+			eliminarConsolaPorPID(pcb->pid);
+		}
 
 		if(lock){
 			pthread_mutex_unlock(&mutexProgramasActuales);
@@ -868,8 +898,8 @@ void enviar_a_cpu(){
 	char* quantum = string_itoa(Quantum);
 	char* quantumsleep = string_itoa(QuantumSleep);
 
+	empaquetarEnviarMensaje(cpu_libre->socket,"NUEVO_QUANTUM_SLEEP",strlen(quantumsleep),quantumsleep);
 	if(Modo==RR){
-		empaquetarEnviarMensaje(cpu_libre->socket,"NUEVO_QUANTUM_SLEEP",strlen(quantumsleep),quantumsleep);
 		empaquetarEnviarMensaje(cpu_libre->socket,"NUEVO_QUANTUM",strlen(quantum),quantum);
 	}
 
@@ -1006,6 +1036,24 @@ void agregarReservar(int32_t pid,int32_t bytes){
 
 /* STATS */
 
+void desconexionConsola(int socket){
+	log_info(logNucleo,"Se desconecto la consola del socket %d",socket);
+
+	void enviarAfinalizar(void* elem){
+		if (((t_consola*)elem)->socket==socket){
+			pthread_t hilo;//Se hace con un hilo por si se pausa la planificacion
+			int32_t* pid_finish = malloc(sizeof(int32_t));
+			*pid_finish=((t_consola*)elem)->pid;
+			pthread_create(&hilo,NULL,(void*)&finalizarProcesoDesconexion,pid_finish);
+		}
+	}
+
+	pthread_mutex_lock(&mutexProgramasActuales);
+	list_iterate(lista_programas_actuales,enviarAfinalizar);
+	pthread_mutex_unlock(&mutexProgramasActuales);
+
+}
+
 void mostrarMensaje(char* mensaje,int socket){
 	printf("Mensaje recibido: %s \n",mensaje);
 }
@@ -1022,7 +1070,7 @@ int main(int argc, char** argv) {
 	t_config* configFile= cargarConfiguracion(configFileName);
 
 	pthread_t hiloInotify;
-	pthread_create(&hiloInotify,NULL,(void*)&inotifyWatch,NULL);
+	pthread_create(&hiloInotify,NULL,(void*)inotifyWatch,NULL);
 
 	pthread_mutex_init(&relacionMutex,NULL);
 	pthread_mutex_init(&colaNewMutex,NULL);
@@ -1039,6 +1087,7 @@ int main(int argc, char** argv) {
 	pthread_mutex_init(&capaFSMutex,NULL);
 	pthread_mutex_init(&mutexStatsEjecucion,NULL);
 	pthread_mutex_init(&mutexMemoriaHeap,NULL);
+	pthread_mutex_init(&listForFinishDesconexionMutex,NULL);
 	sem_init(&stopped,0,0);
 
 	isStopped=false;
@@ -1077,7 +1126,7 @@ int main(int argc, char** argv) {
     threadParams parametrosConsola;
     parametrosConsola.socketEscucha = socketConsola;
     parametrosConsola.nuevaConexion = NULL;
-    parametrosConsola.desconexion = NULL;
+    parametrosConsola.desconexion = &desconexionConsola;
     parametrosConsola.handshakes = diccionarioHandshakes;
     parametrosConsola.funciones = diccionarioFunciones;
     parametrosConsola.afterHandshake = NULL;
@@ -1095,10 +1144,11 @@ int main(int argc, char** argv) {
     crear_colas();
 
     listForFinish=list_create();
+    listForFinishDesconexion=list_create();
     tablaArchivosGlobales = list_create();
 
-    logNucleo = log_create("logNucleo.log", "nucleo.c", false, LOG_LEVEL_TRACE);
-    logEstados = log_create("logEstados.log", "estados.c", false, LOG_LEVEL_TRACE);
+    logNucleo = log_create("logNucleo.log", "Kernel", false, LOG_LEVEL_TRACE);
+    logEstados = log_create("logEstados.log", "Kernel", false, LOG_LEVEL_TRACE);
 
     sem_init(&grado, 0, GradoMultiprog);
 

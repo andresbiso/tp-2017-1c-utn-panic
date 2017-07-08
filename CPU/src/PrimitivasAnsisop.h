@@ -18,6 +18,7 @@
 #include <string.h>
 #include <sys/types.h>
 #include <unistd.h>
+#include <time.h>
 
 /*typedef struct entrada_salida{
 	t_nombre_dispositivo dispositivo;

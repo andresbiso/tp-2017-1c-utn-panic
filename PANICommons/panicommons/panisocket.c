@@ -61,7 +61,6 @@ int enviarMensaje(int socket, char * mensaje,uint32_t tamanioPaquete){
 	//bucle hasta enviar todoo el packete (send devuelve los byte que envio)
 	while(total < tamanioPaquete){
 		if ((enviados = send(socket, mensaje + enviados, tamanioPaquete - enviados, 0)) == -1){
-			perror("send");
 			close(socket);
 			return 0;
 		}
